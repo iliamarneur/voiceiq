@@ -36,7 +36,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = "uploads"
-ALLOWED_EXTENSIONS = {".mp3", ".wav", ".m4a", ".flac", ".ogg", ".webm", ".mp4", ".wma", ".aac"}
+# Audio formats
+AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".flac", ".ogg", ".webm", ".wma", ".aac", ".opus", ".amr"}
+# Video formats (audio will be extracted)
+VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".ts", ".mts", ".m2ts", ".webm"}
+ALLOWED_EXTENSIONS = AUDIO_EXTENSIONS | VIDEO_EXTENSIONS
+# Max upload size: 2 GB
+MAX_UPLOAD_SIZE = 2 * 1024 * 1024 * 1024
 
 
 @asynccontextmanager
@@ -70,11 +76,28 @@ async def get_db():
 async def upload_audio(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}. Supported: audio (mp3, wav, m4a, flac, ogg, aac, opus) and video (mp4, mkv, avi, mov, wmv)")
 
-    file_location = os.path.join(UPLOAD_DIR, file.filename)
+    # Sanitize filename
+    safe_name = file.filename.replace("/", "_").replace("\\", "_")
+    file_location = os.path.join(UPLOAD_DIR, safe_name)
+
+    # Chunked write for large files (avoids loading entire file in memory)
+    total_size = 0
+    chunk_size = 8 * 1024 * 1024  # 8 MB chunks
     with open(file_location, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        while True:
+            chunk = await file.read(chunk_size)
+            if not chunk:
+                break
+            total_size += len(chunk)
+            if total_size > MAX_UPLOAD_SIZE:
+                buffer.close()
+                os.remove(file_location)
+                raise HTTPException(status_code=413, detail=f"File too large. Maximum size: 2 GB")
+            buffer.write(chunk)
+
+    logger.info(f"Uploaded {safe_name}: {total_size / (1024*1024):.1f} MB")
 
     job = Job(status="pending", file_path=file_location)
     db.add(job)
@@ -97,9 +120,15 @@ async def upload_batch(files: List[UploadFile] = File(...), db: AsyncSession = D
         if ext not in ALLOWED_EXTENSIONS:
             continue
 
-        file_location = os.path.join(UPLOAD_DIR, file.filename)
+        safe_name = file.filename.replace("/", "_").replace("\\", "_")
+        file_location = os.path.join(UPLOAD_DIR, safe_name)
+        # Chunked write for large files
         with open(file_location, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            while True:
+                chunk = await file.read(8 * 1024 * 1024)
+                if not chunk:
+                    break
+                buffer.write(chunk)
 
         job = Job(status="pending", file_path=file_location)
         db.add(job)

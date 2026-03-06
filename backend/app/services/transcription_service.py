@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import tempfile
 import torch
 from faster_whisper import WhisperModel
 from sqlalchemy import select
@@ -9,6 +10,8 @@ from app.models import Job, Transcription
 from app.services.llm_service import generate_analyses
 
 logger = logging.getLogger(__name__)
+
+VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".ts", ".mts", ".m2ts"}
 
 _model = None
 
@@ -25,11 +28,46 @@ def get_whisper_model():
     return _model
 
 
+def _extract_audio_from_video(video_path: str) -> str:
+    """Extract audio from video file using PyAV, returns path to WAV file."""
+    import av
+    output_path = video_path + ".extracted.wav"
+    try:
+        container = av.open(video_path)
+        audio_stream = next(s for s in container.streams if s.type == 'audio')
+        resampler = av.AudioResampler(format='s16', layout='mono', rate=16000)
+
+        import wave
+        with wave.open(output_path, 'wb') as wav:
+            wav.setnchannels(1)
+            wav.setsampwidth(2)
+            wav.setframerate(16000)
+            for frame in container.decode(audio_stream):
+                resampled = resampler.resample(frame)
+                for r in resampled:
+                    wav.writeframesraw(r.to_ndarray().tobytes())
+        container.close()
+        logger.info(f"Extracted audio from video: {output_path}")
+        return output_path
+    except Exception as e:
+        logger.warning(f"PyAV extraction failed ({e}), trying direct Whisper decode")
+        if os.path.exists(output_path):
+            os.remove(output_path)
+        return video_path  # faster-whisper may handle it directly
+
+
 def _run_whisper(file_path: str):
     """Run Whisper transcription (CPU-bound, runs in thread pool)."""
+    # Extract audio from video if needed
+    ext = os.path.splitext(file_path)[1].lower()
+    audio_path = file_path
+    if ext in VIDEO_EXTENSIONS:
+        logger.info(f"Extracting audio from video: {file_path}")
+        audio_path = _extract_audio_from_video(file_path)
+
     model = get_whisper_model()
     segments_iter, info = model.transcribe(
-        file_path,
+        audio_path,
         language=None,
         vad_filter=True,
         vad_parameters=dict(min_silence_duration_ms=500),
@@ -46,6 +84,11 @@ def _run_whisper(file_path: str):
         full_text_parts.append(segment.text.strip())
 
     full_text = " ".join(full_text_parts)
+
+    # Clean up extracted audio file
+    if audio_path != file_path and os.path.exists(audio_path):
+        os.remove(audio_path)
+
     return segments, full_text, info
 
 

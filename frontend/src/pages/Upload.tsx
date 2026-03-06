@@ -197,12 +197,14 @@ function UploadPage() {
               </div>
               <p className="text-lg font-medium">Drop your audio files here</p>
               <p className="text-sm text-slate-500 mt-2">or click to browse (multiple files supported)</p>
-              <p className="text-xs text-slate-400 mt-4">MP3, WAV, M4A, FLAC, OGG, WEBM, MP4, AAC</p>
+              <p className="text-xs text-slate-400 mt-4">Audio : MP3, WAV, M4A, FLAC, OGG, AAC, OPUS</p>
+              <p className="text-xs text-slate-400 mt-1">Video : MP4, MKV, AVI, MOV, WMV, WEBM</p>
+              <p className="text-xs text-slate-400 mt-1">Taille max : 2 Go</p>
             </>
           )}
         </div>
         <input
-          id="fileInput" type="file" accept="audio/*" multiple className="hidden"
+          id="fileInput" type="file" accept="audio/*,video/*,.mkv,.avi,.mov,.wmv,.flv,.ts" multiple className="hidden"
           onChange={(e) => {
             if (e.target.files) setFiles(prev => [...prev, ...Array.from(e.target.files!)]);
           }}

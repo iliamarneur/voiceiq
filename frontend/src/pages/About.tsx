@@ -8,7 +8,7 @@ import {
   Zap, Shield, Clock, Volume2
 } from 'lucide-react';
 
-const VERSION = '2.0.0';
+const VERSION = '2.1.0';
 const LAST_UPDATED = '2026-03-06';
 
 interface Feature {
@@ -22,8 +22,9 @@ interface Feature {
 const FEATURES: Feature[] = [
   // Core
   { icon: Mic2, title: 'Transcription Whisper', description: 'Transcription audio locale via faster-whisper (large-v3 GPU / medium CPU) avec detection automatique de la langue et filtre VAD.', version: '1.0', category: 'core' },
-  { icon: Upload, title: 'Upload Audio', description: 'Glissez-deposez vos fichiers audio (MP3, WAV, M4A, FLAC, OGG, WEBM, MP4, AAC) pour les transcrire automatiquement.', version: '1.0', category: 'core' },
+  { icon: Upload, title: 'Upload Audio & Video', description: 'Glissez-deposez vos fichiers audio (MP3, WAV, M4A, FLAC, OGG, AAC, OPUS) ou video (MP4, MKV, AVI, MOV, WMV, WEBM). L\'audio est extrait automatiquement des videos.', version: '2.1', category: 'core' },
   { icon: Files, title: 'Upload par lot', description: 'Uploadez plusieurs fichiers simultanement avec suivi individuel du statut de chaque fichier.', version: '2.0', category: 'v2' },
+  { icon: Zap, title: 'Gros fichiers (2 Go max)', description: 'Support des fichiers volumineux grace a l\'ecriture par chunks de 8 Mo. Films, podcasts longs et enregistrements de conferences acceptes.', version: '2.1', category: 'v2' },
   { icon: Search, title: 'Recherche & Filtres', description: 'Recherchez dans vos transcriptions par texte, filtrez par langue et parcourez votre historique.', version: '1.0', category: 'core' },
   { icon: Zap, title: 'Traitement non-bloquant', description: 'Whisper tourne dans un thread pool dedie : l\'API reste reactive pendant les transcriptions longues.', version: '2.0', category: 'v2' },
 

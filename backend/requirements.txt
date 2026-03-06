@@ -1,0 +1,9 @@
+fastapi[standard]
+sqlalchemy[asyncio]>=2.0
+aiosqlite
+faster-whisper
+ollama
+weasyprint
+python-pptx
+uvicorn[standard]
+python-multipart

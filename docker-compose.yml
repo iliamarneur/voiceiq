@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13-alpine
+    environment:
+      POSTGRES_USER: audio_knowledge
+      POSTGRES_PASSWORD: audio_knowledge
+      POSTGRES_DB: audio_knowledge
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "audio_knowledge"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - audio-to-knowledge-net
+
+  backend:
+    build: .
+    command: sh -c "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    environment:
+      - DATABASE_URL=postgresql://audio_knowledge:audio_knowledge@db/audio_knowledge
+    depends_on:
+      - db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/transcriptions"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - audio-to-knowledge-net
+
+  frontend:
+    build: ./frontend
+    command: npm run start
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - audio-to-knowledge-net
+
+volumes:
+  db_data:
+
+networks:
+  audio-to-knowledge-net:

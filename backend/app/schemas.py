@@ -42,3 +42,70 @@ class StatsOut(BaseModel):
     total: int
     total_duration: float
     languages: dict
+
+
+class ChatMessageOut(BaseModel):
+    id: int
+    transcription_id: str
+    role: str
+    content: str
+    created_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
+
+
+class ChatRequest(BaseModel):
+    message: str
+
+
+class ChapterOut(BaseModel):
+    id: str
+    transcription_id: str
+    title: str
+    start_time: float
+    end_time: float
+    summary: Optional[str] = None
+    created_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
+
+
+class TemplateOut(BaseModel):
+    id: str
+    name: str
+    type: str
+    instructions: str
+    created_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
+
+
+class TemplateCreate(BaseModel):
+    name: str
+    type: str
+    instructions: str
+
+
+class TemplateUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    instructions: Optional[str] = None
+
+
+class TranslateRequest(BaseModel):
+    target_lang: str  # "en" or "fr"
+
+
+class TranslationOut(BaseModel):
+    id: str
+    transcription_id: str
+    target_lang: str
+    translated_text: str
+    created_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
+
+
+class GlossaryTerm(BaseModel):
+    term: str
+    definition: str
+
+
+class GlossaryOut(BaseModel):
+    terms: List[GlossaryTerm]

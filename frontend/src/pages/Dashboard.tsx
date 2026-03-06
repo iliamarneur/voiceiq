@@ -55,6 +55,7 @@ function Dashboard() {
     { icon: FileAudio, label: 'Transcriptions', value: stats.total, color: 'from-indigo-500 to-blue-500' },
     { icon: Clock, label: 'Total Duration', value: formatDuration(stats.total_duration), color: 'from-purple-500 to-pink-500' },
     { icon: Languages, label: 'Languages', value: Object.keys(stats.languages).length, color: 'from-emerald-500 to-teal-500' },
+    { icon: BarChart3, label: 'Analyses', value: stats.total_analyses || 0, color: 'from-amber-500 to-orange-500' },
   ] : [];
 
   return (

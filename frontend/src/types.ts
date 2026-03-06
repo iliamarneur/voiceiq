@@ -38,4 +38,44 @@ export interface Stats {
   total: number;
   total_duration: number;
   languages: Record<string, number>;
+  total_analyses?: number;
+  total_chats?: number;
+}
+
+export interface ChatMessage {
+  id: number;
+  transcription_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string | null;
+}
+
+export interface Chapter {
+  id: string;
+  transcription_id: string;
+  title: string;
+  start_time: number;
+  end_time: number;
+  summary: string | null;
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  type: string;
+  instructions: string;
+  created_at: string | null;
+}
+
+export interface GlossaryTerm {
+  term: string;
+  definition: string;
+}
+
+export interface Translation {
+  id: string;
+  transcription_id: string;
+  target_lang: string;
+  translated_text: string;
+  created_at: string | null;
 }

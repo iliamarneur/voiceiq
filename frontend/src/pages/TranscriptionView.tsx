@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   FileText, ListChecks, CheckSquare, BookOpen, HelpCircle,
   Network, Presentation, BarChart3, Table2, Clock, Globe,
-  ArrowLeft, Download, RefreshCw, Loader2, Send, MessageSquare, X
+  ArrowLeft, Download, RefreshCw, Loader2, Send, MessageSquare, X,
+  Play, Pause, BookMarked, Languages, Volume2, Trash2
 } from 'lucide-react';
 import axios from 'axios';
-import { Transcription, Analysis, AnalysisType } from '../types';
+import { Transcription, Analysis, AnalysisType, Chapter, ChatMessage, GlossaryTerm } from '../types';
 
 const ANALYSIS_TABS: { type: AnalysisType; label: string; icon: any }[] = [
   { type: 'summary', label: 'Summary', icon: FileText },
@@ -21,32 +22,61 @@ const ANALYSIS_TABS: { type: AnalysisType; label: string; icon: any }[] = [
   { type: 'tables', label: 'Tables', icon: Table2 },
 ];
 
+type TabType = 'transcript' | 'chapters' | 'glossary' | 'translation' | AnalysisType;
+
 function TranscriptionView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [transcription, setTranscription] = useState<Transcription | null>(null);
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
-  const [activeTab, setActiveTab] = useState<'transcript' | AnalysisType>('transcript');
+  const [activeTab, setActiveTab] = useState<TabType>('transcript');
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
+
+  // Chat
   const [chatOpen, setChatOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState<{role: string; content: string}[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Audio player
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+
+  // Chapters
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [chaptersLoading, setChaptersLoading] = useState(false);
+
+  // Glossary
+  const [glossary, setGlossary] = useState<GlossaryTerm[]>([]);
+  const [glossaryLoading, setGlossaryLoading] = useState(false);
+
+  // Translation
+  const [translatedText, setTranslatedText] = useState('');
+  const [targetLang, setTargetLang] = useState('en');
+  const [translating, setTranslating] = useState(false);
 
   useEffect(() => {
     if (id) fetchData();
   }, [id]);
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [tRes, aRes] = await Promise.all([
+      const [tRes, aRes, chatRes] = await Promise.all([
         axios.get(`/api/transcriptions/${id}`),
         axios.get(`/api/transcriptions/${id}/analyses`),
+        axios.get(`/api/transcriptions/${id}/chat/history`).catch(() => ({ data: [] })),
       ]);
       setTranscription(tRes.data);
       setAnalyses(aRes.data);
+      setChatMessages(chatRes.data);
     } catch (e) { console.error(e); }
     setLoading(false);
   };
@@ -69,15 +99,74 @@ function TranscriptionView() {
     if (!chatInput.trim()) return;
     const msg = chatInput;
     setChatInput('');
-    setChatMessages(prev => [...prev, { role: 'user', content: msg }]);
+    setChatMessages(prev => [...prev, { id: Date.now(), transcription_id: id!, role: 'user', content: msg, created_at: null }]);
     setChatLoading(true);
     try {
       const res = await axios.post(`/api/transcriptions/${id}/chat`, { message: msg });
-      setChatMessages(prev => [...prev, { role: 'assistant', content: res.data.response }]);
+      setChatMessages(prev => [...prev, { id: Date.now() + 1, transcription_id: id!, role: 'assistant', content: res.data.response, created_at: null }]);
     } catch {
-      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, chat is not available yet.' }]);
+      setChatMessages(prev => [...prev, { id: Date.now() + 1, transcription_id: id!, role: 'assistant', content: 'Error communicating with AI.', created_at: null }]);
     }
     setChatLoading(false);
+  };
+
+  const clearChat = async () => {
+    if (!confirm('Clear all chat history?')) return;
+    try {
+      await axios.delete(`/api/transcriptions/${id}/chat/history`);
+      setChatMessages([]);
+    } catch (e) { console.error(e); }
+  };
+
+  // Audio player
+  const seekTo = (time: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      audioRef.current.play();
+      setPlaying(true);
+    }
+  };
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (playing) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setPlaying(!playing);
+  };
+
+  // Chapters
+  const fetchChapters = async () => {
+    if (chapters.length > 0) return;
+    setChaptersLoading(true);
+    try {
+      const res = await axios.get(`/api/transcriptions/${id}/chapters`);
+      setChapters(res.data);
+    } catch (e) { console.error(e); }
+    setChaptersLoading(false);
+  };
+
+  // Glossary
+  const fetchGlossary = async () => {
+    if (glossary.length > 0) return;
+    setGlossaryLoading(true);
+    try {
+      const res = await axios.get(`/api/transcriptions/${id}/glossary`);
+      setGlossary(res.data.terms || []);
+    } catch (e) { console.error(e); }
+    setGlossaryLoading(false);
+  };
+
+  // Translation
+  const handleTranslate = async () => {
+    setTranslating(true);
+    try {
+      const res = await axios.post(`/api/transcriptions/${id}/translate`, { target_lang: targetLang });
+      setTranslatedText(res.data.translated_text);
+    } catch (e) { console.error(e); }
+    setTranslating(false);
   };
 
   const formatTime = (s: number) => {
@@ -107,8 +196,16 @@ function TranscriptionView() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full">
+      {/* Hidden audio element */}
+      <audio
+        ref={audioRef}
+        src={`/api/transcriptions/${id}/audio`}
+        onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
+        onEnded={() => setPlaying(false)}
+      />
+
       {/* Header */}
-      <div className="p-6 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+      <div className="p-4 lg:p-6 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         <div className="flex items-center gap-4 max-w-7xl mx-auto">
           <button onClick={() => navigate('/')} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
             <ArrowLeft className="w-5 h-5" />
@@ -125,6 +222,16 @@ function TranscriptionView() {
               <span>{transcription.segments?.length || 0} segments</span>
             </div>
           </div>
+
+          {/* Audio player controls */}
+          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-700">
+            <button onClick={togglePlay} className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+              {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            </button>
+            <span className="text-xs font-mono text-slate-500 min-w-[40px]">{formatTime(currentTime)}</span>
+            <Volume2 className="w-3.5 h-3.5 text-slate-400" />
+          </div>
+
           <div className="flex items-center gap-2">
             <button
               onClick={async () => {
@@ -136,8 +243,13 @@ function TranscriptionView() {
             >
               <RefreshCw className="w-4 h-4" /> Regen All
             </button>
-            <button onClick={() => setChatOpen(!chatOpen)} className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-colors">
+            <button onClick={() => setChatOpen(!chatOpen)} className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-colors relative">
               <MessageSquare className="w-5 h-5" />
+              {chatMessages.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-indigo-600 text-white text-[10px] flex items-center justify-center">
+                  {chatMessages.filter(m => m.role === 'user').length}
+                </span>
+              )}
             </button>
             <div className="relative group">
               <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm font-medium">
@@ -161,25 +273,20 @@ function TranscriptionView() {
           {/* Tabs */}
           <div className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-x-auto scrollbar-thin">
             <div className="flex px-6 gap-1 min-w-max">
-              <TabButton
-                active={activeTab === 'transcript'}
-                onClick={() => setActiveTab('transcript')}
-                icon={FileText}
-                label="Transcript"
-              />
-              {ANALYSIS_TABS.map(({ type, label, icon }) => {
-                const hasAnalysis = analyses.some(a => a.type === type);
-                return (
-                  <TabButton
-                    key={type}
-                    active={activeTab === type}
-                    onClick={() => setActiveTab(type)}
-                    icon={icon}
-                    label={label}
-                    badge={hasAnalysis}
-                  />
-                );
-              })}
+              <TabButton active={activeTab === 'transcript'} onClick={() => setActiveTab('transcript')} icon={FileText} label="Transcript" />
+              <TabButton active={activeTab === 'chapters'} onClick={() => { setActiveTab('chapters'); fetchChapters(); }} icon={BookMarked} label="Chapters" />
+              {ANALYSIS_TABS.map(({ type, label, icon }) => (
+                <TabButton
+                  key={type}
+                  active={activeTab === type}
+                  onClick={() => setActiveTab(type)}
+                  icon={icon}
+                  label={label}
+                  badge={analyses.some(a => a.type === type)}
+                />
+              ))}
+              <TabButton active={activeTab === 'glossary'} onClick={() => { setActiveTab('glossary'); fetchGlossary(); }} icon={BookOpen} label="Glossary" />
+              <TabButton active={activeTab === 'translation'} onClick={() => setActiveTab('translation')} icon={Languages} label="Translate" />
             </div>
           </div>
 
@@ -187,7 +294,20 @@ function TranscriptionView() {
           <div className="flex-1 overflow-auto p-6">
             <div className="max-w-4xl mx-auto">
               {activeTab === 'transcript' ? (
-                <TranscriptPanel transcription={transcription} />
+                <TranscriptPanel transcription={transcription} currentTime={currentTime} onSeek={seekTo} />
+              ) : activeTab === 'chapters' ? (
+                <ChaptersPanel chapters={chapters} loading={chaptersLoading} onSeek={seekTo} />
+              ) : activeTab === 'glossary' ? (
+                <GlossaryPanel terms={glossary} loading={glossaryLoading} />
+              ) : activeTab === 'translation' ? (
+                <TranslationPanel
+                  originalLang={transcription.language}
+                  translatedText={translatedText}
+                  targetLang={targetLang}
+                  setTargetLang={setTargetLang}
+                  onTranslate={handleTranslate}
+                  translating={translating}
+                />
               ) : activeAnalysis ? (
                 <AnalysisPanel
                   analysis={activeAnalysis}
@@ -219,17 +339,28 @@ function TranscriptionView() {
           >
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
               <h3 className="font-semibold">Chat with transcript</h3>
-              <button onClick={() => setChatOpen(false)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                {chatMessages.length > 0 && (
+                  <button onClick={clearChat} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500" title="Clear history">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <button onClick={() => setChatOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-auto p-4 space-y-4">
               {chatMessages.length === 0 && (
-                <p className="text-sm text-slate-400 text-center mt-8">Ask a question about this transcript</p>
+                <div className="text-center mt-8">
+                  <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                  <p className="text-sm text-slate-400">Ask questions about this transcript</p>
+                  <p className="text-xs text-slate-400 mt-1">Chat history is saved between sessions</p>
+                </div>
               )}
               {chatMessages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm ${
+                <div key={msg.id || i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap ${
                     msg.role === 'user'
                       ? 'bg-indigo-600 text-white rounded-br-md'
                       : 'bg-slate-100 dark:bg-slate-700 rounded-bl-md'
@@ -245,6 +376,7 @@ function TranscriptionView() {
                   </div>
                 </div>
               )}
+              <div ref={chatEndRef} />
             </div>
             <div className="p-4 border-t border-slate-200 dark:border-slate-700">
               <form onSubmit={(e) => { e.preventDefault(); handleChat(); }} className="flex gap-2">
@@ -254,7 +386,7 @@ function TranscriptionView() {
                   placeholder="Ask something..."
                   className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-                <button type="submit" className="p-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                <button type="submit" disabled={chatLoading} className="p-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50">
                   <Send className="w-4 h-4" />
                 </button>
               </form>
@@ -285,24 +417,37 @@ function TabButton({ active, onClick, icon: Icon, label, badge }: {
   );
 }
 
-function TranscriptPanel({ transcription }: { transcription: Transcription }) {
+// ── Transcript Panel with Audio Sync ──────────────────────
+
+function TranscriptPanel({ transcription, currentTime, onSeek }: {
+  transcription: Transcription; currentTime: number; onSeek: (t: number) => void;
+}) {
   return (
     <div className="space-y-1">
       {transcription.segments && transcription.segments.length > 0 ? (
-        transcription.segments.map((seg, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: i * 0.02 }}
-            className="group flex gap-4 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <span className="text-xs text-indigo-500 font-mono pt-0.5 min-w-[50px]">
-              {formatSegTime(seg.start)}
-            </span>
-            <p className="text-sm leading-relaxed">{seg.text}</p>
-          </motion.div>
-        ))
+        transcription.segments.map((seg, i) => {
+          const isActive = currentTime >= seg.start && currentTime < seg.end;
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: Math.min(i * 0.02, 1) }}
+              onClick={() => onSeek(seg.start)}
+              className={`group flex gap-4 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                isActive
+                  ? 'bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700'
+                  : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <span className={`text-xs font-mono pt-0.5 min-w-[50px] ${isActive ? 'text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-indigo-500'}`}>
+                {formatSegTime(seg.start)}
+              </span>
+              <p className={`text-sm leading-relaxed ${isActive ? 'text-indigo-900 dark:text-indigo-100 font-medium' : ''}`}>{seg.text}</p>
+              <Play className={`w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5`} />
+            </motion.div>
+          );
+        })
       ) : (
         <div className="prose dark:prose-invert max-w-none">
           <p className="leading-relaxed whitespace-pre-wrap">{transcription.text}</p>
@@ -312,11 +457,178 @@ function TranscriptPanel({ transcription }: { transcription: Transcription }) {
   );
 }
 
+// ── Chapters Panel ────────────────────────────────────────
+
+function ChaptersPanel({ chapters, loading, onSeek }: {
+  chapters: Chapter[]; loading: boolean; onSeek: (t: number) => void;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 text-indigo-500 animate-spin mr-3" />
+        <span className="text-slate-500">Generating chapters with AI...</span>
+      </div>
+    );
+  }
+
+  if (!chapters.length) {
+    return <div className="text-center py-20 text-slate-500">No chapters generated yet.</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {chapters.map((ch, i) => (
+        <motion.div
+          key={ch.id}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: i * 0.1 }}
+          onClick={() => onSeek(ch.start_time)}
+          className="group flex gap-4 p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 cursor-pointer transition-all"
+        >
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0 text-white font-bold">
+            {i + 1}
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold group-hover:text-indigo-600 transition-colors">{ch.title}</h3>
+            {ch.summary && <p className="text-sm text-slate-500 mt-1">{ch.summary}</p>}
+            <div className="flex items-center gap-2 mt-2 text-xs text-slate-400">
+              <Clock className="w-3 h-3" />
+              <span>{formatSegTime(ch.start_time)} - {formatSegTime(ch.end_time)}</span>
+            </div>
+          </div>
+          <Play className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+// ── Glossary Panel ────────────────────────────────────────
+
+function GlossaryPanel({ terms, loading }: { terms: GlossaryTerm[]; loading: boolean }) {
+  const [search, setSearch] = useState('');
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 text-indigo-500 animate-spin mr-3" />
+        <span className="text-slate-500">Extracting technical terms...</span>
+      </div>
+    );
+  }
+
+  if (!terms.length) {
+    return <div className="text-center py-20 text-slate-500">No technical terms found.</div>;
+  }
+
+  const filtered = terms.filter(t =>
+    t.term.toLowerCase().includes(search.toLowerCase()) ||
+    t.definition.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div>
+      <div className="mb-6">
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search glossary..."
+          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+      </div>
+      <div className="space-y-3">
+        {filtered.map((term, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: i * 0.05 }}
+            className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+          >
+            <h4 className="font-semibold text-indigo-600 dark:text-indigo-400">{term.term}</h4>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{term.definition}</p>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Translation Panel ─────────────────────────────────────
+
+function TranslationPanel({ originalLang, translatedText, targetLang, setTargetLang, onTranslate, translating }: {
+  originalLang: string | null;
+  translatedText: string;
+  targetLang: string;
+  setTargetLang: (l: string) => void;
+  onTranslate: () => void;
+  translating: boolean;
+}) {
+  const langs = [
+    { code: 'en', label: 'English' },
+    { code: 'fr', label: 'French' },
+    { code: 'es', label: 'Spanish' },
+    { code: 'de', label: 'German' },
+    { code: 'it', label: 'Italian' },
+  ].filter(l => l.code !== originalLang);
+
+  return (
+    <div>
+      <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">From:</span>
+          <span className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-sm font-medium uppercase">
+            {originalLang || 'auto'}
+          </span>
+        </div>
+        <ArrowLeft className="w-4 h-4 text-slate-400 rotate-180" />
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">To:</span>
+          <select
+            value={targetLang}
+            onChange={e => setTargetLang(e.target.value)}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm outline-none"
+          >
+            {langs.map(l => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
+        </div>
+        <button
+          onClick={onTranslate}
+          disabled={translating}
+          className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-500/25 hover:shadow-xl transition-all disabled:opacity-50"
+        >
+          {translating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}
+          {translating ? 'Translating...' : 'Translate'}
+        </button>
+      </div>
+
+      {translatedText ? (
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">{translatedText}</p>
+        </div>
+      ) : (
+        <div className="text-center py-20 text-slate-500">
+          <Languages className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <p>Click "Translate" to translate the transcript</p>
+          <p className="text-xs mt-1 text-slate-400">Translations are cached for reuse</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Helper ────────────────────────────────────────────────
+
 function formatSegTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
+
+// ── Analysis Panel ────────────────────────────────────────
 
 function AnalysisPanel({ analysis, onRegenerate, regenerating }: {
   analysis: Analysis; onRegenerate: () => void; regenerating: boolean;
@@ -349,6 +661,8 @@ function AnalysisPanel({ analysis, onRegenerate, regenerating }: {
     </div>
   );
 }
+
+// ── Analysis Sub-Views (unchanged from v1) ────────────────
 
 function SummaryView({ content }: { content: any }) {
   return (
@@ -608,7 +922,6 @@ function TablesView({ content }: { content: any }) {
 function MindMapView({ content }: { content: any }) {
   const markdown = content.markdown || content.mindmap || content.raw || '';
 
-  // Parse markdown hierarchy into a tree
   const parseTree = (md: string) => {
     const lines = md.split('\n').filter((l: string) => l.trim());
     const root: any = { label: 'Mind Map', children: [] };
@@ -667,20 +980,16 @@ function MindMapView({ content }: { content: any }) {
 }
 
 function InfographicView({ content }: { content: any }) {
-  // Render a simple visual from the infographic data
   const description = content.description || content.title || 'Data Visualization';
   const spec = content.spec || content.data || content.chart || {};
 
-  // Try to extract data points for a simple bar chart
   const extractBars = (): { label: string; value: number }[] => {
-    // Look for Vega-Lite style data
     if (spec.data?.values) {
       return spec.data.values.map((v: any) => ({
         label: v.category || v.label || v.name || v.x || String(Object.values(v)[0]),
         value: v.count || v.value || v.amount || v.y || Number(Object.values(v)[1]) || 0,
       }));
     }
-    // Look for simple key-value pairs
     if (typeof content === 'object') {
       const entries = Object.entries(content).filter(([k, v]) => typeof v === 'number' && k !== 'id');
       if (entries.length > 0) return entries.map(([k, v]) => ({ label: k, value: v as number }));

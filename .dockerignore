@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*.db
+backend/venv/
+backend/uploads/
+backend/exports/
+backend/test_upload.wav
+frontend/node_modules/
+frontend/dist/
+.git/
+.github/
+.vscode/
+.idea/
+*.md

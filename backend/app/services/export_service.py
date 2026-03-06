@@ -4,7 +4,7 @@ import os
 try:
     from weasyprint import HTML
     HAS_WEASYPRINT = True
-except OSError:
+except (OSError, ImportError):
     HAS_WEASYPRINT = False
 
 from pptx import Presentation

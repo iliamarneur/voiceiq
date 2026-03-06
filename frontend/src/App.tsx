@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Upload, Sun, Moon, Mic2, Menu, FileText } from 'lucide-react';
+import { LayoutDashboard, Upload, Sun, Moon, Mic2, Menu, FileText, Info } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import UploadPage from './pages/Upload';
 import TranscriptionView from './pages/TranscriptionView';
 import TemplatesPage from './pages/Templates';
+import About from './pages/About';
 
 function App() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark');
@@ -20,6 +21,7 @@ function App() {
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/upload', icon: Upload, label: 'Upload' },
     { to: '/templates', icon: FileText, label: 'Templates' },
+    { to: '/about', icon: Info, label: 'A propos' },
   ];
 
   return (
@@ -94,6 +96,7 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/upload" element={<UploadPage />} />
                 <Route path="/templates" element={<TemplatesPage />} />
+                <Route path="/about" element={<About />} />
                 <Route path="/transcription/:id" element={<TranscriptionView />} />
               </Routes>
             </AnimatePresence>

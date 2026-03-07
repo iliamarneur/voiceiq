@@ -5,7 +5,8 @@ import {
   Mic2, Upload, FileText, ListChecks, CheckSquare, BookOpen, HelpCircle,
   Network, Presentation, BarChart3, Table2, MessageSquare, BookMarked,
   Languages, Search, Play, Files, RefreshCw, Download, Globe, Sparkles,
-  Zap, Shield, Clock, Volume2
+  Zap, Shield, Clock, Volume2, FlaskConical, Stethoscope, Briefcase,
+  GraduationCap, Landmark, Target, TestTube2
 } from 'lucide-react';
 
 const VERSION = '4.0.0';
@@ -16,7 +17,7 @@ interface Feature {
   title: string;
   description: string;
   version: string;
-  category: 'core' | 'analysis' | 'v2' | 'v3' | 'export';
+  category: 'core' | 'analysis' | 'v2' | 'v3' | 'v4' | 'export';
 }
 
 const FEATURES: Feature[] = [
@@ -60,6 +61,16 @@ const FEATURES: Feature[] = [
   { icon: Sparkles, title: 'Rendus visuels dedies', description: 'Chaque type d\'analyse a son propre rendu visuel : tableaux SOAP colores, cartes de risques, chronologies d\'echeances, tableaux de prescriptions, etc.', version: '3.0', category: 'v3' },
   { icon: Sparkles, title: 'Hot-reload des profils', description: 'Ajoutez de nouveaux profils en deposant un fichier JSON dans le dossier profiles/ et rechargez via API sans redemarrer.', version: '3.0', category: 'v3' },
   { icon: Sparkles, title: 'Templates par profil', description: 'Chaque profil definit ses propres templates (Fiches Anki, CR Express, Note d\'audience, Courrier confrere...) et exports disponibles.', version: '3.0', category: 'v3' },
+
+  // V4 Features
+  { icon: Target, title: 'Prompts v2 (prompt_v2)', description: 'Nouvelle generation de prompts enrichis pour chaque analyse. Detection automatique du type de contenu, scores de completude, diagnostics differentiels. Retrocompatible avec prompt_version="v3".', version: '4.0', category: 'v4' },
+  { icon: Briefcase, title: 'Business v4 : CR & Actions+', description: 'Detection du type de reunion, atmosphere, sujets non abordes. Actions avec score de clarte 0-100, priorites P0-P3 et engagements verbaux. Nouveaux templates : CR Hebdo Equipe, CR Negociation.', version: '4.0', category: 'v4' },
+  { icon: GraduationCap, title: 'Education v4 : Quiz & Resume+', description: 'Niveau academique L1-doctorat detecte, prerequis identifies, liens interdisciplinaires. Quiz en 3 types (QCM, vrai/faux, texte a trous) et 3 niveaux. Templates : Plan de revision, Fiche enseignant.', version: '4.0', category: 'v4' },
+  { icon: Stethoscope, title: 'Medical v4 : SOAP & Prescriptions+', description: 'Score de completude SOAP, diagnostics differentiels, negatifs pertinents, plan categorise, indicateur de severite. Interactions medicamenteuses, contre-indications, DCI + nom commercial. Templates : Lettre de liaison, Fiche patient.', version: '4.0', category: 'v4' },
+  { icon: Landmark, title: 'Juridique v4 : Synthese & Obligations+', description: 'Detection du domaine juridique, enjeux financiers, rapport de force. Statut d\'execution des obligations, preuves requises, regroupement par partie. Templates : Memo juridique, Synthese client.', version: '4.0', category: 'v4' },
+  { icon: TestTube2, title: 'Suite de tests (95 tests)', description: 'Tests automatises pytest : profils, upload, analyses, exports, LLM-judge avec validation de schema et regles qualite. Golden transcripts realistes par profil.', version: '4.0', category: 'v4' },
+  { icon: Shield, title: 'Robustesse LLM', description: 'Retry configurable (LLM_MAX_RETRIES), timeout (LLM_TIMEOUT_SECONDS), logs structures avec timing de chaque appel Ollama. Compteurs succes/erreur par analyse.', version: '4.0', category: 'v4' },
+  { icon: FlaskConical, title: 'Generique v4 : Resume & Points cles+', description: 'Detection automatique du type de contenu, ton et audience cible. Points cles hierarchises par importance avec citations verbatim.', version: '4.0', category: 'v4' },
 ];
 
 const CATEGORIES = [
@@ -67,6 +78,7 @@ const CATEGORIES = [
   { key: 'analysis', label: '9 Analyses IA', color: 'from-purple-500 to-pink-500' },
   { key: 'v2', label: 'Nouveautes v2', color: 'from-emerald-500 to-teal-500' },
   { key: 'v3', label: 'Nouveautes v3 — Profils Verticaux', color: 'from-rose-500 to-orange-500' },
+  { key: 'v4', label: 'Nouveautes v4 — Pro Metier', color: 'from-violet-500 to-fuchsia-500' },
   { key: 'export', label: 'Export', color: 'from-amber-500 to-orange-500' },
 ];
 
@@ -107,7 +119,7 @@ function About() {
         <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
           <strong>VoiceIQ</strong> est une plateforme 100% locale de transcription et d'analyse audio.
           Uploadez un fichier audio, obtenez une transcription precise via Whisper, puis
-          des analyses IA adaptees a votre contexte metier grace aux profils verticaux (Education, Business, Generique).
+          des analyses IA adaptees a votre contexte metier grace aux 5 profils verticaux (Generique, Business, Education, Medical, Juridique).
           Chaque profil active un pipeline d'analyse specifique avec des prompts optimises.
           Le tout sans aucune donnee envoyee a l'exterieur.
         </p>
@@ -169,6 +181,11 @@ function About() {
                       {feature.version === '3.0' && (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
                           V3
+                        </span>
+                      )}
+                      {feature.version === '4.0' && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
+                          V4
                         </span>
                       )}
                     </div>

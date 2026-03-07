@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Upload, Sun, Moon, Mic2, Menu, FileText, Info } from 'lucide-react';
+import { LayoutDashboard, Upload, Sun, Moon, Mic2, Menu, FileText, Info, BookMarked, Settings2, SlidersHorizontal, Plus } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import UploadPage from './pages/Upload';
 import TranscriptionView from './pages/TranscriptionView';
 import TemplatesPage from './pages/Templates';
+import DictionariesPage from './pages/Dictionaries';
+import PresetsPage from './pages/Presets';
 import About from './pages/About';
+import PreferencesPage from './pages/Preferences';
+import NewEntryPage from './pages/NewEntry';
+import RecordPage from './pages/Record';
+import DictatePage from './pages/Dictate';
 
 function App() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark');
@@ -19,8 +25,12 @@ function App() {
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/new', icon: Plus, label: 'Nouveau' },
     { to: '/upload', icon: Upload, label: 'Upload' },
     { to: '/templates', icon: FileText, label: 'Templates' },
+    { to: '/dictionaries', icon: BookMarked, label: 'Dictionnaires' },
+    { to: '/presets', icon: Settings2, label: 'Presets' },
+    { to: '/preferences', icon: SlidersHorizontal, label: 'Preferences' },
     { to: '/about', icon: Info, label: 'A propos' },
   ];
 
@@ -40,7 +50,7 @@ function App() {
               </div>
               <div>
                 <h1 className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">VoiceIQ</h1>
-                <p className="text-xs text-slate-400">v4 - Pro Metier</p>
+                <p className="text-xs text-slate-400">v6 - Multi-Entrees</p>
               </div>
             </div>
 
@@ -87,15 +97,21 @@ function App() {
               <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
                 <Menu className="w-5 h-5" />
               </button>
-              <h1 className="font-bold text-indigo-600">VoiceIQ v4</h1>
+              <h1 className="font-bold text-indigo-600">VoiceIQ v6</h1>
             </div>
 
             <AnimatePresence mode="wait">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/new" element={<NewEntryPage />} />
                 <Route path="/upload" element={<UploadPage />} />
+                <Route path="/record" element={<RecordPage />} />
+                <Route path="/dictate" element={<DictatePage />} />
                 <Route path="/templates" element={<TemplatesPage />} />
+                <Route path="/dictionaries" element={<DictionariesPage />} />
+                <Route path="/presets" element={<PresetsPage />} />
+                <Route path="/preferences" element={<PreferencesPage />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/transcription/:id" element={<TranscriptionView />} />
               </Routes>

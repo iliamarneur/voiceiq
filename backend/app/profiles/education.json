@@ -2,9 +2,14 @@
   "id": "education",
   "name": "Education",
   "description": "Cours, conferences, formations — fiches de revision, quiz par section, cartes mentales pedagogiques, glossaire.",
-  "version": "4.0",
+  "version": "5.0",
   "icon": "GraduationCap",
   "color": "from-emerald-500 to-teal-500",
+  "audio_settings": {
+    "default_audio_type": "lecture",
+    "vad_sensitivity": "low",
+    "min_silence_ms": 800
+  },
   "analyses": [
     {
       "type": "summary",

@@ -155,7 +155,7 @@ def _call_ollama_text(system_prompt: str, user_prompt: str) -> str:
     return f"Error: {str(last_error)}"
 
 
-async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id: str = None, prompt_version: str = "latest"):
+async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id: str = None, prompt_version: str = "latest", dictionary_entries: list = None):
     """Generate analyses for a transcription based on its profile."""
     result = await db.execute(select(Transcription).where(Transcription.id == transcription_id))
     transcription = result.scalar_one_or_none()
@@ -164,6 +164,12 @@ async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id:
 
     # Use profile from transcription if not explicitly provided
     effective_profile = profile_id or getattr(transcription, "profile", "generic") or "generic"
+
+    # Build dictionary context for LLM prompts
+    dict_context = ""
+    if dictionary_entries:
+        from app.services.dictionary_service import build_dictionary_context
+        dict_context = "\n\n" + build_dictionary_context(dictionary_entries)
 
     # Get analyses from profile config
     profile_analyses = get_profile_analyses(effective_profile)
@@ -179,6 +185,9 @@ async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id:
                 prompt = analysis_def["prompt_v2"]
             else:
                 prompt = analysis_def.get("prompt", PROMPTS.get(analysis_type, f"Analyze this transcript for: {analysis_type}"))
+            # Inject dictionary context
+            if dict_context:
+                prompt = prompt + dict_context
             logger.info(f"[{effective_profile}] Generating {analysis_type} (v={prompt_version}) for {transcription_id}...")
             try:
                 content = await _call_ollama_async(prompt, transcription.text)
@@ -203,6 +212,8 @@ async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id:
         # Fallback to hardcoded v2 analyses
         for analysis_type in ANALYSIS_TYPES:
             prompt = PROMPTS.get(analysis_type, f"Analyze this transcript for: {analysis_type}")
+            if dict_context:
+                prompt = prompt + dict_context
             logger.info(f"Generating {analysis_type} for {transcription_id}...")
             content = await _call_ollama_async(prompt, transcription.text)
             analysis = Analysis(

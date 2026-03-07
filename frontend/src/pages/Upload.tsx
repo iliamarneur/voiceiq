@@ -1,15 +1,18 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Upload, FileAudio, Loader2, CheckCircle, XCircle, Mic2, Files, Trash2, GraduationCap, Briefcase, Sparkles, HeartPulse, Landmark } from 'lucide-react';
+import { Upload, FileAudio, Loader2, CheckCircle, XCircle, Mic2, Files, Trash2, GraduationCap, Briefcase, Sparkles, HeartPulse, Landmark, Clock, Zap, AlertTriangle, RotateCcw, Settings2 } from 'lucide-react';
 import axios from 'axios';
-import { Profile } from '../types';
+import { Profile, AudioPreset } from '../types';
 
 interface BatchJob {
   id: string;
   filename: string;
   status: string;
   transcription_id?: string | null;
+  priority?: string;
+  estimated_seconds?: number | null;
+  error_message?: string | null;
 }
 
 const PROFILE_ICONS: Record<string, any> = {
@@ -26,10 +29,14 @@ function UploadPage() {
   const [batchJobs, setBatchJobs] = useState<BatchJob[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState('generic');
+  const [selectedPriority, setSelectedPriority] = useState('P1');
+  const [presets, setPresets] = useState<AudioPreset[]>([]);
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     axios.get('/api/profiles').then(r => setProfiles(r.data)).catch(() => {});
+    axios.get('/api/presets').then(r => setPresets(r.data)).catch(() => {});
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -55,6 +62,8 @@ function UploadPage() {
         const formData = new FormData();
         formData.append('file', files[0]);
         formData.append('profile', selectedProfile);
+        formData.append('priority', selectedPriority);
+        if (selectedPreset) formData.append('preset_id', selectedPreset);
         const res = await axios.post('/api/upload', formData, {
           onUploadProgress: (e) => {
             if (e.total) setProgress(Math.round((e.loaded / e.total) * 100));
@@ -68,6 +77,8 @@ function UploadPage() {
         const formData = new FormData();
         files.forEach(f => formData.append('files', f));
         formData.append('profile', selectedProfile);
+        formData.append('priority', selectedPriority);
+        if (selectedPreset) formData.append('preset_id', selectedPreset);
         const res = await axios.post('/api/upload/batch', formData, {
           onUploadProgress: (e) => {
             if (e.total) setProgress(Math.round((e.loaded / e.total) * 100));
@@ -91,24 +102,14 @@ function UploadPage() {
       attempts++;
       try {
         const res = await axios.get(`/api/jobs/${id}`);
-        if (res.data.status === 'completed' && res.data.transcription_id) {
+        // Redirect as soon as transcription is ready (don't wait for analyses)
+        if (res.data.transcription_id && (res.data.status === 'transcribed' || res.data.status === 'completed')) {
           clearInterval(interval);
           setPhase('done');
-          setTimeout(() => navigate(`/transcription/${res.data.transcription_id}`), 1500);
-        } else if (res.data.status === 'completed' && !res.data.transcription_id) {
-          // Job completed but transcription_id not yet set — check transcriptions list
-          try {
-            const tRes = await axios.get('/api/transcriptions');
-            const latest = tRes.data[0];
-            if (latest) {
-              clearInterval(interval);
-              setPhase('done');
-              setTimeout(() => navigate(`/transcription/${latest.id}`), 1500);
-            }
-          } catch {}
+          setTimeout(() => navigate(`/transcription/${res.data.transcription_id}`), 500);
         } else if (res.data.status === 'failed') {
           clearInterval(interval);
-          setError('Transcription failed');
+          setError(res.data.error_message || 'Transcription echouee');
           setPhase('error');
           setUploading(false);
         } else {
@@ -123,13 +124,13 @@ function UploadPage() {
         // Timeout after 10 minutes
         if (attempts > 200) {
           clearInterval(interval);
-          setError('Processing is taking too long. Check the dashboard for results.');
+          setError('Le traitement prend trop de temps. Consultez le dashboard.');
           setPhase('error');
           setUploading(false);
         }
       } catch {
         clearInterval(interval);
-        setError('Connection lost');
+        setError('Connexion perdue');
         setPhase('error');
         setUploading(false);
       }
@@ -149,7 +150,7 @@ function UploadPage() {
         }));
         setBatchJobs(updated);
 
-        const allDone = updated.every(j => j.status === 'completed' || j.status === 'failed');
+        const allDone = updated.every(j => j.status === 'completed' || j.status === 'transcribed' || j.status === 'failed');
         if (allDone) {
           clearInterval(interval);
           setPhase('done');
@@ -160,6 +161,20 @@ function UploadPage() {
         setUploading(false);
       }
     }, 3000);
+  };
+
+  const retryJob = async (jobId: string) => {
+    try {
+      await axios.post(`/api/jobs/${jobId}/retry`);
+      setBatchJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: 'pending' } : j));
+      pollBatchJobs(batchJobs);
+    } catch {}
+  };
+
+  const formatTime = (seconds: number | null | undefined) => {
+    if (!seconds) return '';
+    if (seconds < 60) return `~${Math.round(seconds)}s`;
+    return `~${Math.round(seconds / 60)}min`;
   };
 
   const formatSize = (bytes: number) => {
@@ -249,21 +264,39 @@ function UploadPage() {
                 <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
               ) : j.status === 'failed' ? (
                 <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+              ) : j.status === 'pending' ? (
+                <Clock className="w-4 h-4 text-amber-500 flex-shrink-0" />
               ) : (
                 <Loader2 className="w-4 h-4 text-indigo-500 animate-spin flex-shrink-0" />
               )}
               <span className="flex-1 text-sm truncate">{j.filename}</span>
+              {j.estimated_seconds && j.status !== 'completed' && j.status !== 'failed' && (
+                <span className="text-xs text-slate-400 flex items-center gap-1">
+                  <Clock className="w-3 h-3" />{formatTime(j.estimated_seconds)}
+                </span>
+              )}
+              {j.priority === 'P0' && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">P0</span>
+              )}
               <span className={`text-xs font-medium ${
-                j.status === 'completed' ? 'text-green-500' : j.status === 'failed' ? 'text-red-500' : 'text-indigo-500'
+                j.status === 'completed' ? 'text-green-500' : j.status === 'transcribed' ? 'text-emerald-500' : j.status === 'failed' ? 'text-red-500' : j.status === 'pending' ? 'text-amber-500' : 'text-indigo-500'
               }`}>
-                {j.status}
+                {j.status === 'pending' ? 'en attente' : j.status === 'processing' ? 'en cours' : j.status === 'transcribed' ? 'transcrit' : j.status === 'completed' ? 'termine' : 'echec'}
               </span>
-              {j.status === 'completed' && j.transcription_id && (
+              {(j.status === 'completed' || j.status === 'transcribed') && j.transcription_id && (
                 <button
                   onClick={() => navigate(`/transcription/${j.transcription_id}`)}
                   className="text-xs text-indigo-600 hover:underline"
                 >
-                  View
+                  Voir
+                </button>
+              )}
+              {j.status === 'failed' && (
+                <button
+                  onClick={() => retryJob(j.id)}
+                  className="flex items-center gap-1 text-xs text-amber-600 hover:underline"
+                >
+                  <RotateCcw className="w-3 h-3" /> Retry
                 </button>
               )}
             </div>
@@ -344,6 +377,60 @@ function UploadPage() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Priority & Preset */}
+      {!uploading && files.length > 0 && (
+        <div className="mt-6 flex flex-col sm:flex-row gap-4">
+          {/* Priority */}
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Priorite</label>
+            <div className="flex gap-2">
+              {[
+                { value: 'P0', label: 'Urgent', color: 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: Zap },
+                { value: 'P1', label: 'Normal', color: 'border-slate-300 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300', icon: Clock },
+                { value: 'P2', label: 'Basse', color: 'border-slate-200 bg-slate-50 dark:bg-slate-800/50 text-slate-500', icon: Clock },
+              ].map(({ value, label, color, icon: PIcon }) => (
+                <button
+                  key={value}
+                  onClick={() => setSelectedPriority(value)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 text-xs font-medium transition-all ${
+                    selectedPriority === value ? color + ' shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-700 text-slate-400'
+                  }`}
+                >
+                  <PIcon className="w-3.5 h-3.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Preset */}
+          {presets.length > 0 && (
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <Settings2 className="w-3.5 h-3.5 inline mr-1" />Preset audio
+              </label>
+              <select
+                value={selectedPreset || ''}
+                onChange={(e) => {
+                  const id = e.target.value || null;
+                  setSelectedPreset(id);
+                  if (id) {
+                    const preset = presets.find(p => p.id === id);
+                    if (preset) setSelectedProfile(preset.profile_id);
+                  }
+                }}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+              >
+                <option value="">Aucun preset</option>
+                {presets.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}{p.audio_type ? ` (${p.audio_type})` : ''}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       )}
 

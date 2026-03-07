@@ -2,9 +2,14 @@
   "id": "medical",
   "name": "Medical / Sante",
   "description": "Consultations, staffs medicaux, comptes-rendus cliniques — notes SOAP, redaction PII, plan de suivi.",
-  "version": "4.0",
+  "version": "5.0",
   "icon": "HeartPulse",
   "color": "from-red-500 to-rose-500",
+  "audio_settings": {
+    "default_audio_type": "dictation",
+    "vad_sensitivity": "low",
+    "min_silence_ms": 1000
+  },
   "analyses": [
     {
       "type": "soap",

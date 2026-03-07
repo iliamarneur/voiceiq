@@ -7,10 +7,11 @@ import {
   ArrowLeft, Download, RefreshCw, Loader2, Send, MessageSquare, X,
   Play, Pause, BookMarked, Languages, Volume2, Trash2,
   HeartPulse, Landmark, Shield, AlertTriangle, Calendar, Pill,
-  Eye, Users, ClipboardList, Target, Dumbbell
+  Eye, Users, ClipboardList, Target, Dumbbell,
+  Lightbulb, Star, Sparkles, PenLine
 } from 'lucide-react';
 import axios from 'axios';
-import { Transcription, Analysis, AnalysisType, Chapter, ChatMessage, GlossaryTerm, Profile, ProfileAnalysis } from '../types';
+import { Transcription, Analysis, AnalysisType, Chapter, ChatMessage, GlossaryTerm, Profile, ProfileAnalysis, KeyMoment, ConfidenceInfo } from '../types';
 
 const ANALYSIS_ICONS: Record<string, any> = {
   summary: FileText, keypoints: ListChecks, actions: CheckSquare,
@@ -78,6 +79,12 @@ function TranscriptionView() {
   // Profile
   const [profileData, setProfileData] = useState<Profile | null>(null);
 
+  // v5.x: Confidence & Key Moments
+  const [confidenceInfo, setConfidenceInfo] = useState<ConfidenceInfo | null>(null);
+  const [keyMoments, setKeyMoments] = useState<KeyMoment[]>([]);
+  const [keyMomentsLoading, setKeyMomentsLoading] = useState(false);
+  const [keyMomentsFetched, setKeyMomentsFetched] = useState(false);
+
   useEffect(() => {
     if (id) fetchData();
   }, [id]);
@@ -103,6 +110,11 @@ function TranscriptionView() {
         const pRes = await axios.get(`/api/profiles/${profileId}`);
         setProfileData(pRes.data);
       } catch { setProfileData(null); }
+      // v5.x: Fetch confidence info
+      try {
+        const cRes = await axios.get(`/api/transcriptions/${id}/confidence`);
+        setConfidenceInfo(cRes.data);
+      } catch { /* v5.x not available */ }
     } catch (e) { console.error(e); }
     setLoading(false);
   };
@@ -193,6 +205,26 @@ function TranscriptionView() {
       setTranslatedText(res.data.translated_text);
     } catch (e) { console.error(e); }
     setTranslating(false);
+  };
+
+  // v5.x: Key moments
+  const [keyMomentsError, setKeyMomentsError] = useState('');
+  const fetchKeyMoments = async (force = false) => {
+    if (!force && keyMomentsFetched) return;
+    setKeyMomentsLoading(true);
+    setKeyMomentsError('');
+    try {
+      const res = await axios.get(`/api/transcriptions/${id}/key-moments`);
+      setKeyMoments(res.data || []);
+      setKeyMomentsFetched(true);
+      if (!res.data || res.data.length === 0) {
+        setKeyMomentsError('Le LLM n\'a pas pu extraire de moments cles. Reessayez.');
+      }
+    } catch (e: any) {
+      console.error(e);
+      setKeyMomentsError(e?.response?.data?.detail || 'Erreur lors de la generation');
+    }
+    setKeyMomentsLoading(false);
   };
 
   const formatTime = (s: number) => {
@@ -307,6 +339,14 @@ function TranscriptionView() {
         </div>
       </div>
 
+      {/* v5.x: Micro-tip banner */}
+      {confidenceInfo?.micro_tip && (
+        <div className="px-6 py-2.5 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border-b border-amber-200 dark:border-amber-800 flex items-center gap-3">
+          <Lightbulb className="w-4 h-4 text-amber-500 flex-shrink-0" />
+          <p className="text-sm text-amber-800 dark:text-amber-300">{confidenceInfo.micro_tip}</p>
+        </div>
+      )}
+
       <div className="flex flex-1 overflow-hidden">
         {/* Content area */}
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -315,6 +355,7 @@ function TranscriptionView() {
             <div className="flex px-6 gap-1 min-w-max">
               <TabButton active={activeTab === 'transcript'} onClick={() => setActiveTab('transcript')} icon={FileText} label="Transcript" />
               <TabButton active={activeTab === 'chapters'} onClick={() => { setActiveTab('chapters'); fetchChapters(); }} icon={BookMarked} label="Chapters" />
+              <TabButton active={activeTab === 'key_moments'} onClick={() => { setActiveTab('key_moments'); fetchKeyMoments(); }} icon={Star} label="Key Moments" badge={keyMoments.length > 0} />
               {analysisTabs.map(({ type, label, icon }) => (
                 <TabButton
                   key={type}
@@ -334,7 +375,9 @@ function TranscriptionView() {
           <div className="flex-1 overflow-auto p-6">
             <div className="max-w-4xl mx-auto">
               {activeTab === 'transcript' ? (
-                <TranscriptPanel transcription={transcription} currentTime={currentTime} onSeek={seekTo} />
+                <TranscriptPanel transcription={transcription} currentTime={currentTime} onSeek={seekTo} confidenceScores={confidenceInfo?.scores || null} />
+              ) : activeTab === 'key_moments' ? (
+                <KeyMomentsPanel moments={keyMoments} loading={keyMomentsLoading} onSeek={seekTo} onGenerate={() => fetchKeyMoments(true)} error={keyMomentsError} />
               ) : activeTab === 'chapters' ? (
                 <ChaptersPanel chapters={chapters} loading={chaptersLoading} onSeek={seekTo} />
               ) : activeTab === 'glossary' ? (
@@ -459,14 +502,26 @@ function TabButton({ active, onClick, icon: Icon, label, badge }: {
 
 // ── Transcript Panel with Audio Sync ──────────────────────
 
-function TranscriptPanel({ transcription, currentTime, onSeek }: {
-  transcription: Transcription; currentTime: number; onSeek: (t: number) => void;
+function TranscriptPanel({ transcription, currentTime, onSeek, confidenceScores }: {
+  transcription: Transcription; currentTime: number; onSeek: (t: number) => void; confidenceScores: number[] | null;
 }) {
+  const getConfidenceColor = (score: number) => {
+    if (score >= 70) return 'bg-green-500';
+    if (score >= 40) return 'bg-amber-500';
+    return 'bg-red-500';
+  };
+  const getConfidenceLabel = (score: number) => {
+    if (score >= 70) return 'Fiable';
+    if (score >= 40) return 'Incertain';
+    return 'Faible';
+  };
+
   return (
     <div className="space-y-1">
       {transcription.segments && transcription.segments.length > 0 ? (
         transcription.segments.map((seg, i) => {
           const isActive = currentTime >= seg.start && currentTime < seg.end;
+          const confidence = confidenceScores ? confidenceScores[i] : null;
           return (
             <motion.div
               key={i}
@@ -480,10 +535,23 @@ function TranscriptPanel({ transcription, currentTime, onSeek }: {
                   : 'hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
-              <span className={`text-xs font-mono pt-0.5 min-w-[50px] ${isActive ? 'text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-indigo-500'}`}>
-                {formatSegTime(seg.start)}
-              </span>
-              <p className={`text-sm leading-relaxed ${isActive ? 'text-indigo-900 dark:text-indigo-100 font-medium' : ''}`}>{seg.text}</p>
+              <div className="flex flex-col items-center gap-1 min-w-[50px]">
+                <span className={`text-xs font-mono ${isActive ? 'text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-indigo-500'}`}>
+                  {formatSegTime(seg.start)}
+                </span>
+                {confidence !== null && (
+                  <div className="flex items-center gap-1" title={`Confiance: ${confidence}% (${getConfidenceLabel(confidence)})`}>
+                    <span className={`w-2 h-2 rounded-full ${getConfidenceColor(confidence)}`} />
+                    <span className="text-[10px] text-slate-400">{confidence}</span>
+                  </div>
+                )}
+              </div>
+              <p className={`text-sm leading-relaxed flex-1 ${isActive ? 'text-indigo-900 dark:text-indigo-100 font-medium' : ''}`}>
+                {seg.text}
+                {(seg as any).corrected && (
+                  <PenLine className="w-3 h-3 text-amber-500 inline ml-1.5 -mt-0.5" title="Segment corrige" />
+                )}
+              </p>
               <Play className={`w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5`} />
             </motion.div>
           );
@@ -493,6 +561,72 @@ function TranscriptPanel({ transcription, currentTime, onSeek }: {
           <p className="leading-relaxed whitespace-pre-wrap">{transcription.text}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Key Moments Panel (v5.x) ─────────────────────────────
+
+function KeyMomentsPanel({ moments, loading, onSeek, onGenerate, error }: {
+  moments: KeyMoment[]; loading: boolean; onSeek: (t: number) => void; onGenerate: () => void; error?: string;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 text-amber-500 animate-spin mr-3" />
+        <span className="text-slate-500">Extraction des moments cles (cela peut prendre 1-2 min)...</span>
+      </div>
+    );
+  }
+
+  if (!moments.length) {
+    return (
+      <div className="text-center py-20 text-slate-500">
+        <Star className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+        {error && (
+          <p className="mb-3 text-sm text-red-500">{error}</p>
+        )}
+        <p className="mb-4">{error ? 'Vous pouvez reessayer la generation' : 'Extraire les 5 moments cles de la transcription'}</p>
+        <button
+          onClick={onGenerate}
+          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium shadow-lg shadow-amber-500/25 hover:shadow-xl hover:scale-105 transition-all"
+        >
+          <Sparkles className="w-4 h-4 inline mr-2 -mt-0.5" />
+          Generer les moments cles
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-6">
+        <Sparkles className="w-5 h-5 text-amber-500" />
+        <h2 className="text-lg font-bold">5 moments a ne pas manquer</h2>
+      </div>
+      {moments.map((m, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.1 }}
+          onClick={() => onSeek(m.start)}
+          className="group flex gap-4 p-5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 hover:border-amber-400 dark:hover:border-amber-600 cursor-pointer transition-all"
+        >
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
+            {i + 1}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{m.text}</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">{m.reason}</p>
+            <div className="flex items-center gap-2 mt-2 text-xs text-slate-400">
+              <Clock className="w-3 h-3" />
+              <span>{formatSegTime(m.start)}</span>
+            </div>
+          </div>
+          <Play className="w-4 h-4 text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+        </motion.div>
+      ))}
     </div>
   );
 }

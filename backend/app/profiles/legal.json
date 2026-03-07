@@ -2,9 +2,14 @@
   "id": "legal",
   "name": "Juridique",
   "description": "Audiences, negociations, contrats oraux — extraction de clauses, obligations, echeances, risques juridiques.",
-  "version": "4.0",
+  "version": "5.0",
   "icon": "Scale",
   "color": "from-amber-600 to-yellow-500",
+  "audio_settings": {
+    "default_audio_type": "meeting",
+    "vad_sensitivity": "high",
+    "min_silence_ms": 400
+  },
   "analyses": [
     {
       "type": "summary",

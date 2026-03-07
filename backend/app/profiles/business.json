@@ -2,9 +2,14 @@
   "id": "business",
   "name": "Business / Reunions",
   "description": "Reunions, appels clients, interviews — compte-rendus, actions, decisions, KPIs, suivi projet.",
-  "version": "4.0",
+  "version": "5.0",
   "icon": "Briefcase",
   "color": "from-blue-500 to-cyan-500",
+  "audio_settings": {
+    "default_audio_type": "meeting",
+    "vad_sensitivity": "high",
+    "min_silence_ms": 300
+  },
   "analyses": [
     {
       "type": "summary",

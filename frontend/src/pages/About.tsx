@@ -6,10 +6,12 @@ import {
   Network, Presentation, BarChart3, Table2, MessageSquare, BookMarked,
   Languages, Search, Play, Files, RefreshCw, Download, Globe, Sparkles,
   Zap, Shield, Clock, Volume2, FlaskConical, Stethoscope, Briefcase,
-  GraduationCap, Landmark, Target, TestTube2
+  GraduationCap, Landmark, Target, TestTube2,
+  AudioLines, Users, Settings2, RotateCcw, Brain, ListOrdered,
+  Star, SlidersHorizontal, Lightbulb, PenLine, Plus, Mic, PenTool
 } from 'lucide-react';
 
-const VERSION = '4.0.0';
+const VERSION = '6.0.0';
 const LAST_UPDATED = '2026-03-06';
 
 interface Feature {
@@ -17,7 +19,7 @@ interface Feature {
   title: string;
   description: string;
   version: string;
-  category: 'core' | 'analysis' | 'v2' | 'v3' | 'v4' | 'export';
+  category: 'core' | 'analysis' | 'v2' | 'v3' | 'v4' | 'v5' | 'v5x' | 'v6' | 'export';
 }
 
 const FEATURES: Feature[] = [
@@ -71,6 +73,27 @@ const FEATURES: Feature[] = [
   { icon: TestTube2, title: 'Suite de tests (95 tests)', description: 'Tests automatises pytest : profils, upload, analyses, exports, LLM-judge avec validation de schema et regles qualite. Golden transcripts realistes par profil.', version: '4.0', category: 'v4' },
   { icon: Shield, title: 'Robustesse LLM', description: 'Retry configurable (LLM_MAX_RETRIES), timeout (LLM_TIMEOUT_SECONDS), logs structures avec timing de chaque appel Ollama. Compteurs succes/erreur par analyse.', version: '4.0', category: 'v4' },
   { icon: FlaskConical, title: 'Generique v4 : Resume & Points cles+', description: 'Detection automatique du type de contenu, ton et audience cible. Points cles hierarchises par importance avec citations verbatim.', version: '4.0', category: 'v4' },
+
+  // V5 Features
+  { icon: AudioLines, title: 'Detection de type audio', description: 'Detection automatique du type d\'audio (reunion, podcast, cours, consultation, conference, dictee) avec parametres VAD adaptes a chaque contexte.', version: '5.0', category: 'v5' },
+  { icon: Users, title: 'Diarisation & Locuteurs', description: 'Marquage des segments par locuteur et detection des chevauchements de parole. Renommez les locuteurs (Speaker 1 = Dr X) avec propagation dans la transcription et les exports.', version: '5.0', category: 'v5' },
+  { icon: ListOrdered, title: 'File d\'attente & Priorites', description: 'File de traitement avec priorites P0 (urgent) / P1 (normal) / P2 (basse). Estimation du temps de traitement par fichier. Vue queue en temps reel.', version: '5.0', category: 'v5' },
+  { icon: RotateCcw, title: 'Retry & Robustesse batch', description: 'Un fichier echoue ne bloque pas le reste du batch. Relancez les fichiers en echec d\'un clic. Logs d\'erreur par fichier.', version: '5.0', category: 'v5' },
+  { icon: BookMarked, title: 'Dictionnaires personnalises', description: 'Definissez vos termes (noms propres, acronymes, jargon) par dictionnaire. Post-correction de la transcription et injection dans les prompts LLM.', version: '5.0', category: 'v5' },
+  { icon: Settings2, title: 'Presets audio', description: 'Pre-configurez vos parametres d\'upload : profil metier, type audio, sensibilite VAD, dictionnaire associe. Selectionnez un preset en un clic.', version: '5.0', category: 'v5' },
+  { icon: Brain, title: 'Apprentissage des corrections', description: 'Quand vous corrigez la transcription, VoiceIQ apprend (opt-in) et enrichit automatiquement votre dictionnaire pour les futurs fichiers.', version: '5.0', category: 'v5' },
+
+  // v5.x — Confort Transcription
+  { icon: Star, title: 'Confiance par segment', description: 'Indicateur de confiance (0-100) par segment avec code couleur vert/orange/rouge. Base sur la confidence Whisper, le type audio et des heuristiques.', version: '5.1', category: 'v5x' },
+  { icon: PenLine, title: 'Marquage des corrections', description: 'Les segments corriges sont marques visuellement pour distinguer le texte original du texte corrige.', version: '5.1', category: 'v5x' },
+  { icon: Sparkles, title: '5 Moments cles', description: 'Extraction LLM des 5 moments les plus importants de la transcription avec timestamps et justification. Navigation rapide vers chaque moment.', version: '5.1', category: 'v5x' },
+  { icon: Lightbulb, title: 'Micro-tips contextuels', description: 'Suggestions automatiques basees sur le type d\'audio et le profil actif. "Audio detecte comme reunion : essayez le profil Business."', version: '5.1', category: 'v5x' },
+  { icon: SlidersHorizontal, title: 'Preferences utilisateur', description: 'Page dediee pour configurer vos preferences : style de resume (court/equilibre/detaille), ton (formel/neutre/amical), profil et priorite par defaut.', version: '5.1', category: 'v5x' },
+
+  // v6 — Multi-Entrees
+  { icon: Plus, title: 'Ecran "Nouveau" unifie', description: 'Page d\'entree proposant 3 modes : fichier, enregistrement micro, dictee en direct. Selection du profil metier integree.', version: '6.0', category: 'v6' },
+  { icon: Mic, title: 'Enregistrement micro (dictaphone)', description: 'Enregistrez un audio depuis votre navigateur avec indicateur de niveau, reecoute, puis envoyez-le au pipeline de transcription standard.', version: '6.0', category: 'v6' },
+  { icon: PenTool, title: 'Dictee en direct', description: 'Dictez en temps reel : le texte apparait au fur et a mesure par blocs de 4 secondes. Pause/reprise, copie du texte, sauvegarde comme transcription avec analyses.', version: '6.0', category: 'v6' },
 ];
 
 const CATEGORIES = [
@@ -79,6 +102,9 @@ const CATEGORIES = [
   { key: 'v2', label: 'Nouveautes v2', color: 'from-emerald-500 to-teal-500' },
   { key: 'v3', label: 'Nouveautes v3 — Profils Verticaux', color: 'from-rose-500 to-orange-500' },
   { key: 'v4', label: 'Nouveautes v4 — Pro Metier', color: 'from-violet-500 to-fuchsia-500' },
+  { key: 'v5', label: 'Nouveautes v5 — Qualite & Adaptation Audio', color: 'from-cyan-500 to-blue-500' },
+  { key: 'v5x', label: 'Nouveautes v5.1 — Confort Transcription', color: 'from-amber-500 to-rose-500' },
+  { key: 'v6', label: 'Nouveautes v6 — Multi-Entrees', color: 'from-emerald-500 to-cyan-500' },
   { key: 'export', label: 'Export', color: 'from-amber-500 to-orange-500' },
 ];
 
@@ -186,6 +212,21 @@ function About() {
                       {feature.version === '4.0' && (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
                           V4
+                        </span>
+                      )}
+                      {feature.version === '5.0' && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400">
+                          V5
+                        </span>
+                      )}
+                      {feature.version === '5.1' && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                          V5.1
+                        </span>
+                      )}
+                      {feature.version === '6.0' && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                          V6
                         </span>
                       )}
                     </div>

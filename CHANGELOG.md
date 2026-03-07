@@ -1,5 +1,132 @@
 # Changelog
 
+## v6.0 "Multi-Entrees"
+
+### Ecran "Nouveau" unifie
+- **Page `/new`** proposant 3 modes d'entree : Fichier, Enregistrer, Dicter
+- Selection du profil metier avant de lancer le mode choisi
+- Pre-selection du profil par defaut via les preferences utilisateur
+
+### Mode "Enregistrer" (dictaphone)
+- **Page `/record`** avec bouton Start/Stop et indicateur de niveau audio
+- Capture via `getUserMedia` + `MediaRecorder` (format WebM/Opus)
+- Reecoute de l'enregistrement avant envoi
+- Envoi au pipeline standard `POST /api/upload` (meme flux qu'un fichier)
+- Pas de logique metier specifique : c'est juste une autre facon de fournir un fichier
+
+### Mode "Dicter en direct" (live dictation)
+- **Page `/dictate`** avec bouton Start/Pause/Stop et indicateur micro
+- Zone de texte remplie au fur et a mesure par blocs de ~4 secondes
+- Choix du profil metier (pre-selectionne sur defaut utilisateur)
+- Actions : Copier le texte, Sauvegarder comme transcription avec analyses
+- **Endpoints backend** :
+  - `POST /api/dictation/start` : cree une session de dictee
+  - `POST /api/dictation/{id}/chunk` : transcrit un chunk audio (Whisper)
+  - `POST /api/dictation/{id}/pause` / `resume` : pause/reprise
+  - `POST /api/dictation/{id}/stop` : finalise la session
+  - `POST /api/dictation/{id}/save` : cree une Transcription + Job + lance les analyses
+
+### Pipeline backend commun
+- Le mode Enregistrer reutilise `POST /api/upload` tel quel
+- Le mode Dictee utilise un pipeline chunk specifique mais peut finaliser en Transcription standard
+- Nouveau modele `DictationSession` : id, status, profile, language, current_text, chunk_count, total_duration
+- Nouveau service `dictation_service.py` : gestion des sessions, transcription par chunks, sauvegarde
+- Colonne `source_type` sur Job : "file" | "recording" | "dictation" (retrocompatible)
+- Navigation : nouvelle entree "Nouveau" dans la sidebar
+
+### Technique
+- 3 nouvelles pages frontend : NewEntry.tsx, Record.tsx, Dictate.tsx
+- Nouveau type TypeScript `DictationSession`
+- 6 nouveaux endpoints backend
+- Table `dictation_sessions` + migration gracieuse
+- Version API : 6.0
+
+---
+
+## v5.1 "Confort Transcription"
+
+### Axe 1 : Confiance dans la transcription
+- **Indicateur de confiance par segment** : score 0-100 avec code couleur (vert >= 70, orange >= 40, rouge < 40)
+- **Score base sur** : confidence Whisper (avg_logprob, no_speech_prob), type audio, longueur segment, overlap
+- **Marquage visuel des corrections** : icone PenLine sur les segments corriges
+- **Endpoint** : GET `/api/transcriptions/{id}/confidence` retourne scores + micro-tip
+
+### Axe 2 : Fluidite du flux
+- **5 Moments cles** : extraction LLM des moments les plus importants avec timestamps et justification
+- **Onglet Key Moments** dans TranscriptionView avec navigation vers chaque moment
+- **Endpoint** : GET `/api/transcriptions/{id}/key-moments` retourne les moments cles
+
+### Axe 3 : Accompagnement pedagogique
+- **Micro-tips contextuels** : bandeau en haut de la transcription avec suggestion selon type audio + profil
+- **Tips par type audio** : meeting, lecture, podcast, phone_call, interview avec variantes par profil
+
+### Axe 4 : Personnalisation visible
+- **Modele UserPreferences** : summary_detail (short/balanced/detailed), summary_tone (formal/neutral/friendly), default_profile, default_priority, default_preset_id
+- **Page Preferences** : configuration complete avec recap presets/dictionnaires
+- **Endpoints** : GET/PUT `/api/preferences`
+- **Navigation** : nouvelle entree "Preferences" dans la sidebar
+
+### Technique
+- Nouveau service `confidence_service.py`
+- Nouvelle table `user_preferences` (migration gracieuse)
+- Colonne `confidence_scores` sur transcriptions (JSON, cache)
+- Version API : 5.1
+
+---
+
+## v5.0 "Qualite & Adaptation Audio"
+
+### Axe 1 : Qualite audio / transcription / diarisation
+- **Detection automatique du type audio** : meeting, podcast, lecture, phone_call, interview, conference, dictation — avec parametres VAD adaptes
+- **Profils de pre-traitement audio** : sensibilite VAD (low/medium/high) et silence minimum configurables par type d'audio et par profil metier
+- **Marquage d'overlap** : les segments en chevauchement sont detectes et marques (`overlap: true`)
+- **Labels de locuteurs** : API PUT `/api/transcriptions/{id}/speakers` pour renommer Speaker 1 → "Dr Dupont", avec propagation
+- **Champ `audio_type`** stocke sur chaque transcription (detection heuristique post-Whisper)
+- **Parametres VAD adaptatifs** : le pipeline Whisper utilise les parametres VAD du preset ou du profil metier
+
+### Axe 2 : Quantite / flux d'upload (batch & files)
+- **Priorites P0/P1/P2** sur chaque job : urgent, normal, basse
+- **File d'attente** : GET `/api/queue` avec position, priorite, estimation de temps
+- **Estimation de temps** par fichier : basee sur taille + nombre d'analyses du profil
+- **Changement de priorite** : PUT `/api/jobs/{id}/priority` pour les jobs en attente
+- **Retry** : POST `/api/jobs/{id}/retry` pour relancer un job echoue
+- **Erreurs isolees** : un fichier echoue ne bloque pas les autres, `error_message` stocke par job
+- **Batch ameliore** : estimation temps total, priorite et preset appliques a tout le batch
+- **UI batch** : statuts en francais, badges priorite, estimation temps, bouton Retry
+
+### Axe 3 : Adaptation aux utilisateurs (presets & dictionnaires)
+- **Dictionnaires personnalises** : CRUD complet `/api/dictionaries` + `/api/dictionaries/{id}/entries`
+- **Categories de termes** : nom_propre, acronyme, medical, juridique, technique, general
+- **Post-correction transcription** : apres Whisper, les termes du dictionnaire sont substitues (word-boundary matching)
+- **Injection dictionnaire dans LLM** : les termes sont injectes dans chaque prompt d'analyse
+- **Presets audio** : CRUD `/api/presets` avec profil metier, type audio, sensibilite VAD, dictionnaire associe
+- **Selecteur de preset a l'upload** : un preset pre-configure automatiquement le profil et les parametres
+- **Apprentissage des corrections (opt-in)** : `ENABLE_CORRECTION_LEARNING=true` pour auto-enrichir le dictionnaire
+- **Corrections utilisateur** : POST `/api/transcriptions/{id}/corrections` + GET `/api/corrections`
+- **Page Dictionnaires** : creation, recherche, ajout/suppression de termes par categorie
+- **Page Presets** : creation/edition/suppression de presets audio avec tous les parametres
+
+### Navigation & Branding
+- Sidebar : "v5 - Qualite Audio"
+- 2 nouvelles pages : Dictionnaires, Presets
+- About : 7 fonctionnalites v5 documentees
+
+### Infrastructure
+- 5 nouveaux modeles : SpeakerLabel, UserDictionary, DictionaryEntry, AudioPreset, UserCorrection
+- 4 nouvelles colonnes Job (priority, estimated_seconds, error_message, preset_id)
+- 1 nouvelle colonne Transcription (audio_type)
+- Migration gracieuse (ALTER TABLE avec fallback)
+- 3 nouveaux services backend : queue_service, dictionary_service, audio_analysis_service
+- 20+ nouveaux endpoints API
+
+### Aucune regression
+- Tous les endpoints v4 preserves
+- Tous les profils et analyses inchanges
+- Tous les exports fonctionnels
+- API backward compatible (priority=P1, preset_id=null par defaut)
+
+---
+
 ## v4.0 "Pro Metier" — Ameliorations Verticales
 
 ### Systeme de prompts v2 (backward compatible)

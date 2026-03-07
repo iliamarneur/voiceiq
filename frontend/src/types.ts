@@ -28,10 +28,14 @@ export type AnalysisType = string;
 
 export interface Job {
   id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'transcribed' | 'completed' | 'failed';
   file_path: string;
   transcription_id: string | null;
   profile: string;
+  priority: string;
+  estimated_seconds: number | null;
+  error_message: string | null;
+  preset_id: string | null;
 }
 
 export interface ProfileAnalysis {
@@ -94,5 +98,87 @@ export interface Translation {
   transcription_id: string;
   target_lang: string;
   translated_text: string;
+  created_at: string | null;
+}
+
+export interface SpeakerLabel {
+  id: string;
+  transcription_id: string;
+  speaker_id: string;
+  display_name: string;
+}
+
+export interface UserDictionary {
+  id: string;
+  name: string;
+  description: string | null;
+  entries: DictionaryEntry[];
+  created_at: string | null;
+}
+
+export interface DictionaryEntry {
+  id: string;
+  dictionary_id: string;
+  term: string;
+  replacement: string;
+  category: string;
+}
+
+export interface AudioPreset {
+  id: string;
+  name: string;
+  description: string | null;
+  profile_id: string;
+  audio_type: string | null;
+  vad_sensitivity: string;
+  min_silence_ms: number;
+  dictionary_id: string | null;
+  created_at: string | null;
+}
+
+export interface QueueItem {
+  id: string;
+  filename: string;
+  status: string;
+  priority: string;
+  profile: string;
+  estimated_seconds: number | null;
+  queue_position: number;
+  created_at: string | null;
+}
+
+// v5.x types
+export interface UserPreferences {
+  id: string;
+  summary_detail: 'short' | 'balanced' | 'detailed';
+  summary_tone: 'formal' | 'neutral' | 'friendly';
+  default_profile: string;
+  default_priority: string;
+  default_preset_id: string | null;
+}
+
+export interface KeyMoment {
+  index: number;
+  start: number;
+  end: number;
+  text: string;
+  reason: string;
+}
+
+export interface ConfidenceInfo {
+  scores: number[];
+  micro_tip: string | null;
+}
+
+// v6 types
+export interface DictationSession {
+  id: string;
+  status: 'active' | 'paused' | 'completed';
+  profile: string;
+  language: string | null;
+  current_text: string;
+  chunk_count: number;
+  total_duration: number;
+  transcription_id: string | null;
   created_at: string | null;
 }

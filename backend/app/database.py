@@ -16,11 +16,25 @@ class Base(DeclarativeBase):
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # Migrate: add profile column to existing tables if missing
-        for table in ["transcriptions", "jobs"]:
+        # Migrate: add columns to existing tables if missing
+        migrations = [
+            ("transcriptions", "profile", "VARCHAR DEFAULT 'generic'"),
+            ("jobs", "profile", "VARCHAR DEFAULT 'generic'"),
+            # v5 migrations
+            ("jobs", "priority", "VARCHAR DEFAULT 'P1'"),
+            ("jobs", "estimated_seconds", "FLOAT"),
+            ("jobs", "error_message", "TEXT"),
+            ("jobs", "preset_id", "VARCHAR"),
+            ("transcriptions", "audio_type", "VARCHAR"),
+            # v5.x migrations
+            ("transcriptions", "confidence_scores", "TEXT"),  # JSON string: list of scores per segment
+            # v6 migrations
+            ("jobs", "source_type", "VARCHAR DEFAULT 'file'"),  # file, recording, dictation
+        ]
+        for table, column, col_type in migrations:
             try:
                 await conn.execute(
-                    text(f"ALTER TABLE {table} ADD COLUMN profile VARCHAR DEFAULT 'generic'")
+                    text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
                 )
             except Exception:
                 pass  # Column already exists

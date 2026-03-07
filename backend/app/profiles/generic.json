@@ -2,9 +2,14 @@
   "id": "generic",
   "name": "Generique",
   "description": "Profil par defaut — toutes les analyses disponibles. Podcasts, interviews, notes vocales, conferences.",
-  "version": "4.0",
+  "version": "5.0",
   "icon": "Sparkles",
   "color": "from-indigo-500 to-purple-500",
+  "audio_settings": {
+    "default_audio_type": "other",
+    "vad_sensitivity": "medium",
+    "min_silence_ms": 500
+  },
   "analyses": [
     {
       "type": "summary",

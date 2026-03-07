@@ -9,6 +9,10 @@ class JobOut(BaseModel):
     file_path: str
     transcription_id: Optional[str] = None
     profile: str = "generic"
+    priority: str = "P1"
+    estimated_seconds: Optional[float] = None
+    error_message: Optional[str] = None
+    preset_id: Optional[str] = None
     model_config = {"from_attributes": True}
 
 
@@ -129,3 +133,175 @@ class ProfileOut(BaseModel):
     analyses: List[ProfileAnalysis]
     exports: List[str]
     default_templates: list = []
+
+
+# ── v5 Schemas ──────────────────────────────────────────
+
+class SpeakerLabelOut(BaseModel):
+    id: str
+    transcription_id: str
+    speaker_id: str
+    display_name: str
+    model_config = {"from_attributes": True}
+
+
+class SpeakerLabelUpdate(BaseModel):
+    speakers: dict  # {"Speaker 1": "Dr Dupont", "Speaker 2": "Patient"}
+
+
+class DictionaryEntryOut(BaseModel):
+    id: str
+    dictionary_id: str
+    term: str
+    replacement: str
+    category: str = "general"
+    model_config = {"from_attributes": True}
+
+
+class DictionaryEntryCreate(BaseModel):
+    term: str
+    replacement: str
+    category: str = "general"
+
+
+class DictionaryOut(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    entries: List[DictionaryEntryOut] = []
+    created_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
+
+
+class DictionaryCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class AudioPresetOut(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    profile_id: str = "generic"
+    audio_type: Optional[str] = None
+    vad_sensitivity: str = "medium"
+    min_silence_ms: int = 500
+    dictionary_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
+
+
+class AudioPresetCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    profile_id: str = "generic"
+    audio_type: Optional[str] = None
+    vad_sensitivity: str = "medium"
+    min_silence_ms: int = 500
+    dictionary_id: Optional[str] = None
+
+
+class AudioPresetUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    profile_id: Optional[str] = None
+    audio_type: Optional[str] = None
+    vad_sensitivity: Optional[str] = None
+    min_silence_ms: Optional[int] = None
+    dictionary_id: Optional[str] = None
+
+
+class CorrectionCreate(BaseModel):
+    original_text: str
+    corrected_text: str
+    field_type: str = "transcription"
+
+
+class CorrectionOut(BaseModel):
+    id: str
+    transcription_id: str
+    original_text: str
+    corrected_text: str
+    field_type: str
+    created_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
+
+
+class QueueItemOut(BaseModel):
+    id: str
+    filename: str
+    status: str
+    priority: str
+    profile: str
+    estimated_seconds: Optional[float] = None
+    queue_position: int
+    created_at: Optional[datetime] = None
+
+
+class PriorityUpdate(BaseModel):
+    priority: str  # P0, P1, P2
+
+
+# ── v5.x Schemas ──────────────────────────────────────────
+
+class UserPreferencesOut(BaseModel):
+    id: str = "default"
+    summary_detail: str = "balanced"
+    summary_tone: str = "neutral"
+    default_profile: str = "generic"
+    default_priority: str = "P1"
+    default_preset_id: Optional[str] = None
+    model_config = {"from_attributes": True}
+
+
+class UserPreferencesUpdate(BaseModel):
+    summary_detail: Optional[str] = None  # short, balanced, detailed
+    summary_tone: Optional[str] = None  # formal, neutral, friendly
+    default_profile: Optional[str] = None
+    default_priority: Optional[str] = None
+    default_preset_id: Optional[str] = None
+
+
+class KeyMomentOut(BaseModel):
+    index: int
+    start: float
+    end: float
+    text: str
+    reason: str
+
+
+class ConfidenceInfo(BaseModel):
+    scores: List[int]
+    micro_tip: Optional[str] = None
+
+
+# ── v6 Schemas ────────────────────────────────────────────
+
+class DictationSessionOut(BaseModel):
+    id: str
+    status: str
+    profile: str
+    language: Optional[str] = None
+    current_text: str = ""
+    chunk_count: int = 0
+    total_duration: float = 0.0
+    transcription_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
+
+
+class DictationStartRequest(BaseModel):
+    profile: str = "generic"
+
+
+class DictationChunkResponse(BaseModel):
+    chunk_text: str
+    full_text: str
+    chunk_count: int
+    language: Optional[str] = None
+
+
+class DictationSaveResponse(BaseModel):
+    transcription_id: str
+    job_id: str
+    text: str

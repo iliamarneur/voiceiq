@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".ts", ".mts", ".m2ts"}
 
 _model = None
+_fast_model = None
+
+# Dictation model: prioritize speed over accuracy for real-time chunks
+DICTATION_MODEL = os.environ.get("WHISPER_DICTATION_MODEL", "small")
 
 
 def get_whisper_model():
@@ -28,6 +32,37 @@ def get_whisper_model():
             logger.info("Loading Whisper medium on CPU")
             _model = WhisperModel("medium", device="cpu", compute_type="int8")
     return _model
+
+
+def get_fast_whisper_model():
+    """Get a lightweight Whisper model optimized for real-time dictation."""
+    global _fast_model
+    if _fast_model is None:
+        logger.info(f"Loading fast Whisper '{DICTATION_MODEL}' for dictation (CPU, int8)")
+        _fast_model = WhisperModel(DICTATION_MODEL, device="cpu", compute_type="int8")
+    return _fast_model
+
+
+def _run_whisper_fast(file_path: str, vad_params: dict = None):
+    """Run fast Whisper transcription for dictation chunks."""
+    effective_vad = vad_params or {"min_silence_duration_ms": 200}
+    model = get_fast_whisper_model()
+    segments_iter, info = model.transcribe(
+        file_path,
+        language=None,
+        vad_filter=True,
+        vad_parameters=effective_vad,
+    )
+    segments = []
+    full_text_parts = []
+    for segment in segments_iter:
+        segments.append({
+            "start": round(segment.start, 2),
+            "end": round(segment.end, 2),
+            "text": segment.text.strip(),
+        })
+        full_text_parts.append(segment.text.strip())
+    return segments, " ".join(full_text_parts), info
 
 
 def _extract_audio_from_video(video_path: str) -> str:

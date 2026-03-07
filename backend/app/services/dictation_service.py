@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import DictationSession, Job, Transcription
-from app.services.transcription_service import _run_whisper, get_whisper_model
+from app.services.transcription_service import _run_whisper_fast
 from app.services.audio_analysis_service import get_vad_params
 from app.services.dictionary_service import apply_dictionary_corrections
 
@@ -49,13 +49,12 @@ async def transcribe_chunk(
         f.write(audio_data)
 
     try:
-        # Transcribe with Whisper (small chunks, use lightweight VAD)
-        vad_params = get_vad_params(profile_id=session.profile)
-        vad_params["min_silence_duration_ms"] = 200  # more aggressive for short chunks
+        # Transcribe with fast Whisper model (optimized for real-time dictation)
+        vad_params = {"min_silence_duration_ms": 200}
 
         loop = asyncio.get_event_loop()
         segments, chunk_text, info = await loop.run_in_executor(
-            None, _run_whisper, chunk_path, vad_params
+            None, _run_whisper_fast, chunk_path, vad_params
         )
 
         # Update session

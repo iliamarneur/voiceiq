@@ -56,11 +56,11 @@ async def lifespan(app: FastAPI):
     os.makedirs(EXPORT_DIR, exist_ok=True)
     await init_db()
     reload_profiles()
-    logger.info("Audio-to-Knowledge v3 API ready (profile-based pipeline)")
+    logger.info("VoiceIQ v4.0 API ready (profile-based pipeline)")
     yield
 
 
-app = FastAPI(title="Audio-to-Knowledge v3", lifespan=lifespan)
+app = FastAPI(title="VoiceIQ v4.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -530,4 +530,4 @@ async def reload_profiles_endpoint():
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok", "version": "3.2"}
+    return {"status": "ok", "version": "4.0"}

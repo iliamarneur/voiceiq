@@ -125,6 +125,7 @@ class ProfileOut(BaseModel):
     description: str
     icon: str
     color: str
+    version: str = "3.1"
     analyses: List[ProfileAnalysis]
     exports: List[str]
     default_templates: list = []

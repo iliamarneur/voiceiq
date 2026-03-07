@@ -8,7 +8,7 @@ import {
   Zap, Shield, Clock, Volume2
 } from 'lucide-react';
 
-const VERSION = '3.0.0';
+const VERSION = '4.0.0';
 const LAST_UPDATED = '2026-03-06';
 
 interface Feature {

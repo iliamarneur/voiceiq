@@ -39,7 +39,23 @@ PROMPTS = {
     "tables": "Extract structured data tables from this transcript. Return valid JSON: {\"tables\": [{\"title\": \"...\", \"headers\": [\"...\"], \"rows\": [[\"...\"]]}]}",
 }
 
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "mistral-nemo:latest")
+_MODEL_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "data", "current_model.txt")
+
+
+def _load_saved_model() -> str:
+    """Load persisted model choice, fallback to env var."""
+    try:
+        if os.path.exists(_MODEL_FILE):
+            with open(_MODEL_FILE) as f:
+                saved = f.read().strip()
+                if saved:
+                    return saved
+    except Exception:
+        pass
+    return os.environ.get("OLLAMA_MODEL", "llama3.2:latest")
+
+
+OLLAMA_MODEL = _load_saved_model()
 
 
 def get_model():
@@ -49,9 +65,15 @@ def get_model():
 
 
 def set_model(model_name: str):
-    """Set current LLM model name."""
+    """Set current LLM model name and persist to disk."""
     global OLLAMA_MODEL
     OLLAMA_MODEL = model_name
+    try:
+        os.makedirs(os.path.dirname(_MODEL_FILE), exist_ok=True)
+        with open(_MODEL_FILE, "w") as f:
+            f.write(model_name)
+    except Exception as e:
+        logger.warning(f"Could not persist model choice: {e}")
 
 
 def list_ollama_models() -> list[dict]:

@@ -7,6 +7,7 @@ services:
     restart: unless-stopped
     environment:
       - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_MODEL=llama3.2:latest
     volumes:
       - voiceiq-uploads:/app/uploads
       - voiceiq-exports:/app/exports

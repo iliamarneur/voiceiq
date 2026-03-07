@@ -36,6 +36,7 @@ from app.services.llm_service import (
     regenerate_analysis, generate_analyses,
     chat_with_transcript, generate_chapters,
     generate_glossary, translate_transcript,
+    get_model, set_model, list_ollama_models,
 )
 from app.services.profile_service import (
     get_all_profiles, get_profile, get_profile_analyses,
@@ -892,6 +893,31 @@ async def update_preferences(data: UserPreferencesUpdate, db: AsyncSession = Dep
     await db.commit()
     await db.refresh(prefs)
     return prefs
+
+
+# ── v6: LLM Model Selection ──────────────────────────────
+
+@app.get("/api/llm/models")
+async def llm_models():
+    """List available Ollama models."""
+    models = list_ollama_models()
+    current = get_model()
+    return {"current": current, "models": models}
+
+
+@app.put("/api/llm/model")
+async def change_model(body: dict):
+    """Change the active LLM model."""
+    model_name = body.get("model")
+    if not model_name:
+        raise HTTPException(status_code=400, detail="Missing 'model' field")
+    # Verify model exists
+    models = list_ollama_models()
+    available = [m["name"] for m in models]
+    if model_name not in available:
+        raise HTTPException(status_code=404, detail=f"Model '{model_name}' not available. Available: {available}")
+    set_model(model_name)
+    return {"model": model_name, "status": "ok"}
 
 
 # ── v6: Dictation ────────────────────────────────────────

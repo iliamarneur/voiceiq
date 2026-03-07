@@ -39,7 +39,36 @@ PROMPTS = {
     "tables": "Extract structured data tables from this transcript. Return valid JSON: {\"tables\": [{\"title\": \"...\", \"headers\": [\"...\"], \"rows\": [[\"...\"]]}]}",
 }
 
-OLLAMA_MODEL = "mistral-nemo:latest"
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "mistral-nemo:latest")
+
+
+def get_model():
+    """Get current LLM model name."""
+    global OLLAMA_MODEL
+    return OLLAMA_MODEL
+
+
+def set_model(model_name: str):
+    """Set current LLM model name."""
+    global OLLAMA_MODEL
+    OLLAMA_MODEL = model_name
+
+
+def list_ollama_models() -> list[dict]:
+    """List available models from Ollama."""
+    try:
+        models = _ollama.list()
+        return [
+            {
+                "name": m["model"],
+                "size_gb": round(m.get("size", 0) / 1e9, 1),
+                "modified_at": m.get("modified_at", ""),
+            }
+            for m in models.get("models", [])
+        ]
+    except Exception as e:
+        logger.error(f"Failed to list Ollama models: {e}")
+        return []
 
 
 async def _call_ollama_async(prompt: str, transcript_text: str) -> dict:

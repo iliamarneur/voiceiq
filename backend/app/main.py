@@ -838,7 +838,7 @@ async def get_key_moments(id: str, db: AsyncSession = Depends(get_db)):
         )
     else:
         transcript_text = t.text or ""
-    content = await _call_ollama_async(prompt, transcript_text[:8000])
+    content = await _call_ollama_async(prompt, transcript_text[:4000])
     moments = []
     if isinstance(content, dict) and "moments" in content:
         moments = content["moments"]

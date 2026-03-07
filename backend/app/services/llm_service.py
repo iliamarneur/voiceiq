@@ -122,6 +122,10 @@ def _parse_json_response(text: str) -> dict | None:
     return None
 
 
+MAX_TRANSCRIPT_CHARS = int(os.environ.get("LLM_MAX_TRANSCRIPT_CHARS", "4000"))
+MAX_RESPONSE_TOKENS = int(os.environ.get("LLM_MAX_RESPONSE_TOKENS", "1024"))
+
+
 def _call_ollama(prompt: str, transcript_text: str) -> dict:
     """Call Ollama and try to parse JSON from response. Retries on failure."""
     last_error = None
@@ -132,8 +136,9 @@ def _call_ollama(prompt: str, transcript_text: str) -> dict:
                 model=OLLAMA_MODEL,
                 messages=[
                     {"role": "system", "content": "You are an analysis assistant. Always respond with valid JSON only, no extra text. Ensure all strings are properly escaped."},
-                    {"role": "user", "content": f"{prompt}\n\nTranscript:\n{transcript_text[:8000]}"},
+                    {"role": "user", "content": f"{prompt}\n\nTranscript:\n{transcript_text[:MAX_TRANSCRIPT_CHARS]}"},
                 ],
+                options={"num_predict": MAX_RESPONSE_TOKENS},
             )
             elapsed = time.time() - t0
             text = response["message"]["content"]

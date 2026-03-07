@@ -6,6 +6,7 @@ export interface Transcription {
   language: string | null;
   duration: number | null;
   status: string;
+  profile: string;
   created_at: string | null;
 }
 
@@ -23,15 +24,31 @@ export interface Analysis {
   created_at: string | null;
 }
 
-export type AnalysisType =
-  | 'summary' | 'keypoints' | 'actions' | 'flashcards'
-  | 'quiz' | 'mindmap' | 'slides' | 'infographic' | 'tables';
+export type AnalysisType = string;
 
 export interface Job {
   id: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   file_path: string;
   transcription_id: string | null;
+  profile: string;
+}
+
+export interface ProfileAnalysis {
+  type: string;
+  label: string;
+  enabled: boolean;
+}
+
+export interface Profile {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  analyses: ProfileAnalysis[];
+  exports: string[];
+  default_templates: any[];
 }
 
 export interface Stats {

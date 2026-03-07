@@ -1,0 +1,65 @@
+{
+  "id": "generic",
+  "name": "Generique",
+  "description": "Profil par defaut — toutes les analyses disponibles. Podcasts, interviews, notes vocales, conferences.",
+  "icon": "Sparkles",
+  "color": "from-indigo-500 to-purple-500",
+  "analyses": [
+    {
+      "type": "summary",
+      "label": "Resume",
+      "enabled": true,
+      "prompt": "Produce a structured summary of this transcript with: title, introduction, main points, and conclusion. Be comprehensive and capture all important information. Return valid JSON: {\"title\": \"...\", \"introduction\": \"...\", \"points\": [\"...\"], \"conclusion\": \"...\"}"
+    },
+    {
+      "type": "keypoints",
+      "label": "Points cles",
+      "enabled": true,
+      "prompt": "Extract the key points from this transcript as thematic bullet points. Group related points together under clear themes. Return valid JSON: {\"keypoints\": [{\"theme\": \"...\", \"points\": [\"...\"]}]}"
+    },
+    {
+      "type": "actions",
+      "label": "Actions",
+      "enabled": true,
+      "prompt": "Extract action items, decisions taken, and open questions from this transcript. Be exhaustive. Return valid JSON: {\"actions\": [\"...\"], \"decisions\": [\"...\"], \"questions\": [\"...\"]}"
+    },
+    {
+      "type": "flashcards",
+      "label": "Fiches",
+      "enabled": true,
+      "prompt": "Create revision flashcards (question/answer pairs) from this transcript. Cover all important facts and concepts. Create at least 8 cards. Return valid JSON: {\"cards\": [{\"question\": \"...\", \"answer\": \"...\"}]}"
+    },
+    {
+      "type": "quiz",
+      "label": "Quiz",
+      "enabled": true,
+      "prompt": "Create a multiple-choice quiz (5-6 questions) from this transcript. Each choice must be a full text answer. Include a mix of easy and hard questions. Return valid JSON: {\"questions\": [{\"question\": \"What is...?\", \"choices\": [\"Answer A\", \"Answer B\", \"Answer C\", \"Answer D\"], \"answer\": \"A\", \"explanation\": \"Because...\"}]}"
+    },
+    {
+      "type": "mindmap",
+      "label": "Carte mentale",
+      "enabled": true,
+      "prompt": "Create a hierarchical mindmap of this transcript in Markmap-compatible markdown. Be comprehensive and show relationships between topics. Return valid JSON: {\"markdown\": \"# Topic\\n## Subtopic\\n- Point\"}"
+    },
+    {
+      "type": "slides",
+      "label": "Slides",
+      "enabled": true,
+      "prompt": "Create a slide presentation from this transcript. 6-10 slides with clear titles and concise bullet points. Return valid JSON: {\"slides\": [{\"title\": \"...\", \"bullets\": [\"...\"]}]}"
+    },
+    {
+      "type": "infographic",
+      "label": "Infographie",
+      "enabled": true,
+      "prompt": "Extract data points for a Vega-Lite chart from this transcript. Identify quantitative data, comparisons, trends, or categories that can be visualized. Return valid JSON: {\"description\": \"...\", \"spec\": {}}"
+    },
+    {
+      "type": "tables",
+      "label": "Tableaux",
+      "enabled": true,
+      "prompt": "Extract structured data tables from this transcript. Identify any information that can be organized in tabular format. Return valid JSON: {\"tables\": [{\"title\": \"...\", \"headers\": [\"...\"], \"rows\": [[\"...\"]]}]}"
+    }
+  ],
+  "exports": ["json", "md", "txt", "srt", "vtt", "pptx"],
+  "default_templates": []
+}

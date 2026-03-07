@@ -1,0 +1,81 @@
+{
+  "id": "education",
+  "name": "Education",
+  "description": "Cours, conferences, formations — fiches de revision, quiz par section, cartes mentales pedagogiques, glossaire.",
+  "icon": "GraduationCap",
+  "color": "from-emerald-500 to-teal-500",
+  "analyses": [
+    {
+      "type": "summary",
+      "label": "Resume pedagogique",
+      "enabled": true,
+      "prompt": "Tu es un assistant pedagogique expert. Produis un resume pedagogique structure de ce cours/conference. Inclus : titre du cours, niveau estime (debutant/intermediaire/avance), prerequis, objectifs d'apprentissage (ce que l'etudiant saura faire apres), concepts principaux expliques simplement avec des exemples, et les points essentiels a retenir pour l'examen. Return valid JSON: {\"title\": \"...\", \"level\": \"debutant/intermediaire/avance\", \"prerequisites\": [\"...\"], \"learning_objectives\": [\"...\"], \"introduction\": \"...\", \"key_concepts\": [{\"concept\": \"...\", \"explanation\": \"...\", \"example\": \"...\"}], \"takeaways\": [\"...\"], \"exam_tips\": [\"...\"]}"
+    },
+    {
+      "type": "flashcards",
+      "label": "Fiches de revision",
+      "enabled": true,
+      "prompt": "Tu es un pedagogique expert en memorisation active. Cree des fiches de revision structurees par notion/chapitre. Chaque fiche doit suivre le principe de la repetition espacee : question precise et ciblee qui teste un seul concept, reponse concise mais complete avec un element mnemotechnique si possible. Couvre TOUTES les notions importantes du cours. Cree au moins 10 fiches. Return valid JSON: {\"cards\": [{\"chapter\": \"Chapitre/Notion\", \"question\": \"...\", \"answer\": \"...\", \"difficulty\": \"easy/medium/hard\", \"mnemonic\": \"...\"}]}"
+    },
+    {
+      "type": "quiz",
+      "label": "Quiz par section",
+      "enabled": true,
+      "prompt": "Tu es un enseignant expert. Cree un quiz QCM de 8-10 questions couvrant les differentes sections de ce cours. Les questions doivent tester la COMPREHENSION et l'APPLICATION, pas la simple memorisation. Inclus des questions de differents niveaux (connaissance, comprehension, application, analyse). Pour chaque question, donne une explication pedagogique detaillee de pourquoi la bonne reponse est correcte et pourquoi les autres sont fausses. Return valid JSON: {\"questions\": [{\"section\": \"Section du cours\", \"question\": \"...\", \"choices\": [\"A. ...\", \"B. ...\", \"C. ...\", \"D. ...\"], \"answer\": \"A\", \"difficulty\": \"knowledge/comprehension/application/analysis\", \"explanation\": \"...\", \"common_mistake\": \"...\"}]}"
+    },
+    {
+      "type": "mindmap",
+      "label": "Carte des concepts",
+      "enabled": true,
+      "prompt": "Tu es un pedagogique expert en cartes conceptuelles. Cree une carte mentale hierarchique complete des concepts de ce cours. Organise par : theme principal > sous-theme > notion > detail/exemple. Montre les LIENS entre les concepts quand c'est pertinent. Utilise le format Markmap markdown. Return valid JSON: {\"markdown\": \"# Theme principal\\n## Sous-theme 1\\n### Notion A\\n- Detail 1\\n- Detail 2\\n- *Lien avec Notion B*\\n### Notion B\\n- Detail\\n## Sous-theme 2\\n### Notion C\"}"
+    },
+    {
+      "type": "glossary",
+      "label": "Glossaire",
+      "enabled": true,
+      "prompt": "Tu es un assistant pedagogique. Extrais TOUS les termes techniques, concepts cles, acronymes et vocabulaire specialise de ce cours. Pour chaque terme, donne : une definition claire et accessible, un exemple d'utilisation dans le contexte du cours, et les termes associes. Trie par ordre alphabetique. Return valid JSON: {\"terms\": [{\"term\": \"...\", \"definition\": \"...\", \"example\": \"...\", \"related_terms\": [\"...\"], \"context\": \"Utilise dans le contexte de...\"}]}"
+    },
+    {
+      "type": "chapters",
+      "label": "Chapitrage pedagogique",
+      "enabled": true,
+      "prompt": "Tu es un pedagogique. Divise ce cours en chapitres logiques avec une progression pedagogique claire. Pour chaque chapitre : titre, objectifs d'apprentissage specifiques, resume du contenu, notions cles abordees, et estimation du temps necessaire pour maitriser cette section. Return valid JSON: {\"chapters\": [{\"title\": \"...\", \"start_time\": 0.0, \"end_time\": 30.0, \"learning_objectives\": [\"...\"], \"summary\": \"...\", \"key_concepts\": [\"...\"], \"estimated_study_time\": \"...\", \"difficulty\": \"easy/medium/hard\"}]}"
+    },
+    {
+      "type": "keypoints",
+      "label": "Notions essentielles",
+      "enabled": true,
+      "prompt": "Tu es un assistant pedagogique. Extrais les notions essentielles de ce cours. Pour chaque notion : explication simple et progressive (comme si tu expliquais a un etudiant qui decouvre le sujet), un exemple concret, et un lien avec les autres notions du cours. Organise par theme avec une progression logique. Return valid JSON: {\"keypoints\": [{\"theme\": \"...\", \"points\": [\"...\"], \"connections\": \"Lien avec...\", \"real_world_application\": \"...\"}]}"
+    },
+    {
+      "type": "exercises",
+      "label": "Exercices pratiques",
+      "enabled": true,
+      "prompt": "Tu es un enseignant. Cree 4-6 exercices pratiques bases sur le contenu de ce cours, de difficulte progressive. Chaque exercice doit avoir : un enonce clair, des indices si necessaire, et une solution detaillee avec la methode de resolution. Inclus des exercices d'application et des exercices de reflexion/analyse. Return valid JSON: {\"exercises\": [{\"title\": \"...\", \"difficulty\": \"easy/medium/hard\", \"type\": \"application/analysis/synthesis\", \"statement\": \"...\", \"hints\": [\"...\"], \"solution\": \"...\", \"skills_tested\": [\"...\"]}]}"
+    },
+    {
+      "type": "slides",
+      "label": "Support de cours",
+      "enabled": true,
+      "prompt": "Tu es un enseignant. Cree un support de cours en diapositives. Slide 1 : titre + objectifs d'apprentissage. Slides suivantes : un concept par slide avec titre clair, points pedagogiques, et un exemple. Derniere slide : resume des points essentiels a retenir. Maximum 12 slides. Return valid JSON: {\"slides\": [{\"title\": \"...\", \"bullets\": [\"...\"], \"notes\": \"...\"}]}"
+    }
+  ],
+  "exports": ["json", "md", "pptx", "txt"],
+  "default_templates": [
+    {
+      "name": "Fiches Anki",
+      "type": "flashcards",
+      "instructions": "Formate les fiches pour import Anki : question courte et precise, reponse concise. Une notion par fiche. Format: Question;Reponse"
+    },
+    {
+      "name": "Resume 1 page",
+      "type": "summary",
+      "instructions": "Resume ce cours en maximum 1 page A4. Garde uniquement les concepts fondamentaux, les formules et definitions essentielles."
+    },
+    {
+      "name": "Fiche de revision examen",
+      "type": "keypoints",
+      "instructions": "Cree une fiche de revision pour examen : les 10 points les plus importants a connaitre, les formules a retenir, les pieges classiques a eviter."
+    }
+  ]
+}

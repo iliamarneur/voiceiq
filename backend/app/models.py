@@ -11,6 +11,7 @@ class Job(Base):
     status = Column(String, nullable=False, default="pending")
     file_path = Column(String, nullable=False)
     transcription_id = Column(String, nullable=True)
+    profile = Column(String, nullable=False, default="generic")
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -23,6 +24,7 @@ class Transcription(Base):
     language = Column(String, nullable=True)
     duration = Column(Float, nullable=True)
     status = Column(String, nullable=False, default="completed")
+    profile = Column(String, nullable=False, default="generic")
     job_id = Column(String, ForeignKey("jobs.id"), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

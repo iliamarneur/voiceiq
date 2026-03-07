@@ -40,7 +40,7 @@ function App() {
               </div>
               <div>
                 <h1 className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">VoiceIQ</h1>
-                <p className="text-xs text-slate-400">v2 - Speech to Knowledge</p>
+                <p className="text-xs text-slate-400">v3 - Profils Verticaux</p>
               </div>
             </div>
 
@@ -87,7 +87,7 @@ function App() {
               <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
                 <Menu className="w-5 h-5" />
               </button>
-              <h1 className="font-bold text-indigo-600">VoiceIQ v2</h1>
+              <h1 className="font-bold text-indigo-600">VoiceIQ v3</h1>
             </div>
 
             <AnimatePresence mode="wait">

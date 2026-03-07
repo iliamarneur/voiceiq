@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Upload, FileAudio, Loader2, CheckCircle, XCircle, Mic2, Files, Trash2 } from 'lucide-react';
+import { Upload, FileAudio, Loader2, CheckCircle, XCircle, Mic2, Files, Trash2, GraduationCap, Briefcase, Sparkles, HeartPulse, Landmark } from 'lucide-react';
 import axios from 'axios';
+import { Profile } from '../types';
 
 interface BatchJob {
   id: string;
@@ -10,6 +11,10 @@ interface BatchJob {
   status: string;
   transcription_id?: string | null;
 }
+
+const PROFILE_ICONS: Record<string, any> = {
+  GraduationCap, Briefcase, Sparkles, HeartPulse, Landmark, Scale: Landmark,
+};
 
 function UploadPage() {
   const [files, setFiles] = useState<File[]>([]);
@@ -19,7 +24,13 @@ function UploadPage() {
   const [phase, setPhase] = useState<'idle' | 'uploading' | 'transcribing' | 'analyzing' | 'done' | 'error'>('idle');
   const [error, setError] = useState('');
   const [batchJobs, setBatchJobs] = useState<BatchJob[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [selectedProfile, setSelectedProfile] = useState('generic');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    axios.get('/api/profiles').then(r => setProfiles(r.data)).catch(() => {});
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -43,6 +54,7 @@ function UploadPage() {
         // Single file upload
         const formData = new FormData();
         formData.append('file', files[0]);
+        formData.append('profile', selectedProfile);
         const res = await axios.post('/api/upload', formData, {
           onUploadProgress: (e) => {
             if (e.total) setProgress(Math.round((e.loaded / e.total) * 100));
@@ -55,6 +67,7 @@ function UploadPage() {
         // Batch upload
         const formData = new FormData();
         files.forEach(f => formData.append('files', f));
+        formData.append('profile', selectedProfile);
         const res = await axios.post('/api/upload/batch', formData, {
           onUploadProgress: (e) => {
             if (e.total) setProgress(Math.round((e.loaded / e.total) * 100));
@@ -298,6 +311,40 @@ function UploadPage() {
             })}
           </div>
         </motion.div>
+      )}
+
+      {/* Profile Selector */}
+      {profiles.length > 0 && !uploading && (
+        <div className="mt-6">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Pipeline d'analyse</label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {profiles.map((p) => {
+              const Icon = PROFILE_ICONS[p.icon] || Sparkles;
+              const isSelected = selectedProfile === p.id;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedProfile(p.id)}
+                  className={`relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200 text-center ${
+                    isSelected
+                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-md'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${p.color} flex items-center justify-center`}>
+                    <Icon className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-sm font-semibold">{p.name}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{p.description}</span>
+                  <span className="text-xs text-slate-400">{p.analyses.length} analyses</span>
+                  {isSelected && (
+                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-indigo-500" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Upload Button */}

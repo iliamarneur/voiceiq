@@ -1,0 +1,64 @@
+{
+  "id": "medical",
+  "name": "Medical / Sante",
+  "description": "Consultations, staffs medicaux, comptes-rendus cliniques — notes SOAP, redaction PII, plan de suivi.",
+  "icon": "HeartPulse",
+  "color": "from-red-500 to-rose-500",
+  "analyses": [
+    {
+      "type": "soap",
+      "label": "Note SOAP",
+      "enabled": true,
+      "prompt": "Tu es un assistant medical. Structure cette consultation au format SOAP (Subjective, Objective, Assessment, Plan). Subjective = motif de consultation et symptomes rapportes par le patient. Objective = signes cliniques, examens, constantes mentionnes. Assessment = diagnostic ou hypotheses diagnostiques evoquees. Plan = traitement prescrit, examens complementaires, orientation, suivi. Return valid JSON: {\"subjective\": \"...\", \"objective\": \"...\", \"assessment\": \"...\", \"plan\": \"...\", \"urgency\": \"low/medium/high\"}"
+    },
+    {
+      "type": "summary",
+      "label": "Resume clinique",
+      "enabled": true,
+      "prompt": "Tu es un assistant medical. Produis un resume clinique structure de cette consultation/reunion medicale. Inclus : contexte du patient (sans donnees identifiantes), motif, anamnese, examen clinique, diagnostic, plan therapeutique. Return valid JSON: {\"title\": \"...\", \"context\": \"...\", \"chief_complaint\": \"...\", \"history\": \"...\", \"examination\": \"...\", \"diagnosis\": \"...\", \"treatment_plan\": \"...\", \"follow_up\": \"...\"}"
+    },
+    {
+      "type": "pii_redaction",
+      "label": "Redaction PII",
+      "enabled": true,
+      "prompt": "Tu es un expert en conformite medicale (RGPD/HIPAA). Analyse cette transcription et identifie TOUTES les donnees personnelles identifiantes (PII) : noms, dates de naissance, adresses, numeros de telephone, numeros de securite sociale, emails, noms d'etablissements specifiques. Pour chaque PII trouvee, indique sa position approximative et propose un remplacement anonymise. Fournis aussi la version redactee complete du texte. Return valid JSON: {\"pii_found\": [{\"type\": \"nom/date/adresse/telephone/nss/email\", \"original\": \"...\", \"replacement\": \"[PATIENT_001]\", \"context\": \"phrase contenant le PII\"}], \"redacted_text\": \"...texte avec PII remplaces...\", \"risk_level\": \"low/medium/high\", \"compliance_notes\": \"...\"}"
+    },
+    {
+      "type": "prescriptions",
+      "label": "Prescriptions & Traitements",
+      "enabled": true,
+      "prompt": "Tu es un assistant pharmacien. Extrais toutes les prescriptions, medicaments, posologies, traitements et recommandations therapeutiques mentionnes dans cette consultation. Pour chaque element, note le medicament/traitement, la posologie, la duree, et les precautions eventuelles. Return valid JSON: {\"prescriptions\": [{\"medication\": \"...\", \"dosage\": \"...\", \"frequency\": \"...\", \"duration\": \"...\", \"route\": \"oral/IV/topique/...\", \"precautions\": \"...\"}], \"non_pharma\": [\"...\"], \"allergies_mentioned\": [\"...\"], \"interactions_warning\": \"...\"}"
+    },
+    {
+      "type": "watchpoints",
+      "label": "Points de vigilance",
+      "enabled": true,
+      "prompt": "Tu es un medecin senior. Identifie tous les points de vigilance, signaux d'alerte, contre-indications et risques mentionnes ou implicites dans cette consultation. Classe-les par niveau de gravite. Inclus les red flags cliniques, les interactions medicamenteuses potentielles, et les suivis critiques a ne pas manquer. Return valid JSON: {\"watchpoints\": [{\"issue\": \"...\", \"severity\": \"critical/high/medium/low\", \"action_required\": \"...\", \"timeline\": \"...\"}], \"red_flags\": [\"...\"], \"contraindications\": [\"...\"]}"
+    },
+    {
+      "type": "followup",
+      "label": "Plan de suivi",
+      "enabled": true,
+      "prompt": "Tu es un assistant de coordination medicale. Cree un plan de suivi structure pour ce patient a partir de la consultation. Inclus : prochains rendez-vous, examens a programmer, resultats a surveiller, criteres de reconsultation en urgence, objectifs therapeutiques. Return valid JSON: {\"next_appointments\": [{\"type\": \"...\", \"timeline\": \"...\", \"specialist\": \"...\"}], \"pending_tests\": [{\"test\": \"...\", \"urgency\": \"...\"}], \"monitoring\": [{\"parameter\": \"...\", \"frequency\": \"...\", \"target\": \"...\"}], \"emergency_criteria\": [\"...\"], \"patient_instructions\": [\"...\"]}"
+    },
+    {
+      "type": "keypoints",
+      "label": "Points cles cliniques",
+      "enabled": true,
+      "prompt": "Tu es un assistant medical. Extrais les points cles cliniques de cette consultation, organises par categorie : symptomes, diagnostic, traitement, suivi. Return valid JSON: {\"keypoints\": [{\"theme\": \"Symptomes/Diagnostic/Traitement/Suivi\", \"points\": [\"...\"]}]}"
+    }
+  ],
+  "exports": ["json", "md", "txt"],
+  "default_templates": [
+    {
+      "name": "Courrier confrere",
+      "type": "summary",
+      "instructions": "Redige un courrier medical structure destine a un confrere/specialiste. Ton professionnel, terminologie medicale, sans PII si possible."
+    },
+    {
+      "name": "Note SOAP express",
+      "type": "soap",
+      "instructions": "Note SOAP ultra-concise : 2-3 lignes par section maximum. Pour saisie rapide dans le dossier patient."
+    }
+  ]
+}

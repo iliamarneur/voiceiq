@@ -5,12 +5,29 @@ import {
   FileText, ListChecks, CheckSquare, BookOpen, HelpCircle,
   Network, Presentation, BarChart3, Table2, Clock, Globe,
   ArrowLeft, Download, RefreshCw, Loader2, Send, MessageSquare, X,
-  Play, Pause, BookMarked, Languages, Volume2, Trash2
+  Play, Pause, BookMarked, Languages, Volume2, Trash2,
+  HeartPulse, Landmark, Shield, AlertTriangle, Calendar, Pill,
+  Eye, Users, ClipboardList, Target, Dumbbell
 } from 'lucide-react';
 import axios from 'axios';
-import { Transcription, Analysis, AnalysisType, Chapter, ChatMessage, GlossaryTerm } from '../types';
+import { Transcription, Analysis, AnalysisType, Chapter, ChatMessage, GlossaryTerm, Profile, ProfileAnalysis } from '../types';
 
-const ANALYSIS_TABS: { type: AnalysisType; label: string; icon: any }[] = [
+const ANALYSIS_ICONS: Record<string, any> = {
+  summary: FileText, keypoints: ListChecks, actions: CheckSquare,
+  flashcards: BookOpen, quiz: HelpCircle, mindmap: Network,
+  slides: Presentation, infographic: BarChart3, tables: Table2,
+  kpi: BarChart3, risks: AlertTriangle, followup: Send,
+  glossary: BookOpen, chapters: BookMarked,
+  stakeholder_map: Users, exercises: Dumbbell,
+  // Medical
+  soap: ClipboardList, pii_redaction: Shield, prescriptions: Pill,
+  watchpoints: Eye,
+  // Legal
+  clauses: Landmark, obligations: Target, deadlines: Calendar,
+  references: BookMarked,
+};
+
+const FALLBACK_TABS: { type: string; label: string; icon: any }[] = [
   { type: 'summary', label: 'Summary', icon: FileText },
   { type: 'keypoints', label: 'Key Points', icon: ListChecks },
   { type: 'actions', label: 'Actions', icon: CheckSquare },
@@ -22,7 +39,7 @@ const ANALYSIS_TABS: { type: AnalysisType; label: string; icon: any }[] = [
   { type: 'tables', label: 'Tables', icon: Table2 },
 ];
 
-type TabType = 'transcript' | 'chapters' | 'glossary' | 'translation' | AnalysisType;
+type TabType = string;
 
 function TranscriptionView() {
   const { id } = useParams<{ id: string }>();
@@ -58,6 +75,9 @@ function TranscriptionView() {
   const [targetLang, setTargetLang] = useState('en');
   const [translating, setTranslating] = useState(false);
 
+  // Profile
+  const [profileData, setProfileData] = useState<Profile | null>(null);
+
   useEffect(() => {
     if (id) fetchData();
   }, [id]);
@@ -77,6 +97,12 @@ function TranscriptionView() {
       setTranscription(tRes.data);
       setAnalyses(aRes.data);
       setChatMessages(chatRes.data);
+      // Fetch profile config
+      const profileId = tRes.data.profile || 'generic';
+      try {
+        const pRes = await axios.get(`/api/profiles/${profileId}`);
+        setProfileData(pRes.data);
+      } catch { setProfileData(null); }
     } catch (e) { console.error(e); }
     setLoading(false);
   };
@@ -175,6 +201,15 @@ function TranscriptionView() {
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
+  // Dynamic analysis tabs from profile
+  const analysisTabs = profileData
+    ? profileData.analyses.filter(a => a.enabled).map(a => ({
+        type: a.type,
+        label: a.label,
+        icon: ANALYSIS_ICONS[a.type] || FileText,
+      }))
+    : FALLBACK_TABS;
+
   const activeAnalysis = analyses.find(a => a.type === activeTab);
 
   if (loading) {
@@ -220,6 +255,11 @@ function TranscriptionView() {
                 <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{formatTime(transcription.duration)}</span>
               )}
               <span>{transcription.segments?.length || 0} segments</span>
+              {transcription.profile && transcription.profile !== 'generic' && (
+                <span className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+                  {profileData?.name || transcription.profile}
+                </span>
+              )}
             </div>
           </div>
 
@@ -256,7 +296,7 @@ function TranscriptionView() {
                 <Download className="w-4 h-4" /> Export
               </button>
               <div className="absolute right-0 mt-2 w-48 py-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                {['json', 'md', 'txt', 'srt', 'vtt', 'pptx'].map(fmt => (
+                {(profileData?.exports || ['json', 'md', 'txt', 'srt', 'vtt', 'pptx']).map(fmt => (
                   <button key={fmt} onClick={() => handleExport(fmt)} className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                     Export as .{fmt.toUpperCase()}
                   </button>
@@ -275,7 +315,7 @@ function TranscriptionView() {
             <div className="flex px-6 gap-1 min-w-max">
               <TabButton active={activeTab === 'transcript'} onClick={() => setActiveTab('transcript')} icon={FileText} label="Transcript" />
               <TabButton active={activeTab === 'chapters'} onClick={() => { setActiveTab('chapters'); fetchChapters(); }} icon={BookMarked} label="Chapters" />
-              {ANALYSIS_TABS.map(({ type, label, icon }) => (
+              {analysisTabs.map(({ type, label, icon }) => (
                 <TabButton
                   key={type}
                   active={activeTab === type}
@@ -658,6 +698,20 @@ function AnalysisPanel({ analysis, onRegenerate, regenerating }: {
       {type === 'slides' && <SlidesView content={content} />}
       {type === 'infographic' && <InfographicView content={content} />}
       {type === 'tables' && <TablesView content={content} />}
+      {type === 'kpi' && <KPIView content={content} />}
+      {type === 'risks' && <RisksView content={content} />}
+      {type === 'followup' && <FollowupView content={content} />}
+      {type === 'stakeholder_map' && <StakeholderView content={content} />}
+      {type === 'exercises' && <ExercisesView content={content} />}
+      {type === 'soap' && <SOAPView content={content} />}
+      {type === 'pii_redaction' && <PIIView content={content} />}
+      {type === 'prescriptions' && <PrescriptionsView content={content} />}
+      {type === 'watchpoints' && <WatchpointsView content={content} />}
+      {type === 'clauses' && <ClausesView content={content} />}
+      {type === 'obligations' && <ObligationsView content={content} />}
+      {type === 'deadlines' && <DeadlinesView content={content} />}
+      {type === 'references' && <ReferencesView content={content} />}
+      {!['summary','keypoints','actions','flashcards','quiz','mindmap','slides','infographic','tables','kpi','risks','followup','stakeholder_map','exercises','soap','pii_redaction','prescriptions','watchpoints','clauses','obligations','deadlines','references'].includes(type) && <GenericView content={content} />}
     </div>
   );
 }
@@ -1026,6 +1080,391 @@ function InfographicView({ content }: { content: any }) {
           <pre className="whitespace-pre-wrap text-sm">{JSON.stringify(content, null, 2)}</pre>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Business Views ─────────────────────────────────────
+
+function KPIView({ content }: { content: any }) {
+  const metrics = content.metrics || [];
+  const trendColors: Record<string, string> = { up: 'text-green-500', down: 'text-red-500', stable: 'text-blue-500', unknown: 'text-slate-400' };
+  const trendIcons: Record<string, string> = { up: '↑', down: '↓', stable: '→', unknown: '?' };
+  return (
+    <div className="space-y-4">
+      {content.financial_summary && (
+        <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-sm">{content.financial_summary}</div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {metrics.map((m: any, i: number) => (
+          <div key={i} className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-slate-500 uppercase font-medium">{m.name}</span>
+              <span className={`text-sm font-bold ${trendColors[m.trend] || trendColors.unknown}`}>
+                {trendIcons[m.trend] || '?'} {m.trend}
+              </span>
+            </div>
+            <p className="text-2xl font-bold">{m.value}{m.unit ? ` ${m.unit}` : ''}</p>
+            {m.target && <p className="text-xs text-slate-400 mt-1">Cible : {m.target}</p>}
+            {m.context && <p className="text-xs text-slate-500 mt-1">{m.context}</p>}
+            {m.period && <p className="text-xs text-slate-400">{m.period}</p>}
+          </div>
+        ))}
+      </div>
+      {!metrics.length && <GenericView content={content} />}
+    </div>
+  );
+}
+
+function RisksView({ content }: { content: any }) {
+  const risks = content.risks || [];
+  const blockers = content.blockers || [];
+  const severityColors: Record<string, string> = { critical: 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700', high: 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700', medium: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700', low: 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' };
+  const severityBadge: Record<string, string> = { critical: 'bg-red-500', high: 'bg-orange-500', medium: 'bg-yellow-500', low: 'bg-green-500' };
+  return (
+    <div className="space-y-4">
+      {content.overall_risk_level && (
+        <div className={`p-3 rounded-xl text-center text-sm font-semibold ${severityColors[content.overall_risk_level] || ''} border`}>
+          Niveau de risque global : {content.overall_risk_level.toUpperCase()}
+        </div>
+      )}
+      {risks.map((r: any, i: number) => (
+        <div key={i} className={`p-4 rounded-xl border ${severityColors[r.severity] || severityColors.medium}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className={`w-2.5 h-2.5 rounded-full ${severityBadge[r.severity] || severityBadge.medium}`} />
+            <span className="font-semibold text-sm flex-1">{r.risk}</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-600">{r.category || r.severity}</span>
+          </div>
+          {r.mitigation && <p className="text-xs text-slate-600 dark:text-slate-400 mt-1"><strong>Mitigation :</strong> {r.mitigation}</p>}
+          {r.owner && <p className="text-xs text-slate-500 mt-1">Responsable : {r.owner}</p>}
+          {r.probability && <p className="text-xs text-slate-400 mt-1">Probabilite : {r.probability} | Impact : {r.impact}</p>}
+        </div>
+      ))}
+      {blockers.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold uppercase text-slate-500 mb-2">Blocages</h3>
+          {blockers.map((b: any, i: number) => (
+            <div key={i} className="p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 text-sm mb-2">
+              <strong>{b.blocker}</strong>{b.unblock_action && <span className="text-slate-500"> — {b.unblock_action}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      {!risks.length && !blockers.length && <GenericView content={content} />}
+    </div>
+  );
+}
+
+function FollowupView({ content }: { content: any }) {
+  return (
+    <div className="space-y-4">
+      {content.subject && (
+        <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800">
+          <span className="text-xs text-slate-500 uppercase font-medium">Objet</span>
+          <p className="font-semibold mt-1">{content.subject}</p>
+        </div>
+      )}
+      <div className="p-6 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-sm leading-relaxed whitespace-pre-wrap">
+        {content.greeting && <p className="mb-3">{content.greeting}</p>}
+        {content.body && <p className="mb-3">{content.body}</p>}
+        {content.actions_table && <div className="my-3 p-3 bg-slate-50 dark:bg-slate-700 rounded-lg text-xs"><pre>{content.actions_table}</pre></div>}
+        {content.next_steps && <p className="mb-3">{content.next_steps}</p>}
+        {content.closing && <p className="text-slate-500">{content.closing}</p>}
+      </div>
+      {!content.subject && !content.body && <GenericView content={content} />}
+    </div>
+  );
+}
+
+function StakeholderView({ content }: { content: any }) {
+  const stakeholders = content.stakeholders || [];
+  const influenceColors: Record<string, string> = { high: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400', low: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' };
+  return (
+    <div className="space-y-3">
+      {stakeholders.map((s: any, i: number) => (
+        <div key={i} className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-3 mb-2">
+            <Users className="w-5 h-5 text-indigo-500" />
+            <span className="font-semibold">{s.name}</span>
+            <span className="text-xs text-slate-400">{s.role}</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${influenceColors[s.influence] || ''}`}>{s.influence}</span>
+          </div>
+          {s.key_concerns?.length > 0 && <p className="text-xs text-slate-500">Preoccupations : {s.key_concerns.join(', ')}</p>}
+          {s.position && <p className="text-xs text-slate-400 mt-1">Position : {s.position}</p>}
+        </div>
+      ))}
+      {content.power_dynamics && <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50 text-sm">{content.power_dynamics}</div>}
+      {!stakeholders.length && <GenericView content={content} />}
+    </div>
+  );
+}
+
+// ── Education Views ─────────────────────────────────────
+
+function ExercisesView({ content }: { content: any }) {
+  const exercises = content.exercises || [];
+  const [showSolutions, setShowSolutions] = useState<Record<number, boolean>>({});
+  const diffColors: Record<string, string> = { easy: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400', hard: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' };
+  return (
+    <div className="space-y-4">
+      {exercises.map((ex: any, i: number) => (
+        <div key={i} className="p-5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="font-bold text-indigo-600 dark:text-indigo-400">Exercice {i + 1}</span>
+            {ex.difficulty && <span className={`text-xs px-2 py-0.5 rounded-full ${diffColors[ex.difficulty] || ''}`}>{ex.difficulty}</span>}
+            {ex.type && <span className="text-xs text-slate-400">({ex.type})</span>}
+          </div>
+          <p className="text-sm mb-3 leading-relaxed">{ex.statement}</p>
+          {ex.hints?.length > 0 && (
+            <div className="mb-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 text-xs">
+              <strong>Indices :</strong> {ex.hints.join(' | ')}
+            </div>
+          )}
+          <button onClick={() => setShowSolutions(p => ({ ...p, [i]: !p[i] }))} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
+            {showSolutions[i] ? 'Masquer la solution' : 'Voir la solution'}
+          </button>
+          {showSolutions[i] && (
+            <div className="mt-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 text-sm">
+              {ex.solution}
+            </div>
+          )}
+        </div>
+      ))}
+      {!exercises.length && <GenericView content={content} />}
+    </div>
+  );
+}
+
+// ── Medical Views ─────────────────────────────────────
+
+function SOAPView({ content }: { content: any }) {
+  const sections = [
+    { key: 'subjective', label: 'S — Subjectif', color: 'from-blue-500 to-blue-600', desc: 'Motif, symptomes rapportes' },
+    { key: 'objective', label: 'O — Objectif', color: 'from-green-500 to-green-600', desc: 'Signes cliniques, examens' },
+    { key: 'assessment', label: 'A — Evaluation', color: 'from-amber-500 to-amber-600', desc: 'Diagnostic, hypotheses' },
+    { key: 'plan', label: 'P — Plan', color: 'from-purple-500 to-purple-600', desc: 'Traitement, suivi' },
+  ];
+  return (
+    <div className="space-y-4">
+      {content.urgency && (
+        <div className={`p-3 rounded-xl text-center text-sm font-bold ${content.urgency === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : content.urgency === 'medium' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700' : 'bg-green-100 dark:bg-green-900/30 text-green-700'}`}>
+          Urgence : {content.urgency.toUpperCase()}
+        </div>
+      )}
+      {sections.map(({ key, label, color, desc }) => (
+        <div key={key} className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+          <div className={`bg-gradient-to-r ${color} px-4 py-2 text-white`}>
+            <h3 className="font-bold text-sm">{label}</h3>
+            <p className="text-xs opacity-80">{desc}</p>
+          </div>
+          <div className="p-4 bg-white dark:bg-slate-800 text-sm leading-relaxed">
+            {content[key] || <span className="text-slate-400 italic">Non renseigne</span>}
+          </div>
+        </div>
+      ))}
+      {!content.subjective && !content.objective && <GenericView content={content} />}
+    </div>
+  );
+}
+
+function PIIView({ content }: { content: any }) {
+  const piiFound = content.pii_found || [];
+  const typeColors: Record<string, string> = { nom: 'bg-red-100 text-red-700', date: 'bg-blue-100 text-blue-700', adresse: 'bg-purple-100 text-purple-700', telephone: 'bg-green-100 text-green-700', nss: 'bg-orange-100 text-orange-700', email: 'bg-cyan-100 text-cyan-700' };
+  return (
+    <div className="space-y-4">
+      {content.risk_level && (
+        <div className={`p-3 rounded-xl text-center text-sm font-bold ${content.risk_level === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-600' : content.risk_level === 'medium' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-green-100 dark:bg-green-900/30 text-green-600'}`}>
+          <Shield className="w-4 h-4 inline mr-1" /> Risque PII : {content.risk_level.toUpperCase()} — {piiFound.length} element(s) identifie(s)
+        </div>
+      )}
+      {piiFound.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold uppercase text-slate-500">Elements identifies</h3>
+          {piiFound.map((p: any, i: number) => (
+            <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <span className={`text-xs px-2 py-0.5 rounded-full ${typeColors[p.type] || 'bg-slate-100 text-slate-600'}`}>{p.type}</span>
+              <span className="text-sm line-through text-red-400">{p.original}</span>
+              <span className="text-sm text-green-600 dark:text-green-400 font-mono">{p.replacement}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {content.redacted_text && (
+        <div>
+          <h3 className="text-sm font-semibold uppercase text-slate-500 mb-2">Texte anonymise</h3>
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm leading-relaxed max-h-80 overflow-auto">{content.redacted_text}</div>
+        </div>
+      )}
+      {content.compliance_notes && <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-xs">{content.compliance_notes}</div>}
+      {!piiFound.length && !content.redacted_text && <GenericView content={content} />}
+    </div>
+  );
+}
+
+function PrescriptionsView({ content }: { content: any }) {
+  const prescriptions = content.prescriptions || [];
+  return (
+    <div className="space-y-4">
+      {prescriptions.length > 0 && (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="bg-slate-50 dark:bg-slate-800">
+                <th className="px-4 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Medicament</th>
+                <th className="px-4 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Posologie</th>
+                <th className="px-4 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Frequence</th>
+                <th className="px-4 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Duree</th>
+                <th className="px-4 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Voie</th>
+              </tr></thead>
+              <tbody>{prescriptions.map((p: any, i: number) => (
+                <tr key={i} className="border-b border-slate-100 dark:border-slate-700/50">
+                  <td className="px-4 py-3 font-medium">{p.medication}</td>
+                  <td className="px-4 py-3">{p.dosage}</td>
+                  <td className="px-4 py-3">{p.frequency}</td>
+                  <td className="px-4 py-3">{p.duration}</td>
+                  <td className="px-4 py-3">{p.route}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {content.allergies_mentioned?.length > 0 && (
+        <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 text-sm">
+          <strong>Allergies :</strong> {content.allergies_mentioned.join(', ')}
+        </div>
+      )}
+      {content.non_pharma?.length > 0 && (
+        <div><h3 className="text-sm font-semibold uppercase text-slate-500 mb-2">Mesures non medicamenteuses</h3>
+          {content.non_pharma.map((n: string, i: number) => <div key={i} className="p-2 rounded-lg bg-green-50 dark:bg-green-900/10 text-sm mb-1">{n}</div>)}
+        </div>
+      )}
+      {!prescriptions.length && <GenericView content={content} />}
+    </div>
+  );
+}
+
+function WatchpointsView({ content }: { content: any }) {
+  const watchpoints = content.watchpoints || [];
+  const severityColors: Record<string, string> = { critical: 'border-red-500 bg-red-50 dark:bg-red-900/20', high: 'border-orange-400 bg-orange-50 dark:bg-orange-900/15', medium: 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/15', low: 'border-green-400 bg-green-50 dark:bg-green-900/15' };
+  return (
+    <div className="space-y-4">
+      {content.red_flags?.length > 0 && (
+        <div className="p-4 rounded-xl bg-red-100 dark:bg-red-900/30 border-2 border-red-400 dark:border-red-600">
+          <h3 className="font-bold text-red-700 dark:text-red-400 text-sm mb-2">RED FLAGS</h3>
+          <ul className="space-y-1">{content.red_flags.map((f: string, i: number) => <li key={i} className="text-sm text-red-600 dark:text-red-300">⚠ {f}</li>)}</ul>
+        </div>
+      )}
+      {watchpoints.map((w: any, i: number) => (
+        <div key={i} className={`p-4 rounded-xl border-l-4 ${severityColors[w.severity] || severityColors.medium}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <Eye className="w-4 h-4 text-slate-500" />
+            <span className="font-semibold text-sm">{w.issue}</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${w.severity === 'critical' ? 'bg-red-500 text-white' : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>{w.severity}</span>
+          </div>
+          {w.action_required && <p className="text-xs text-slate-600 dark:text-slate-400 mt-1"><strong>Action :</strong> {w.action_required}</p>}
+          {w.timeline && <p className="text-xs text-slate-400 mt-1">Delai : {w.timeline}</p>}
+        </div>
+      ))}
+      {!watchpoints.length && !content.red_flags?.length && <GenericView content={content} />}
+    </div>
+  );
+}
+
+// ── Legal Views ─────────────────────────────────────
+
+function ClausesView({ content }: { content: any }) {
+  const clauses = content.clauses || [];
+  const typeColors: Record<string, string> = { obligation: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', condition: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', garantie: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', limitation: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', penalite: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', resiliation: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', confidentialite: 'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-300' };
+  return (
+    <div className="space-y-3">
+      {clauses.map((c: any, i: number) => (
+        <div key={i} className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2 mb-2">
+            <Landmark className="w-4 h-4 text-amber-600" />
+            <span className={`text-xs px-2 py-0.5 rounded-full ${typeColors[c.type] || 'bg-slate-100'}`}>{c.type}</span>
+            {c.parties_concerned?.length > 0 && <span className="text-xs text-slate-400">| {c.parties_concerned.join(', ')}</span>}
+          </div>
+          <p className="text-sm mb-2">{c.description}</p>
+          {c.conditions && <p className="text-xs text-slate-500"><strong>Conditions :</strong> {c.conditions}</p>}
+          {c.consequences && <p className="text-xs text-slate-500 mt-1"><strong>Consequences :</strong> {c.consequences}</p>}
+        </div>
+      ))}
+      {!clauses.length && <GenericView content={content} />}
+    </div>
+  );
+}
+
+function ObligationsView({ content }: { content: any }) {
+  const obligations = content.obligations || [];
+  return (
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead><tr className="bg-slate-50 dark:bg-slate-800">
+            <th className="px-3 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Debiteur</th>
+            <th className="px-3 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Obligation</th>
+            <th className="px-3 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Type</th>
+            <th className="px-3 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Echeance</th>
+            <th className="px-3 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Statut</th>
+          </tr></thead>
+          <tbody>{obligations.map((o: any, i: number) => (
+            <tr key={i} className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+              <td className="px-3 py-3 font-medium">{o.debtor}</td>
+              <td className="px-3 py-3">{o.obligation}</td>
+              <td className="px-3 py-3"><span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700">{o.type}</span></td>
+              <td className="px-3 py-3 text-xs">{o.deadline || '-'}</td>
+              <td className="px-3 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${o.status === 'confirmed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>{o.status}</span></td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+      {!obligations.length && <div className="p-4"><GenericView content={content} /></div>}
+    </div>
+  );
+}
+
+function DeadlinesView({ content }: { content: any }) {
+  const deadlines = content.deadlines || [];
+  const critColors: Record<string, string> = { critical: 'border-l-red-500 bg-red-50 dark:bg-red-900/15', important: 'border-l-amber-500 bg-amber-50 dark:bg-amber-900/15', standard: 'border-l-blue-400 bg-blue-50 dark:bg-blue-900/15' };
+  return (
+    <div className="space-y-3">
+      {content.timeline_summary && <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-sm">{content.timeline_summary}</div>}
+      {deadlines.map((d: any, i: number) => (
+        <div key={i} className={`p-4 rounded-xl border-l-4 ${critColors[d.criticality] || critColors.standard} border border-slate-200 dark:border-slate-700`}>
+          <div className="flex items-center gap-2 mb-1">
+            <Calendar className="w-4 h-4 text-slate-500" />
+            <span className="font-bold text-sm">{d.date}</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-600">{d.type}</span>
+            {d.criticality === 'critical' && <span className="text-xs px-2 py-0.5 rounded-full bg-red-500 text-white">CRITIQUE</span>}
+          </div>
+          <p className="text-sm mt-1">{d.description}</p>
+          {d.parties_concerned?.length > 0 && <p className="text-xs text-slate-400 mt-1">Parties : {d.parties_concerned.join(', ')}</p>}
+          {d.legal_basis && <p className="text-xs text-slate-400 mt-1">Base legale : {d.legal_basis}</p>}
+        </div>
+      ))}
+      {!deadlines.length && <GenericView content={content} />}
+    </div>
+  );
+}
+
+function ReferencesView({ content }: { content: any }) {
+  const references = content.references || [];
+  return (
+    <div className="space-y-3">
+      {references.map((r: any, i: number) => (
+        <div key={i} className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2 mb-2">
+            <BookMarked className="w-4 h-4 text-amber-600" />
+            <span className="font-semibold text-sm">{r.reference}</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">{r.type}</span>
+          </div>
+          {r.context && <p className="text-xs text-slate-600 dark:text-slate-400">{r.context}</p>}
+          {r.implication && <p className="text-xs text-slate-500 mt-1"><strong>Implication :</strong> {r.implication}</p>}
+          {r.cited_by && <p className="text-xs text-slate-400 mt-1">Cite par : {r.cited_by}</p>}
+        </div>
+      ))}
+      {!references.length && <GenericView content={content} />}
     </div>
   );
 }

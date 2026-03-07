@@ -1,0 +1,81 @@
+{
+  "id": "business",
+  "name": "Business / Reunions",
+  "description": "Reunions, appels clients, interviews — compte-rendus, actions, decisions, KPIs, suivi projet.",
+  "icon": "Briefcase",
+  "color": "from-blue-500 to-cyan-500",
+  "analyses": [
+    {
+      "type": "summary",
+      "label": "Compte-rendu",
+      "enabled": true,
+      "prompt": "Tu es un assistant de direction senior. Produis un compte-rendu de reunion professionnel et structure. Inclus : titre de la reunion, date/contexte si mentionne, participants identifies avec leur role, ordre du jour couvert, chaque point discute avec un resume factuel, et les conclusions. Sois precis et factuel. Return valid JSON: {\"title\": \"...\", \"context\": \"...\", \"participants\": [{\"name\": \"...\", \"role\": \"...\"}], \"agenda\": [\"...\"], \"discussion_points\": [{\"topic\": \"...\", \"summary\": \"...\", \"outcome\": \"...\"}], \"conclusion\": \"...\"}"
+    },
+    {
+      "type": "actions",
+      "label": "Actions & Decisions",
+      "enabled": true,
+      "prompt": "Tu es un chef de projet. Extrais TOUTES les actions a mener avec le maximum de details : action precise, responsable (si mentionne), deadline (si mentionnee), priorite, et statut. Extrais aussi les decisions prises avec leur justification, et les questions restees ouvertes. Return valid JSON: {\"actions\": [{\"action\": \"...\", \"owner\": \"...\", \"deadline\": \"...\", \"priority\": \"high/medium/low\", \"context\": \"...\"}], \"decisions\": [{\"decision\": \"...\", \"rationale\": \"...\", \"decided_by\": \"...\"}], \"open_questions\": [{\"question\": \"...\", \"raised_by\": \"...\", \"assigned_to\": \"...\"}]}"
+    },
+    {
+      "type": "keypoints",
+      "label": "Points cles",
+      "enabled": true,
+      "prompt": "Tu es un analyste business senior. Extrais les points cles strategiques de cette reunion, organises par domaine : strategie, operations, finance, commercial, RH, technique, juridique. Pour chaque point, indique l'impact business. Return valid JSON: {\"keypoints\": [{\"theme\": \"Strategie/Operations/Finance/Commercial/RH/Technique/Juridique\", \"points\": [\"...\"], \"business_impact\": \"high/medium/low\"}]}"
+    },
+    {
+      "type": "kpi",
+      "label": "KPIs & Chiffres",
+      "enabled": true,
+      "prompt": "Tu es un controller de gestion. Extrais TOUS les chiffres, KPIs, metriques, pourcentages, montants, volumes, delais et donnees quantitatives mentionnes. Pour chaque metrique, donne le contexte, la valeur, la tendance (hausse/baisse/stable), et la periode de reference si mentionnee. Return valid JSON: {\"metrics\": [{\"name\": \"...\", \"value\": \"...\", \"unit\": \"...\", \"context\": \"...\", \"trend\": \"up/down/stable/unknown\", \"period\": \"...\", \"target\": \"...\"}], \"financial_summary\": \"...\", \"key_figures\": [\"...\"]}"
+    },
+    {
+      "type": "risks",
+      "label": "Risques & Blocages",
+      "enabled": true,
+      "prompt": "Tu es un consultant en gestion des risques. Identifie tous les risques business, problemes, blocages, retards et alertes mentionnes ou sous-entendus. Pour chaque risque, evalue la probabilite et l'impact, identifie le responsable de la mitigation, et propose des actions correctives. Return valid JSON: {\"risks\": [{\"risk\": \"...\", \"category\": \"operationnel/financier/technique/humain/marche/reglementaire\", \"severity\": \"critical/high/medium/low\", \"probability\": \"high/medium/low\", \"owner\": \"...\", \"mitigation\": \"...\", \"deadline\": \"...\"}], \"blockers\": [{\"blocker\": \"...\", \"impact\": \"...\", \"unblock_action\": \"...\"}]}"
+    },
+    {
+      "type": "followup",
+      "label": "Email de suivi",
+      "enabled": true,
+      "prompt": "Tu es un assistant de direction. Redige un email de suivi professionnel et complet pour cette reunion. L'email doit etre pret a envoyer : objet clair, salutation, rappel du contexte, resume des points discutes, liste des decisions prises, tableau des actions avec responsables et deadlines, prochaines etapes, et formule de politesse. Return valid JSON: {\"subject\": \"...\", \"greeting\": \"...\", \"body\": \"...\", \"actions_table\": \"| Action | Responsable | Deadline |\\n|--------|-------------|----------|\\n| ... | ... | ... |\", \"next_steps\": \"...\", \"closing\": \"...\"}"
+    },
+    {
+      "type": "slides",
+      "label": "Slides de synthese",
+      "enabled": true,
+      "prompt": "Tu es un consultant senior. Cree une presentation executive de synthese (max 8 slides). Slide 1: Contexte et objectifs. Slide 2: Faits marquants. Slide 3-4: Decisions cles. Slide 5: Actions et responsables. Slide 6: KPIs et chiffres. Slide 7: Risques. Slide 8: Prochaines etapes. Chaque slide doit etre concise et impactante. Return valid JSON: {\"slides\": [{\"title\": \"...\", \"bullets\": [\"...\"]}]}"
+    },
+    {
+      "type": "stakeholder_map",
+      "label": "Carte des parties prenantes",
+      "enabled": true,
+      "prompt": "Tu es un analyste de gouvernance. A partir de cette reunion, identifie toutes les parties prenantes mentionnees (internes et externes), leur role, leur position sur les sujets discutes (pour/contre/neutre), leur niveau d'influence, et les interactions observees. Return valid JSON: {\"stakeholders\": [{\"name\": \"...\", \"role\": \"...\", \"organization\": \"...\", \"influence\": \"high/medium/low\", \"position\": \"supportive/neutral/opposed/unknown\", \"key_concerns\": [\"...\"], \"relationships\": [\"...\"]}], \"power_dynamics\": \"...\"}"
+    },
+    {
+      "type": "tables",
+      "label": "Tableaux de bord",
+      "enabled": true,
+      "prompt": "Tu es un analyste. Organise les informations cles de cette reunion en tableaux structures et actionables : (1) Tableau des actions (Action / Responsable / Deadline / Priorite / Statut), (2) Tableau des decisions (Decision / Impact / Validee par), (3) Tableau des KPIs (Metrique / Valeur / Tendance / Cible). Return valid JSON: {\"tables\": [{\"title\": \"...\", \"headers\": [\"...\"], \"rows\": [[\"...\"]]}]}"
+    }
+  ],
+  "exports": ["json", "md", "pptx", "txt"],
+  "default_templates": [
+    {
+      "name": "CR Express 10 lignes",
+      "type": "summary",
+      "instructions": "Compte-rendu en 10 lignes maximum. Uniquement les decisions prises et les actions assignees."
+    },
+    {
+      "name": "Email client formel",
+      "type": "followup",
+      "instructions": "Ton formel et professionnel, adapte pour un email a un client externe. Pas de jargon interne."
+    },
+    {
+      "name": "COMEX Summary",
+      "type": "summary",
+      "instructions": "Resume executive pour le COMEX : 5 bullet points max, focus sur impact business et decisions strategiques."
+    }
+  ]
+}

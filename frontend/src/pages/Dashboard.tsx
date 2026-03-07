@@ -156,6 +156,11 @@ function Dashboard() {
                 </p>
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
+                {t.profile && t.profile !== 'generic' && (
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+                    {t.profile === 'education' ? 'Education' : t.profile === 'business' ? 'Business' : t.profile}
+                  </span>
+                )}
                 {t.language && (
                   <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-medium uppercase">
                     {t.language}

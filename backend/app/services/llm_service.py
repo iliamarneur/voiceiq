@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -6,6 +7,7 @@ import ollama as ollama_client
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Transcription, Analysis, Chapter, TranslationCache, ChatMessage
+from app.services.profile_service import get_profile_analyses, get_analysis_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,18 @@ PROMPTS = {
 }
 
 OLLAMA_MODEL = "mistral-nemo:latest"
+
+
+async def _call_ollama_async(prompt: str, transcript_text: str) -> dict:
+    """Run _call_ollama in a thread pool to avoid blocking the event loop."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _call_ollama, prompt, transcript_text)
+
+
+async def _call_ollama_text_async(system_prompt: str, user_prompt: str) -> str:
+    """Run _call_ollama_text in a thread pool to avoid blocking the event loop."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _call_ollama_text, system_prompt, user_prompt)
 
 
 def _fix_json(text: str) -> str:
@@ -104,26 +118,48 @@ def _call_ollama_text(system_prompt: str, user_prompt: str) -> str:
         return f"Error: {str(e)}"
 
 
-async def generate_analyses(transcription_id: str, db: AsyncSession):
-    """Generate all 9 analyses for a transcription."""
+async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id: str = None):
+    """Generate analyses for a transcription based on its profile."""
     result = await db.execute(select(Transcription).where(Transcription.id == transcription_id))
     transcription = result.scalar_one_or_none()
     if not transcription:
         return
 
-    for analysis_type in ANALYSIS_TYPES:
-        prompt = PROMPTS.get(analysis_type, f"Analyze this transcript for: {analysis_type}")
-        logger.info(f"Generating {analysis_type} for {transcription_id}...")
-        content = _call_ollama(prompt, transcription.text)
-        analysis = Analysis(
-            transcription_id=transcription_id,
-            type=analysis_type,
-            content=content,
-        )
-        db.add(analysis)
+    # Use profile from transcription if not explicitly provided
+    effective_profile = profile_id or getattr(transcription, "profile", "generic") or "generic"
 
-    await db.commit()
-    logger.info(f"All 9 analyses generated for {transcription_id}")
+    # Get analyses from profile config
+    profile_analyses = get_profile_analyses(effective_profile)
+
+    if profile_analyses:
+        # Profile-driven pipeline
+        for analysis_def in profile_analyses:
+            analysis_type = analysis_def["type"]
+            prompt = analysis_def.get("prompt", PROMPTS.get(analysis_type, f"Analyze this transcript for: {analysis_type}"))
+            logger.info(f"[{effective_profile}] Generating {analysis_type} for {transcription_id}...")
+            content = await _call_ollama_async(prompt, transcription.text)
+            analysis = Analysis(
+                transcription_id=transcription_id,
+                type=analysis_type,
+                content=content,
+            )
+            db.add(analysis)
+        await db.commit()
+        logger.info(f"[{effective_profile}] {len(profile_analyses)} analyses generated for {transcription_id}")
+    else:
+        # Fallback to hardcoded v2 analyses
+        for analysis_type in ANALYSIS_TYPES:
+            prompt = PROMPTS.get(analysis_type, f"Analyze this transcript for: {analysis_type}")
+            logger.info(f"Generating {analysis_type} for {transcription_id}...")
+            content = await _call_ollama_async(prompt, transcription.text)
+            analysis = Analysis(
+                transcription_id=transcription_id,
+                type=analysis_type,
+                content=content,
+            )
+            db.add(analysis)
+        await db.commit()
+        logger.info(f"All {len(ANALYSIS_TYPES)} analyses generated for {transcription_id}")
 
 
 async def regenerate_analysis(transcription_id: str, analysis_type: str, db: AsyncSession, instructions: str = None):
@@ -133,11 +169,14 @@ async def regenerate_analysis(transcription_id: str, analysis_type: str, db: Asy
     if not transcription:
         return None
 
-    prompt = PROMPTS.get(analysis_type, f"Analyze this transcript for: {analysis_type}")
+    # Try profile-specific prompt first, then fallback to hardcoded
+    effective_profile = getattr(transcription, "profile", "generic") or "generic"
+    profile_prompt = get_analysis_prompt(effective_profile, analysis_type)
+    prompt = profile_prompt or PROMPTS.get(analysis_type, f"Analyze this transcript for: {analysis_type}")
     if instructions:
         prompt += f"\n\nAdditional instructions: {instructions}"
 
-    content = _call_ollama(prompt, transcription.text)
+    content = await _call_ollama_async(prompt, transcription.text)
 
     result = await db.execute(
         select(Analysis).where(
@@ -190,12 +229,16 @@ async def chat_with_transcript(transcription_id: str, message: str, db: AsyncSes
     user_msg = ChatMessage(transcription_id=transcription_id, role="user", content=message)
     db.add(user_msg)
 
-    # Get response
-    try:
-        response = _ollama.chat(model=OLLAMA_MODEL, messages=messages)
-        answer = response["message"]["content"]
-    except Exception as e:
-        answer = f"Error: {str(e)}"
+    # Get response (non-blocking)
+    def _chat_sync():
+        try:
+            response = _ollama.chat(model=OLLAMA_MODEL, messages=messages)
+            return response["message"]["content"]
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    loop = asyncio.get_event_loop()
+    answer = await loop.run_in_executor(None, _chat_sync)
 
     # Save assistant message
     assistant_msg = ChatMessage(transcription_id=transcription_id, role="assistant", content=answer)
@@ -228,7 +271,7 @@ async def generate_chapters(transcription_id: str, db: AsyncSession) -> list:
         "Each chapter should have a title, start_time, end_time (in seconds), and a brief summary. "
         "Return valid JSON: {\"chapters\": [{\"title\": \"...\", \"start_time\": 0.0, \"end_time\": 30.0, \"summary\": \"...\"}]}"
     )
-    content = _call_ollama(prompt, segments_text[:8000])
+    content = await _call_ollama_async(prompt, segments_text[:8000])
 
     chapter_data = content.get("chapters", [])
     result_chapters = []
@@ -259,7 +302,7 @@ async def generate_glossary(transcription_id: str, db: AsyncSession) -> dict:
         "For each term, provide a clear definition based on context. "
         "Return valid JSON: {\"terms\": [{\"term\": \"...\", \"definition\": \"...\"}]}"
     )
-    content = _call_ollama(prompt, transcription.text)
+    content = await _call_ollama_async(prompt, transcription.text)
     return content
 
 
@@ -291,7 +334,7 @@ async def translate_transcript(transcription_id: str, target_lang: str, db: Asyn
     translated_parts = []
 
     for chunk in chunks:
-        translated = _call_ollama_text(
+        translated = await _call_ollama_text_async(
             f"You are a translator. Translate the following text to {target_name}. Output ONLY the translation, nothing else.",
             chunk,
         )

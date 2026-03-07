@@ -1,0 +1,64 @@
+{
+  "id": "legal",
+  "name": "Juridique",
+  "description": "Audiences, negociations, contrats oraux — extraction de clauses, obligations, echeances, risques juridiques.",
+  "icon": "Scale",
+  "color": "from-amber-600 to-yellow-500",
+  "analyses": [
+    {
+      "type": "summary",
+      "label": "Synthese juridique",
+      "enabled": true,
+      "prompt": "Tu es un assistant juridique. Produis une synthese juridique structuree de cette audience/reunion/negociation. Inclus : nature de l'affaire, parties en presence, objet du litige ou de la negociation, arguments presentes par chaque partie, elements de droit invoques, et issue/decision. Return valid JSON: {\"title\": \"...\", \"case_type\": \"...\", \"parties\": [{\"name\": \"...\", \"role\": \"demandeur/defendeur/partie\", \"counsel\": \"...\"}], \"subject\": \"...\", \"arguments\": [{\"party\": \"...\", \"arguments\": [\"...\"]}], \"legal_basis\": [\"...\"], \"outcome\": \"...\", \"next_steps\": \"...\"}"
+    },
+    {
+      "type": "clauses",
+      "label": "Clauses & Stipulations",
+      "enabled": true,
+      "prompt": "Tu es un juriste. Extrais toutes les clauses, stipulations, conditions et termes contractuels mentionnes dans cette transcription. Pour chaque clause, identifie le type (obligation, condition, garantie, limitation, penalite, resiliation, confidentialite, non-concurrence), les parties concernees et les conditions d'application. Return valid JSON: {\"clauses\": [{\"type\": \"obligation/condition/garantie/limitation/penalite/resiliation/confidentialite/non-concurrence\", \"description\": \"...\", \"parties_concerned\": [\"...\"], \"conditions\": \"...\", \"consequences\": \"...\"}]}"
+    },
+    {
+      "type": "obligations",
+      "label": "Obligations par partie",
+      "enabled": true,
+      "prompt": "Tu es un juriste. Cree un tableau exhaustif des obligations de chaque partie mentionnees dans cette transcription. Pour chaque obligation, precise la partie debitrice, la partie creditrice, la nature de l'obligation (faire/ne pas faire/payer/livrer), l'echeance si mentionnee, et les consequences en cas de manquement. Return valid JSON: {\"obligations\": [{\"debtor\": \"...\", \"creditor\": \"...\", \"obligation\": \"...\", \"type\": \"faire/ne_pas_faire/payer/livrer/garantir\", \"deadline\": \"...\", \"penalty\": \"...\", \"status\": \"confirmed/discussed/proposed\"}]}"
+    },
+    {
+      "type": "deadlines",
+      "label": "Echeances & Delais",
+      "enabled": true,
+      "prompt": "Tu es un assistant juridique. Extrais TOUTES les dates, echeances, delais de prescription, delais de recours et calendriers mentionnes dans cette transcription. Classe-les par ordre chronologique et indique leur criticite. Return valid JSON: {\"deadlines\": [{\"date\": \"...\", \"description\": \"...\", \"type\": \"prescription/recours/contractuel/audience/livrable\", \"parties_concerned\": [\"...\"], \"criticality\": \"critical/important/standard\", \"legal_basis\": \"...\"}], \"timeline_summary\": \"...\"}"
+    },
+    {
+      "type": "risks",
+      "label": "Risques juridiques",
+      "enabled": true,
+      "prompt": "Tu es un avocat senior. Identifie tous les risques juridiques, points de vulnerabilite, lacunes contractuelles et expositions legales mentionnes ou implicites dans cette transcription. Pour chaque risque, evalue la probabilite et l'impact, et propose des mesures d'attenuation. Return valid JSON: {\"risks\": [{\"risk\": \"...\", \"category\": \"contractuel/reglementaire/contentieux/reputation/financier\", \"probability\": \"high/medium/low\", \"impact\": \"high/medium/low\", \"mitigation\": \"...\", \"legal_reference\": \"...\"}], \"overall_risk_level\": \"high/medium/low\", \"priority_actions\": [\"...\"]}"
+    },
+    {
+      "type": "references",
+      "label": "References legales",
+      "enabled": true,
+      "prompt": "Tu es un documentaliste juridique. Extrais toutes les references legales mentionnees dans cette transcription : articles de loi, codes, jurisprudence, reglements, directives, conventions. Pour chaque reference, note le contexte dans lequel elle est citee et son implication. Return valid JSON: {\"references\": [{\"reference\": \"...\", \"type\": \"loi/code/jurisprudence/reglement/directive/convention\", \"context\": \"...\", \"implication\": \"...\", \"cited_by\": \"...\"}]}"
+    },
+    {
+      "type": "actions",
+      "label": "Actions & Decisions",
+      "enabled": true,
+      "prompt": "Tu es un assistant juridique. Extrais toutes les actions a mener, decisions prises et points en suspens de cette audience/reunion juridique. Pour chaque action, precise le responsable, l'echeance et la priorite. Return valid JSON: {\"actions\": [{\"action\": \"...\", \"owner\": \"...\", \"deadline\": \"...\", \"priority\": \"high/medium/low\"}], \"decisions\": [{\"decision\": \"...\", \"legal_basis\": \"...\", \"parties_agreed\": [\"...\"]}], \"pending\": [\"...\"]}"
+    }
+  ],
+  "exports": ["json", "md", "txt"],
+  "default_templates": [
+    {
+      "name": "Note d'audience",
+      "type": "summary",
+      "instructions": "Redige une note d'audience formelle : parties, objet, arguments, decision, voies de recours. Style juridique professionnel."
+    },
+    {
+      "name": "Tableau d'obligations",
+      "type": "obligations",
+      "instructions": "Format tableau strict : Partie | Obligation | Echeance | Consequence. Pour integration dans un dossier client."
+    }
+  ]
+}

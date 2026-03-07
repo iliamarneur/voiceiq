@@ -8,7 +8,7 @@ import {
   Zap, Shield, Clock, Volume2
 } from 'lucide-react';
 
-const VERSION = '2.1.0';
+const VERSION = '3.0.0';
 const LAST_UPDATED = '2026-03-06';
 
 interface Feature {
@@ -16,7 +16,7 @@ interface Feature {
   title: string;
   description: string;
   version: string;
-  category: 'core' | 'analysis' | 'v2' | 'export';
+  category: 'core' | 'analysis' | 'v2' | 'v3' | 'export';
 }
 
 const FEATURES: Feature[] = [
@@ -50,12 +50,23 @@ const FEATURES: Feature[] = [
 
   // Export
   { icon: Download, title: 'Export multi-format', description: 'Exportez en JSON, Markdown, TXT, SRT, VTT et PPTX. PDF disponible avec WeasyPrint.', version: '1.0', category: 'export' },
+
+  // V3 Features
+  { icon: Sparkles, title: '5 Profils verticaux', description: 'Generique, Business, Education, Medical, Juridique. Chaque profil active un pipeline d\'analyse specifique avec prompts optimises.', version: '3.0', category: 'v3' },
+  { icon: Sparkles, title: 'Business (9 analyses)', description: 'CR, actions assignees, KPIs, risques/blocages, email de suivi, slides executive, carte des parties prenantes, tableaux de bord.', version: '3.0', category: 'v3' },
+  { icon: Sparkles, title: 'Education (9 analyses)', description: 'Resume pedagogique, fiches de revision, quiz par section, carte des concepts, glossaire, chapitrage, notions essentielles, exercices pratiques, support de cours.', version: '3.0', category: 'v3' },
+  { icon: Sparkles, title: 'Medical (7 analyses)', description: 'Note SOAP structuree, resume clinique, redaction PII (RGPD/HIPAA), prescriptions/traitements, points de vigilance/red flags, plan de suivi, points cles cliniques.', version: '3.0', category: 'v3' },
+  { icon: Sparkles, title: 'Juridique (7 analyses)', description: 'Synthese juridique, clauses/stipulations, obligations par partie, echeances/delais, risques juridiques, references legales, actions/decisions.', version: '3.0', category: 'v3' },
+  { icon: Sparkles, title: 'Rendus visuels dedies', description: 'Chaque type d\'analyse a son propre rendu visuel : tableaux SOAP colores, cartes de risques, chronologies d\'echeances, tableaux de prescriptions, etc.', version: '3.0', category: 'v3' },
+  { icon: Sparkles, title: 'Hot-reload des profils', description: 'Ajoutez de nouveaux profils en deposant un fichier JSON dans le dossier profiles/ et rechargez via API sans redemarrer.', version: '3.0', category: 'v3' },
+  { icon: Sparkles, title: 'Templates par profil', description: 'Chaque profil definit ses propres templates (Fiches Anki, CR Express, Note d\'audience, Courrier confrere...) et exports disponibles.', version: '3.0', category: 'v3' },
 ];
 
 const CATEGORIES = [
   { key: 'core', label: 'Fonctionnalites principales', color: 'from-indigo-500 to-blue-500' },
   { key: 'analysis', label: '9 Analyses IA', color: 'from-purple-500 to-pink-500' },
   { key: 'v2', label: 'Nouveautes v2', color: 'from-emerald-500 to-teal-500' },
+  { key: 'v3', label: 'Nouveautes v3 — Profils Verticaux', color: 'from-rose-500 to-orange-500' },
   { key: 'export', label: 'Export', color: 'from-amber-500 to-orange-500' },
 ];
 
@@ -95,9 +106,10 @@ function About() {
       <div className="mb-12 p-6 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-100 dark:border-indigo-800">
         <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
           <strong>VoiceIQ</strong> est une plateforme 100% locale de transcription et d'analyse audio.
-          Uploadez un fichier audio, obtenez une transcription precise via Whisper, puis 9 analyses IA
-          generees par Ollama : resume, points cles, actions, fiches, quiz, carte mentale, slides,
-          infographie et tableaux. Le tout sans aucune donnee envoyee a l'exterieur.
+          Uploadez un fichier audio, obtenez une transcription precise via Whisper, puis
+          des analyses IA adaptees a votre contexte metier grace aux profils verticaux (Education, Business, Generique).
+          Chaque profil active un pipeline d'analyse specifique avec des prompts optimises.
+          Le tout sans aucune donnee envoyee a l'exterieur.
         </p>
         <div className="flex items-center gap-6 mt-4 text-xs text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> 100% local</span>
@@ -154,9 +166,9 @@ function About() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-sm">{feature.title}</h3>
-                      {feature.version === '2.0' && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-                          NEW
+                      {feature.version === '3.0' && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
+                          V3
                         </span>
                       )}
                     </div>

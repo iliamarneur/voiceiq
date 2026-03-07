@@ -8,6 +8,7 @@ class JobOut(BaseModel):
     status: str
     file_path: str
     transcription_id: Optional[str] = None
+    profile: str = "generic"
     model_config = {"from_attributes": True}
 
 
@@ -25,6 +26,7 @@ class TranscriptionOut(BaseModel):
     language: Optional[str] = None
     duration: Optional[float] = None
     status: str
+    profile: str = "generic"
     created_at: Optional[datetime] = None
     model_config = {"from_attributes": True}
 
@@ -109,3 +111,20 @@ class GlossaryTerm(BaseModel):
 
 class GlossaryOut(BaseModel):
     terms: List[GlossaryTerm]
+
+
+class ProfileAnalysis(BaseModel):
+    type: str
+    label: str
+    enabled: bool = True
+
+
+class ProfileOut(BaseModel):
+    id: str
+    name: str
+    description: str
+    icon: str
+    color: str
+    analyses: List[ProfileAnalysis]
+    exports: List[str]
+    default_templates: list = []

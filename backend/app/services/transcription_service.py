@@ -92,7 +92,7 @@ def _run_whisper(file_path: str):
     return segments, full_text, info
 
 
-async def transcribe_audio(job_id: str, db: AsyncSession):
+async def transcribe_audio(job_id: str, db: AsyncSession, profile: str = "generic"):
     """Background task: transcribe audio file and trigger analyses."""
     try:
         result = await db.execute(select(Job).where(Job.id == job_id))
@@ -124,6 +124,7 @@ async def transcribe_audio(job_id: str, db: AsyncSession):
             segments=segments,
             language=info.language,
             duration=round(info.duration, 2),
+            profile=profile,
             job_id=job.id,
         )
         db.add(transcription)
@@ -136,9 +137,9 @@ async def transcribe_audio(job_id: str, db: AsyncSession):
         logger.info(f"Transcription done: {transcription.id} ({len(segments)} segments, {info.language}, {info.duration:.0f}s)")
         logger.info(f"Job {job_id} updated: status=completed, transcription_id={transcription.id}")
 
-        # Trigger LLM analyses
-        logger.info(f"Starting 9 AI analyses for {transcription.id}...")
-        await generate_analyses(transcription.id, db)
+        # Trigger LLM analyses (profile-aware)
+        logger.info(f"Starting analyses for {transcription.id} (profile: {profile})...")
+        await generate_analyses(transcription.id, db, profile_id=profile)
         logger.info(f"All analyses complete for {transcription.id}")
 
     except Exception as e:

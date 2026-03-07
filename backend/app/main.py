@@ -5,7 +5,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Optional, List
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,12 +19,17 @@ from app.schemas import (
     ChatMessageOut, ChatRequest, ChapterOut,
     TemplateOut, TemplateCreate, TemplateUpdate,
     TranslateRequest, TranslationOut, GlossaryOut,
+    ProfileOut,
 )
 from app.services.transcription_service import transcribe_audio
 from app.services.llm_service import (
     regenerate_analysis, generate_analyses,
     chat_with_transcript, generate_chapters,
     generate_glossary, translate_transcript,
+)
+from app.services.profile_service import (
+    get_all_profiles, get_profile, get_profile_analyses,
+    get_profile_exports, reload_profiles,
 )
 from app.services.export_service import (
     export_to_pdf, export_to_srt, export_to_vtt,
@@ -50,11 +55,12 @@ async def lifespan(app: FastAPI):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     os.makedirs(EXPORT_DIR, exist_ok=True)
     await init_db()
-    logger.info("Audio-to-Knowledge v2 API ready")
+    reload_profiles()
+    logger.info("Audio-to-Knowledge v3 API ready (profile-based pipeline)")
     yield
 
 
-app = FastAPI(title="Audio-to-Knowledge v2", lifespan=lifespan)
+app = FastAPI(title="Audio-to-Knowledge v3", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -73,7 +79,7 @@ async def get_db():
 # ── Upload & Jobs ──────────────────────────────────────────
 
 @app.post("/api/upload", response_model=JobOut, status_code=202)
-async def upload_audio(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+async def upload_audio(file: UploadFile = File(...), profile: str = Form("generic"), db: AsyncSession = Depends(get_db)):
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}. Supported: audio (mp3, wav, m4a, flac, ogg, aac, opus) and video (mp4, mkv, avi, mov, wmv)")
@@ -99,20 +105,26 @@ async def upload_audio(file: UploadFile = File(...), db: AsyncSession = Depends(
 
     logger.info(f"Uploaded {safe_name}: {total_size / (1024*1024):.1f} MB")
 
-    job = Job(status="pending", file_path=file_location)
+    # Validate profile
+    available = get_all_profiles()
+    valid_ids = {p["id"] for p in available}
+    if profile not in valid_ids:
+        profile = "generic"
+
+    job = Job(status="pending", file_path=file_location, profile=profile)
     db.add(job)
     await db.commit()
     await db.refresh(job)
 
-    async def _bg_transcribe(job_id: str):
+    async def _bg_transcribe(job_id: str, prof: str):
         async with AsyncSessionLocal() as bg_db:
-            await transcribe_audio(job_id, bg_db)
-    asyncio.create_task(_bg_transcribe(job.id))
+            await transcribe_audio(job_id, bg_db, profile=prof)
+    asyncio.create_task(_bg_transcribe(job.id, profile))
     return job
 
 
 @app.post("/api/upload/batch", status_code=202)
-async def upload_batch(files: List[UploadFile] = File(...), db: AsyncSession = Depends(get_db)):
+async def upload_batch(files: List[UploadFile] = File(...), profile: str = Form("generic"), db: AsyncSession = Depends(get_db)):
     """Upload multiple audio files at once."""
     jobs = []
     for file in files:
@@ -130,7 +142,7 @@ async def upload_batch(files: List[UploadFile] = File(...), db: AsyncSession = D
                     break
                 buffer.write(chunk)
 
-        job = Job(status="pending", file_path=file_location)
+        job = Job(status="pending", file_path=file_location, profile=profile)
         db.add(job)
         await db.flush()
         await db.refresh(job)
@@ -140,9 +152,9 @@ async def upload_batch(files: List[UploadFile] = File(...), db: AsyncSession = D
 
     # Start all transcriptions in background
     for j in jobs:
-        async def _bg(jid=j["id"]):
+        async def _bg(jid=j["id"], prof=profile):
             async with AsyncSessionLocal() as bg_db:
-                await transcribe_audio(jid, bg_db)
+                await transcribe_audio(jid, bg_db, profile=prof)
         asyncio.create_task(_bg())
 
     return {"jobs": jobs, "total": len(jobs)}
@@ -254,11 +266,15 @@ async def regenerate_all(id: str, db: AsyncSession = Depends(get_db)):
         await db.delete(a)
     await db.commit()
 
+    profile_id = transcription.profile or "generic"
+    profile_analyses = get_profile_analyses(profile_id)
+    num_analyses = len(profile_analyses) if profile_analyses else len(["summary", "keypoints", "actions", "flashcards", "quiz", "mindmap", "slides", "infographic", "tables"])
+
     async def _bg_regen():
         async with AsyncSessionLocal() as bg_db:
-            await generate_analyses(id, bg_db)
+            await generate_analyses(id, bg_db, profile_id=profile_id)
     asyncio.create_task(_bg_regen())
-    return {"status": "regenerating", "message": "All 9 analyses are being regenerated"}
+    return {"status": "regenerating", "message": f"{num_analyses} analyses are being regenerated (profile: {profile_id})"}
 
 
 @app.post("/api/transcriptions/{id}/analyses/{type}/regenerate")
@@ -473,3 +489,37 @@ async def export_transcription(id: str, format: str, db: AsyncSession = Depends(
         return FileResponse(path, media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation", filename=filename)
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported format: {format}")
+
+
+# ── Profiles ──────────────────────────────────────────────
+
+@app.get("/api/profiles", response_model=list[ProfileOut])
+async def list_profiles():
+    """List all available profiles."""
+    return get_all_profiles()
+
+
+@app.get("/api/profiles/{profile_id}", response_model=ProfileOut)
+async def get_profile_detail(profile_id: str):
+    """Get a specific profile with its analyses config."""
+    profile = get_profile(profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found")
+    return profile
+
+
+@app.get("/api/profiles/{profile_id}/analyses")
+async def get_profile_analyses_endpoint(profile_id: str):
+    """Get the list of analyses for a profile."""
+    analyses = get_profile_analyses(profile_id)
+    if not analyses:
+        raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found")
+    return analyses
+
+
+@app.post("/api/profiles/reload")
+async def reload_profiles_endpoint():
+    """Reload profiles from disk (hot reload)."""
+    reload_profiles()
+    profiles = get_all_profiles()
+    return {"status": "reloaded", "profiles": [p["id"] for p in profiles]}

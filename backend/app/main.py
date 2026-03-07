@@ -114,6 +114,7 @@ async def upload_audio(
     profile: str = Form("generic"),
     priority: str = Form("P1"),
     preset_id: Optional[str] = Form(None),
+    language: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     ext = os.path.splitext(file.filename or "")[1].lower()
@@ -163,10 +164,10 @@ async def upload_audio(
     await db.commit()
     await db.refresh(job)
 
-    async def _bg_transcribe(job_id: str, prof: str):
+    async def _bg_transcribe(job_id: str, prof: str, lang: str | None = None):
         async with AsyncSessionLocal() as bg_db:
-            await transcribe_audio(job_id, bg_db, profile=prof)
-    asyncio.create_task(_bg_transcribe(job.id, profile))
+            await transcribe_audio(job_id, bg_db, profile=prof, language=lang)
+    asyncio.create_task(_bg_transcribe(job.id, profile, language))
     return job
 
 
@@ -176,6 +177,7 @@ async def upload_batch(
     profile: str = Form("generic"),
     priority: str = Form("P1"),
     preset_id: Optional[str] = Form(None),
+    language: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Upload multiple audio files at once."""
@@ -218,9 +220,9 @@ async def upload_batch(
 
     # Start all transcriptions in background
     for j in jobs:
-        async def _bg(jid=j["id"], prof=profile):
+        async def _bg(jid=j["id"], prof=profile, lang=language):
             async with AsyncSessionLocal() as bg_db:
-                await transcribe_audio(jid, bg_db, profile=prof)
+                await transcribe_audio(jid, bg_db, profile=prof, language=lang)
         asyncio.create_task(_bg())
 
     total_est = sum(j.get("estimated_seconds", 0) or 0 for j in jobs)

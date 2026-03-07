@@ -32,6 +32,7 @@ function UploadPage() {
   const [selectedPriority, setSelectedPriority] = useState('P1');
   const [presets, setPresets] = useState<AudioPreset[]>([]);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,6 +65,7 @@ function UploadPage() {
         formData.append('profile', selectedProfile);
         formData.append('priority', selectedPriority);
         if (selectedPreset) formData.append('preset_id', selectedPreset);
+        if (selectedLanguage) formData.append('language', selectedLanguage);
         const res = await axios.post('/api/upload', formData, {
           onUploadProgress: (e) => {
             if (e.total) setProgress(Math.round((e.loaded / e.total) * 100));
@@ -79,6 +81,7 @@ function UploadPage() {
         formData.append('profile', selectedProfile);
         formData.append('priority', selectedPriority);
         if (selectedPreset) formData.append('preset_id', selectedPreset);
+        if (selectedLanguage) formData.append('language', selectedLanguage);
         const res = await axios.post('/api/upload/batch', formData, {
           onUploadProgress: (e) => {
             if (e.total) setProgress(Math.round((e.loaded / e.total) * 100));
@@ -431,6 +434,33 @@ function UploadPage() {
               </select>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Language Selector */}
+      {!uploading && files.length > 0 && (
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Langue de l'audio</label>
+          <select
+            value={selectedLanguage}
+            onChange={(e) => setSelectedLanguage(e.target.value)}
+            className="w-full sm:w-64 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+          >
+            <option value="">Auto-detection</option>
+            <option value="fr">Francais</option>
+            <option value="en">English</option>
+            <option value="es">Espanol</option>
+            <option value="de">Deutsch</option>
+            <option value="it">Italiano</option>
+            <option value="pt">Portugues</option>
+            <option value="nl">Nederlands</option>
+            <option value="ru">Russkiy</option>
+            <option value="zh">Zhongwen</option>
+            <option value="ja">Nihongo</option>
+            <option value="ko">Hangugeo</option>
+            <option value="ar">Arabiya</option>
+          </select>
+          <p className="text-xs text-slate-400 mt-1">Forcer la langue ameliore la precision de la transcription</p>
         </div>
       )}
 

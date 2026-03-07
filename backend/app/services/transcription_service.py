@@ -93,7 +93,7 @@ def _extract_audio_from_video(video_path: str) -> str:
         return video_path  # faster-whisper may handle it directly
 
 
-def _run_whisper(file_path: str, vad_params: dict = None):
+def _run_whisper(file_path: str, vad_params: dict = None, language: str = None):
     """Run Whisper transcription (CPU-bound, runs in thread pool)."""
     # Extract audio from video if needed
     ext = os.path.splitext(file_path)[1].lower()
@@ -106,9 +106,10 @@ def _run_whisper(file_path: str, vad_params: dict = None):
     effective_vad = vad_params or {"min_silence_duration_ms": 500}
 
     model = get_whisper_model()
+    logger.info(f"Transcribing with language={'auto' if not language else language}")
     segments_iter, info = model.transcribe(
         audio_path,
-        language=None,
+        language=language,
         vad_filter=True,
         vad_parameters=effective_vad,
     )
@@ -138,7 +139,7 @@ def _run_whisper(file_path: str, vad_params: dict = None):
     return segments, full_text, info
 
 
-async def transcribe_audio(job_id: str, db: AsyncSession, profile: str = "generic"):
+async def transcribe_audio(job_id: str, db: AsyncSession, profile: str = "generic", language: str | None = None):
     """Background task: transcribe audio file and trigger analyses."""
     try:
         result = await db.execute(select(Job).where(Job.id == job_id))
@@ -177,7 +178,7 @@ async def transcribe_audio(job_id: str, db: AsyncSession, profile: str = "generi
 
         # Run Whisper in thread pool to avoid blocking the event loop
         loop = asyncio.get_event_loop()
-        segments, full_text, info = await loop.run_in_executor(None, _run_whisper, file_path, vad_params)
+        segments, full_text, info = await loop.run_in_executor(None, _run_whisper, file_path, vad_params, language)
 
         # Apply dictionary post-corrections if available
         if dictionary_entries:

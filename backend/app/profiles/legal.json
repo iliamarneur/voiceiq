@@ -2,6 +2,7 @@
   "id": "legal",
   "name": "Juridique",
   "description": "Audiences, negociations, contrats oraux — extraction de clauses, obligations, echeances, risques juridiques.",
+  "version": "4.0",
   "icon": "Scale",
   "color": "from-amber-600 to-yellow-500",
   "analyses": [
@@ -9,7 +10,8 @@
       "type": "summary",
       "label": "Synthese juridique",
       "enabled": true,
-      "prompt": "Tu es un assistant juridique. Produis une synthese juridique structuree de cette audience/reunion/negociation. Inclus : nature de l'affaire, parties en presence, objet du litige ou de la negociation, arguments presentes par chaque partie, elements de droit invoques, et issue/decision. Return valid JSON: {\"title\": \"...\", \"case_type\": \"...\", \"parties\": [{\"name\": \"...\", \"role\": \"demandeur/defendeur/partie\", \"counsel\": \"...\"}], \"subject\": \"...\", \"arguments\": [{\"party\": \"...\", \"arguments\": [\"...\"]}], \"legal_basis\": [\"...\"], \"outcome\": \"...\", \"next_steps\": \"...\"}"
+      "prompt": "Tu es un assistant juridique. Produis une synthese juridique structuree de cette audience/reunion/negociation. Inclus : nature de l'affaire, parties en presence, objet du litige ou de la negociation, arguments presentes par chaque partie, elements de droit invoques, et issue/decision. Return valid JSON: {\"title\": \"...\", \"case_type\": \"...\", \"parties\": [{\"name\": \"...\", \"role\": \"demandeur/defendeur/partie\", \"counsel\": \"...\"}], \"subject\": \"...\", \"arguments\": [{\"party\": \"...\", \"arguments\": [\"...\"]}], \"legal_basis\": [\"...\"], \"outcome\": \"...\", \"next_steps\": \"...\"}",
+      "prompt_v2": "Tu es un avocat senior. Produis une synthese juridique enrichie. 1) Identifie le DOMAINE juridique (civil, penal, commercial, travail, administratif, fiscal). 2) Ajoute 'Enjeux financiers' (montants en jeu, valorisation du litige). 3) Ajoute 'Rapport de force' entre les parties. 4) Structure : Contexte → Parties → Objet → Arguments → Base legale → Enjeux → Issue probable. Return valid JSON: {\"title\": \"...\", \"legal_domain\": \"civil/penal/commercial/travail/administratif/fiscal\", \"case_type\": \"...\", \"parties\": [{\"name\": \"...\", \"role\": \"...\", \"counsel\": \"...\", \"strength\": \"strong/moderate/weak\"}], \"subject\": \"...\", \"financial_stakes\": {\"amount\": \"...\", \"nature\": \"...\"},  \"power_balance\": \"...\", \"arguments\": [{\"party\": \"...\", \"arguments\": [\"...\"], \"strength\": \"strong/moderate/weak\"}], \"legal_basis\": [\"...\"], \"probable_outcome\": \"...\", \"next_steps\": \"...\"}"
     },
     {
       "type": "clauses",
@@ -21,7 +23,8 @@
       "type": "obligations",
       "label": "Obligations par partie",
       "enabled": true,
-      "prompt": "Tu es un juriste. Cree un tableau exhaustif des obligations de chaque partie mentionnees dans cette transcription. Pour chaque obligation, precise la partie debitrice, la partie creditrice, la nature de l'obligation (faire/ne pas faire/payer/livrer), l'echeance si mentionnee, et les consequences en cas de manquement. Return valid JSON: {\"obligations\": [{\"debtor\": \"...\", \"creditor\": \"...\", \"obligation\": \"...\", \"type\": \"faire/ne_pas_faire/payer/livrer/garantir\", \"deadline\": \"...\", \"penalty\": \"...\", \"status\": \"confirmed/discussed/proposed\"}]}"
+      "prompt": "Tu es un juriste. Cree un tableau exhaustif des obligations de chaque partie mentionnees dans cette transcription. Pour chaque obligation, precise la partie debitrice, la partie creditrice, la nature de l'obligation (faire/ne pas faire/payer/livrer), l'echeance si mentionnee, et les consequences en cas de manquement. Return valid JSON: {\"obligations\": [{\"debtor\": \"...\", \"creditor\": \"...\", \"obligation\": \"...\", \"type\": \"faire/ne_pas_faire/payer/livrer/garantir\", \"deadline\": \"...\", \"penalty\": \"...\", \"status\": \"confirmed/discussed/proposed\"}]}",
+      "prompt_v2": "Tu es un juriste senior. Cree un tableau enrichi des obligations. Pour chaque obligation : statut d'execution (executee/en_cours/en_retard/litigieuse), sanction en cas de non-execution, preuve requise pour justifier l'execution, et base legale. Regroupe par partie puis par date d'echeance. Return valid JSON: {\"parties\": [{\"name\": \"...\", \"obligations\": [{\"obligation\": \"...\", \"type\": \"faire/ne_pas_faire/payer/livrer/garantir\", \"deadline\": \"...\", \"execution_status\": \"executee/en_cours/en_retard/litigieuse\", \"penalty\": \"...\", \"required_proof\": \"...\", \"legal_basis\": \"...\"}]}]}"
     },
     {
       "type": "deadlines",
@@ -59,6 +62,20 @@
       "name": "Tableau d'obligations",
       "type": "obligations",
       "instructions": "Format tableau strict : Partie | Obligation | Echeance | Consequence. Pour integration dans un dossier client."
+    },
+    {
+      "id": "legal_memo",
+      "name": "Memo juridique",
+      "type": "summary",
+      "instructions": "Format memo avocat classique. Sections : Question posee, Reponse courte, Analyse detaillee, Recommandation, Risques. Ton juridique professionnel, citations legales. Version v4.",
+      "version": "4.0"
+    },
+    {
+      "id": "client_summary",
+      "name": "Synthese client",
+      "type": "summary",
+      "instructions": "Langage accessible et non-juridique. Ce que le client doit retenir. Prochaines etapes concretes. Couts estimes si mentionnes. Delais previsibles. Destine au client, pas a l'avocat. Version v4.",
+      "version": "4.0"
     }
   ]
 }

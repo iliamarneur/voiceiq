@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import time
 import ollama as ollama_client
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,10 @@ from app.models import Transcription, Analysis, Chapter, TranslationCache, ChatM
 from app.services.profile_service import get_profile_analyses, get_analysis_prompt
 
 logger = logging.getLogger(__name__)
+
+# Configurable timeouts
+LLM_TIMEOUT = int(os.environ.get("LLM_TIMEOUT_SECONDS", "300"))  # 5 min default
+LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "1"))
 
 _OLLAMA_HOST_ENV = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
 OLLAMA_HOST = _OLLAMA_HOST_ENV.replace("0.0.0.0", "127.0.0.1")
@@ -58,67 +63,99 @@ def _fix_json(text: str) -> str:
     return text
 
 
-def _call_ollama(prompt: str, transcript_text: str) -> dict:
-    """Call Ollama and try to parse JSON from response."""
+def _parse_json_response(text: str) -> dict | None:
+    """Try multiple strategies to extract JSON from LLM output."""
+    # Direct parse
     try:
-        response = _ollama.chat(
-            model=OLLAMA_MODEL,
-            messages=[
-                {"role": "system", "content": "You are an analysis assistant. Always respond with valid JSON only, no extra text. Ensure all strings are properly escaped."},
-                {"role": "user", "content": f"{prompt}\n\nTranscript:\n{transcript_text[:8000]}"},
-            ],
-        )
-        text = response["message"]["content"]
-        # Try direct parse
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    # Extract from markdown code block
+    match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    if match:
         try:
-            return json.loads(text)
+            return json.loads(match.group(1))
         except json.JSONDecodeError:
-            pass
-        # Try extracting JSON block
-        match = re.search(r"\{.*\}", text, re.DOTALL)
-        if match:
             try:
-                return json.loads(match.group(0))
+                return json.loads(_fix_json(match.group(1)))
             except json.JSONDecodeError:
-                # Try fixing common issues
-                try:
-                    return json.loads(_fix_json(match.group(0)))
-                except json.JSONDecodeError:
-                    pass
-        # Try extracting from markdown code block
-        match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-        if match:
+                pass
+    # Extract first JSON object
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
             try:
-                return json.loads(match.group(1))
+                return json.loads(_fix_json(match.group(0)))
             except json.JSONDecodeError:
-                try:
-                    return json.loads(_fix_json(match.group(1)))
-                except json.JSONDecodeError:
-                    pass
-        logger.warning(f"Could not parse JSON from Ollama response, returning raw text")
-        return {"raw": text}
-    except Exception as e:
-        logger.error(f"Ollama call failed: {e}")
-        return {"error": str(e)}
+                pass
+    return None
+
+
+def _call_ollama(prompt: str, transcript_text: str) -> dict:
+    """Call Ollama and try to parse JSON from response. Retries on failure."""
+    last_error = None
+    for attempt in range(1 + LLM_MAX_RETRIES):
+        t0 = time.time()
+        try:
+            response = _ollama.chat(
+                model=OLLAMA_MODEL,
+                messages=[
+                    {"role": "system", "content": "You are an analysis assistant. Always respond with valid JSON only, no extra text. Ensure all strings are properly escaped."},
+                    {"role": "user", "content": f"{prompt}\n\nTranscript:\n{transcript_text[:8000]}"},
+                ],
+            )
+            elapsed = time.time() - t0
+            text = response["message"]["content"]
+            logger.info(f"Ollama call OK ({elapsed:.1f}s, {len(text)} chars)")
+
+            parsed = _parse_json_response(text)
+            if parsed is not None:
+                return parsed
+
+            if attempt < LLM_MAX_RETRIES:
+                logger.warning(f"JSON parse failed, retrying ({attempt + 1}/{LLM_MAX_RETRIES})...")
+                continue
+            logger.warning(f"Could not parse JSON from Ollama response, returning raw text")
+            return {"raw": text}
+        except Exception as e:
+            elapsed = time.time() - t0
+            last_error = e
+            logger.error(f"Ollama call failed ({elapsed:.1f}s, attempt {attempt + 1}): {e}")
+            if attempt < LLM_MAX_RETRIES:
+                continue
+
+    return {"error": str(last_error)}
 
 
 def _call_ollama_text(system_prompt: str, user_prompt: str) -> str:
-    """Call Ollama and return raw text response."""
-    try:
-        response = _ollama.chat(
-            model=OLLAMA_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-        return response["message"]["content"]
-    except Exception as e:
-        logger.error(f"Ollama call failed: {e}")
-        return f"Error: {str(e)}"
+    """Call Ollama and return raw text response. Retries on failure."""
+    last_error = None
+    for attempt in range(1 + LLM_MAX_RETRIES):
+        t0 = time.time()
+        try:
+            response = _ollama.chat(
+                model=OLLAMA_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+            elapsed = time.time() - t0
+            text = response["message"]["content"]
+            logger.info(f"Ollama text call OK ({elapsed:.1f}s, {len(text)} chars)")
+            return text
+        except Exception as e:
+            elapsed = time.time() - t0
+            last_error = e
+            logger.error(f"Ollama text call failed ({elapsed:.1f}s, attempt {attempt + 1}): {e}")
+            if attempt < LLM_MAX_RETRIES:
+                continue
+    return f"Error: {str(last_error)}"
 
 
-async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id: str = None):
+async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id: str = None, prompt_version: str = "latest"):
     """Generate analyses for a transcription based on its profile."""
     result = await db.execute(select(Transcription).where(Transcription.id == transcription_id))
     transcription = result.scalar_one_or_none()
@@ -133,11 +170,27 @@ async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id:
 
     if profile_analyses:
         # Profile-driven pipeline
+        success_count = 0
+        error_count = 0
         for analysis_def in profile_analyses:
             analysis_type = analysis_def["type"]
-            prompt = analysis_def.get("prompt", PROMPTS.get(analysis_type, f"Analyze this transcript for: {analysis_type}"))
-            logger.info(f"[{effective_profile}] Generating {analysis_type} for {transcription_id}...")
-            content = await _call_ollama_async(prompt, transcription.text)
+            # Use prompt_v2 if available and version=latest
+            if prompt_version == "latest" and "prompt_v2" in analysis_def:
+                prompt = analysis_def["prompt_v2"]
+            else:
+                prompt = analysis_def.get("prompt", PROMPTS.get(analysis_type, f"Analyze this transcript for: {analysis_type}"))
+            logger.info(f"[{effective_profile}] Generating {analysis_type} (v={prompt_version}) for {transcription_id}...")
+            try:
+                content = await _call_ollama_async(prompt, transcription.text)
+                if "error" in content and len(content) == 1:
+                    logger.warning(f"[{effective_profile}] {analysis_type} returned error: {content['error']}")
+                    error_count += 1
+                else:
+                    success_count += 1
+            except Exception as e:
+                logger.error(f"[{effective_profile}] {analysis_type} failed: {e}")
+                content = {"error": str(e)}
+                error_count += 1
             analysis = Analysis(
                 transcription_id=transcription_id,
                 type=analysis_type,
@@ -145,7 +198,7 @@ async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id:
             )
             db.add(analysis)
         await db.commit()
-        logger.info(f"[{effective_profile}] {len(profile_analyses)} analyses generated for {transcription_id}")
+        logger.info(f"[{effective_profile}] {success_count}/{len(profile_analyses)} analyses OK, {error_count} errors for {transcription_id}")
     else:
         # Fallback to hardcoded v2 analyses
         for analysis_type in ANALYSIS_TYPES:
@@ -162,7 +215,7 @@ async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id:
         logger.info(f"All {len(ANALYSIS_TYPES)} analyses generated for {transcription_id}")
 
 
-async def regenerate_analysis(transcription_id: str, analysis_type: str, db: AsyncSession, instructions: str = None):
+async def regenerate_analysis(transcription_id: str, analysis_type: str, db: AsyncSession, instructions: str = None, prompt_version: str = "latest"):
     """Regenerate a single analysis, optionally with custom instructions."""
     result = await db.execute(select(Transcription).where(Transcription.id == transcription_id))
     transcription = result.scalar_one_or_none()
@@ -171,7 +224,7 @@ async def regenerate_analysis(transcription_id: str, analysis_type: str, db: Asy
 
     # Try profile-specific prompt first, then fallback to hardcoded
     effective_profile = getattr(transcription, "profile", "generic") or "generic"
-    profile_prompt = get_analysis_prompt(effective_profile, analysis_type)
+    profile_prompt = get_analysis_prompt(effective_profile, analysis_type, version=prompt_version)
     prompt = profile_prompt or PROMPTS.get(analysis_type, f"Analyze this transcript for: {analysis_type}")
     if instructions:
         prompt += f"\n\nAdditional instructions: {instructions}"

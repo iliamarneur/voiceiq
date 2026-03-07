@@ -2,6 +2,7 @@
   "id": "business",
   "name": "Business / Reunions",
   "description": "Reunions, appels clients, interviews — compte-rendus, actions, decisions, KPIs, suivi projet.",
+  "version": "4.0",
   "icon": "Briefcase",
   "color": "from-blue-500 to-cyan-500",
   "analyses": [
@@ -9,13 +10,15 @@
       "type": "summary",
       "label": "Compte-rendu",
       "enabled": true,
-      "prompt": "Tu es un assistant de direction senior. Produis un compte-rendu de reunion professionnel et structure. Inclus : titre de la reunion, date/contexte si mentionne, participants identifies avec leur role, ordre du jour couvert, chaque point discute avec un resume factuel, et les conclusions. Sois precis et factuel. Return valid JSON: {\"title\": \"...\", \"context\": \"...\", \"participants\": [{\"name\": \"...\", \"role\": \"...\"}], \"agenda\": [\"...\"], \"discussion_points\": [{\"topic\": \"...\", \"summary\": \"...\", \"outcome\": \"...\"}], \"conclusion\": \"...\"}"
+      "prompt": "Tu es un assistant de direction senior. Produis un compte-rendu de reunion professionnel et structure. Inclus : titre de la reunion, date/contexte si mentionne, participants identifies avec leur role, ordre du jour couvert, chaque point discute avec un resume factuel, et les conclusions. Sois precis et factuel. Return valid JSON: {\"title\": \"...\", \"context\": \"...\", \"participants\": [{\"name\": \"...\", \"role\": \"...\"}], \"agenda\": [\"...\"], \"discussion_points\": [{\"topic\": \"...\", \"summary\": \"...\", \"outcome\": \"...\"}], \"conclusion\": \"...\"}",
+      "prompt_v2": "Tu es un assistant de direction senior specialise en comptes-rendus. Analyse la reunion et produis un CR complet. 1) Identifie automatiquement le TYPE de reunion (standup, COMEX, client, brainstorm, retrospective, negociation, formation). 2) Adapte le format au type detecte. 3) Inclus une section 'Ambiance/Dynamique' (consensuelle, tendue, productive, exploratoire). 4) Ajoute 'Sujets non abordes' si un agenda est mentionne. 5) Utilise des pictos emoji pour les sections. Return valid JSON: {\"title\": \"...\", \"meeting_type\": \"standup/comex/client/brainstorm/retrospective/negociation/formation/autre\", \"context\": \"...\", \"participants\": [{\"name\": \"...\", \"role\": \"...\"}], \"agenda\": [\"...\"], \"discussion_points\": [{\"topic\": \"...\", \"summary\": \"...\", \"outcome\": \"...\"}], \"atmosphere\": \"consensuelle/tendue/productive/exploratoire\", \"unaddressed_topics\": [\"...\"], \"conclusion\": \"...\"}"
     },
     {
       "type": "actions",
       "label": "Actions & Decisions",
       "enabled": true,
-      "prompt": "Tu es un chef de projet. Extrais TOUTES les actions a mener avec le maximum de details : action precise, responsable (si mentionne), deadline (si mentionnee), priorite, et statut. Extrais aussi les decisions prises avec leur justification, et les questions restees ouvertes. Return valid JSON: {\"actions\": [{\"action\": \"...\", \"owner\": \"...\", \"deadline\": \"...\", \"priority\": \"high/medium/low\", \"context\": \"...\"}], \"decisions\": [{\"decision\": \"...\", \"rationale\": \"...\", \"decided_by\": \"...\"}], \"open_questions\": [{\"question\": \"...\", \"raised_by\": \"...\", \"assigned_to\": \"...\"}]}"
+      "prompt": "Tu es un chef de projet. Extrais TOUTES les actions a mener avec le maximum de details : action precise, responsable (si mentionne), deadline (si mentionnee), priorite, et statut. Extrais aussi les decisions prises avec leur justification, et les questions restees ouvertes. Return valid JSON: {\"actions\": [{\"action\": \"...\", \"owner\": \"...\", \"deadline\": \"...\", \"priority\": \"high/medium/low\", \"context\": \"...\"}], \"decisions\": [{\"decision\": \"...\", \"rationale\": \"...\", \"decided_by\": \"...\"}], \"open_questions\": [{\"question\": \"...\", \"raised_by\": \"...\", \"assigned_to\": \"...\"}]}",
+      "prompt_v2": "Tu es un chef de projet senior. Extrais TOUTES les actions avec : action precise, responsable, deadline, priorite (P0-P3), dependances eventuelles, et un score de clarte (0-100 : l'action est-elle assez precise pour etre executee sans ambiguite ?). Regroupe les actions par owner. Ajoute les 'engagements verbaux' (promesses faites en reunion sans formalisation). Return valid JSON: {\"actions_by_owner\": {\"owner_name\": [{\"action\": \"...\", \"deadline\": \"...\", \"priority\": \"P0/P1/P2/P3\", \"clarity_score\": 85, \"dependencies\": [\"...\"], \"verbal_commitment\": false}]}, \"decisions\": [{\"decision\": \"...\", \"rationale\": \"...\", \"decided_by\": \"...\"}], \"verbal_commitments\": [{\"who\": \"...\", \"commitment\": \"...\", \"context\": \"...\"}], \"open_questions\": [{\"question\": \"...\", \"raised_by\": \"...\", \"assigned_to\": \"...\"}]}"
     },
     {
       "type": "keypoints",
@@ -76,6 +79,20 @@
       "name": "COMEX Summary",
       "type": "summary",
       "instructions": "Resume executive pour le COMEX : 5 bullet points max, focus sur impact business et decisions strategiques."
+    },
+    {
+      "id": "weekly_team_cr",
+      "name": "CR Hebdo Equipe",
+      "type": "summary",
+      "instructions": "Format concis 1 page. Sections : Faits marquants de la semaine, Actions en cours, Blocages identifies, Prochaines etapes. Ton direct, bullet points, pas de prose. Version v4.",
+      "version": "4.0"
+    },
+    {
+      "id": "negotiation_cr",
+      "name": "Compte-rendu Negociation",
+      "type": "summary",
+      "instructions": "Positions de chaque partie, points d'accord et de desaccord, concessions faites, prochaines etapes de negociation. Ton objectif et factuel. Version v4.",
+      "version": "4.0"
     }
   ]
 }

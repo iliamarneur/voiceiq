@@ -2,6 +2,7 @@
   "id": "education",
   "name": "Education",
   "description": "Cours, conferences, formations — fiches de revision, quiz par section, cartes mentales pedagogiques, glossaire.",
+  "version": "4.0",
   "icon": "GraduationCap",
   "color": "from-emerald-500 to-teal-500",
   "analyses": [
@@ -9,7 +10,8 @@
       "type": "summary",
       "label": "Resume pedagogique",
       "enabled": true,
-      "prompt": "Tu es un assistant pedagogique expert. Produis un resume pedagogique structure de ce cours/conference. Inclus : titre du cours, niveau estime (debutant/intermediaire/avance), prerequis, objectifs d'apprentissage (ce que l'etudiant saura faire apres), concepts principaux expliques simplement avec des exemples, et les points essentiels a retenir pour l'examen. Return valid JSON: {\"title\": \"...\", \"level\": \"debutant/intermediaire/avance\", \"prerequisites\": [\"...\"], \"learning_objectives\": [\"...\"], \"introduction\": \"...\", \"key_concepts\": [{\"concept\": \"...\", \"explanation\": \"...\", \"example\": \"...\"}], \"takeaways\": [\"...\"], \"exam_tips\": [\"...\"]}"
+      "prompt": "Tu es un assistant pedagogique expert. Produis un resume pedagogique structure de ce cours/conference. Inclus : titre du cours, niveau estime (debutant/intermediaire/avance), prerequis, objectifs d'apprentissage (ce que l'etudiant saura faire apres), concepts principaux expliques simplement avec des exemples, et les points essentiels a retenir pour l'examen. Return valid JSON: {\"title\": \"...\", \"level\": \"debutant/intermediaire/avance\", \"prerequisites\": [\"...\"], \"learning_objectives\": [\"...\"], \"introduction\": \"...\", \"key_concepts\": [{\"concept\": \"...\", \"explanation\": \"...\", \"example\": \"...\"}], \"takeaways\": [\"...\"], \"exam_tips\": [\"...\"]}",
+      "prompt_v2": "Tu es un ingenieur pedagogique expert. Produis un resume pedagogique enrichi. 1) Detecte le NIVEAU academique (L1, L2, L3, M1, M2, doctorat, formation pro, lycee). 2) Identifie les 'Prerequis detectes' (concepts mentionnes sans etre expliques). 3) Ajoute 'Liens interdisciplinaires' (connexions avec d'autres matieres). 4) Structure : Objectifs → Concepts → Exemples → A retenir → Pour aller plus loin. Return valid JSON: {\"title\": \"...\", \"academic_level\": \"L1/L2/L3/M1/M2/doctorat/formation_pro/lycee\", \"prerequisites_detected\": [{\"concept\": \"...\", \"assumed_known\": true}], \"learning_objectives\": [\"...\"], \"introduction\": \"...\", \"key_concepts\": [{\"concept\": \"...\", \"explanation\": \"...\", \"example\": \"...\", \"difficulty\": \"easy/medium/hard\"}], \"interdisciplinary_links\": [{\"subject\": \"...\", \"connection\": \"...\"}], \"takeaways\": [\"...\"], \"further_reading\": [\"...\"], \"exam_tips\": [\"...\"]}"
     },
     {
       "type": "flashcards",
@@ -21,7 +23,8 @@
       "type": "quiz",
       "label": "Quiz par section",
       "enabled": true,
-      "prompt": "Tu es un enseignant expert. Cree un quiz QCM de 8-10 questions couvrant les differentes sections de ce cours. Les questions doivent tester la COMPREHENSION et l'APPLICATION, pas la simple memorisation. Inclus des questions de differents niveaux (connaissance, comprehension, application, analyse). Pour chaque question, donne une explication pedagogique detaillee de pourquoi la bonne reponse est correcte et pourquoi les autres sont fausses. Return valid JSON: {\"questions\": [{\"section\": \"Section du cours\", \"question\": \"...\", \"choices\": [\"A. ...\", \"B. ...\", \"C. ...\", \"D. ...\"], \"answer\": \"A\", \"difficulty\": \"knowledge/comprehension/application/analysis\", \"explanation\": \"...\", \"common_mistake\": \"...\"}]}"
+      "prompt": "Tu es un enseignant expert. Cree un quiz QCM de 8-10 questions couvrant les differentes sections de ce cours. Les questions doivent tester la COMPREHENSION et l'APPLICATION, pas la simple memorisation. Inclus des questions de differents niveaux (connaissance, comprehension, application, analyse). Pour chaque question, donne une explication pedagogique detaillee de pourquoi la bonne reponse est correcte et pourquoi les autres sont fausses. Return valid JSON: {\"questions\": [{\"section\": \"Section du cours\", \"question\": \"...\", \"choices\": [\"A. ...\", \"B. ...\", \"C. ...\", \"D. ...\"], \"answer\": \"A\", \"difficulty\": \"knowledge/comprehension/application/analysis\", \"explanation\": \"...\", \"common_mistake\": \"...\"}]}",
+      "prompt_v2": "Tu es un enseignant expert en evaluation. Cree un quiz enrichi avec 3 types de questions : 1) QCM classiques (4 choix), 2) Vrai/Faux avec justification obligatoire, 3) Questions a trous (fill-in-the-blank). 10-12 questions au total couvrant 3 niveaux explicites : Memorisation, Comprehension, Analyse/Application. Chaque question reference le concept teste. Return valid JSON: {\"questions\": [{\"type\": \"mcq/true_false/fill_blank\", \"section\": \"...\", \"question\": \"...\", \"choices\": [\"...\"], \"answer\": \"...\", \"justification\": \"...\", \"level\": \"memorisation/comprehension/analyse\", \"explanation\": \"...\", \"common_mistake\": \"...\", \"related_concept\": \"...\"}]}"
     },
     {
       "type": "mindmap",
@@ -76,6 +79,20 @@
       "name": "Fiche de revision examen",
       "type": "keypoints",
       "instructions": "Cree une fiche de revision pour examen : les 10 points les plus importants a connaitre, les formules a retenir, les pieges classiques a eviter."
+    },
+    {
+      "id": "revision_plan",
+      "name": "Plan de revision",
+      "type": "keypoints",
+      "instructions": "Ordre optimal de revision des concepts (du plus fondamental au plus avance). Temps estime par concept. Exercices recommandes par concept. Points de vigilance (erreurs frequentes). Version v4.",
+      "version": "4.0"
+    },
+    {
+      "id": "teacher_sheet",
+      "name": "Fiche enseignant",
+      "type": "summary",
+      "instructions": "Resume du cours donne. Points ou les etudiants risquent de decrocher. Suggestions d'exercices complementaires. Evaluation suggeree. Destine a l'enseignant, pas aux etudiants. Version v4.",
+      "version": "4.0"
     }
   ]
 }

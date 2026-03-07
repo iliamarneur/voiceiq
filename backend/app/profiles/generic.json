@@ -2,6 +2,7 @@
   "id": "generic",
   "name": "Generique",
   "description": "Profil par defaut — toutes les analyses disponibles. Podcasts, interviews, notes vocales, conferences.",
+  "version": "4.0",
   "icon": "Sparkles",
   "color": "from-indigo-500 to-purple-500",
   "analyses": [
@@ -9,13 +10,15 @@
       "type": "summary",
       "label": "Resume",
       "enabled": true,
-      "prompt": "Produce a structured summary of this transcript with: title, introduction, main points, and conclusion. Be comprehensive and capture all important information. Return valid JSON: {\"title\": \"...\", \"introduction\": \"...\", \"points\": [\"...\"], \"conclusion\": \"...\"}"
+      "prompt": "Produce a structured summary of this transcript with: title, introduction, main points, and conclusion. Be comprehensive and capture all important information. Return valid JSON: {\"title\": \"...\", \"introduction\": \"...\", \"points\": [\"...\"], \"conclusion\": \"...\"}",
+      "prompt_v2": "Tu es un assistant expert en synthese. 1) Detecte automatiquement le TYPE de contenu (interview, conference, podcast, reunion informelle, monologue, debat, tutoriel). 2) Adapte le format au type detecte. 3) Ajoute 'Ton general' (informatif, pedagogique, debat, emotionnel, humoristique). 4) Ajoute 'Public cible' detecte. Return valid JSON: {\"title\": \"...\", \"content_type\": \"interview/conference/podcast/reunion/monologue/debat/tutoriel\", \"tone\": \"informatif/pedagogique/debat/emotionnel/humoristique\", \"target_audience\": \"...\", \"introduction\": \"...\", \"points\": [\"...\"], \"conclusion\": \"...\"}"
     },
     {
       "type": "keypoints",
       "label": "Points cles",
       "enabled": true,
-      "prompt": "Extract the key points from this transcript as thematic bullet points. Group related points together under clear themes. Return valid JSON: {\"keypoints\": [{\"theme\": \"...\", \"points\": [\"...\"]}]}"
+      "prompt": "Extract the key points from this transcript as thematic bullet points. Group related points together under clear themes. Return valid JSON: {\"keypoints\": [{\"theme\": \"...\", \"points\": [\"...\"]}]}",
+      "prompt_v2": "Tu es un analyste expert. Extrais les points cles HIERARCHISES par importance (pas juste listes). Ajoute des 'citations verbatim' les plus marquantes du transcript. Regroupe par theme avec transitions logiques. Return valid JSON: {\"keypoints\": [{\"theme\": \"...\", \"importance\": \"critical/high/medium\", \"points\": [\"...\"], \"verbatim_quote\": \"...\"}]}"
     },
     {
       "type": "actions",

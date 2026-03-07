@@ -2,6 +2,7 @@
   "id": "medical",
   "name": "Medical / Sante",
   "description": "Consultations, staffs medicaux, comptes-rendus cliniques — notes SOAP, redaction PII, plan de suivi.",
+  "version": "4.0",
   "icon": "HeartPulse",
   "color": "from-red-500 to-rose-500",
   "analyses": [
@@ -9,7 +10,8 @@
       "type": "soap",
       "label": "Note SOAP",
       "enabled": true,
-      "prompt": "Tu es un assistant medical. Structure cette consultation au format SOAP (Subjective, Objective, Assessment, Plan). Subjective = motif de consultation et symptomes rapportes par le patient. Objective = signes cliniques, examens, constantes mentionnes. Assessment = diagnostic ou hypotheses diagnostiques evoquees. Plan = traitement prescrit, examens complementaires, orientation, suivi. Return valid JSON: {\"subjective\": \"...\", \"objective\": \"...\", \"assessment\": \"...\", \"plan\": \"...\", \"urgency\": \"low/medium/high\"}"
+      "prompt": "Tu es un assistant medical. Structure cette consultation au format SOAP (Subjective, Objective, Assessment, Plan). Subjective = motif de consultation et symptomes rapportes par le patient. Objective = signes cliniques, examens, constantes mentionnes. Assessment = diagnostic ou hypotheses diagnostiques evoquees. Plan = traitement prescrit, examens complementaires, orientation, suivi. Return valid JSON: {\"subjective\": \"...\", \"objective\": \"...\", \"assessment\": \"...\", \"plan\": \"...\", \"urgency\": \"low/medium/high\"}",
+      "prompt_v2": "Tu es un assistant medical senior. Structure cette consultation au format SOAP enrichi. 1) Ajoute un 'score de completude' (0-100) : est-ce que toutes les sections sont bien renseignees ? 2) Assessment : differencie diagnostic PRINCIPAL vs diagnostics differentiels. 3) Plan : categorise en immediat / court terme / long terme. 4) Ajoute 'Signes negatifs pertinents' (ce qui a ete cherche et non trouve). 5) Indicateur de gravite global (vert/orange/rouge). Return valid JSON: {\"subjective\": \"...\", \"objective\": \"...\", \"assessment\": {\"primary_diagnosis\": \"...\", \"differential_diagnoses\": [\"...\"], \"pertinent_negatives\": [\"...\"]}, \"plan\": {\"immediate\": [\"...\"], \"short_term\": [\"...\"], \"long_term\": [\"...\"]}, \"urgency\": \"low/medium/high\", \"completeness_score\": 85, \"severity\": \"green/orange/red\"}"
     },
     {
       "type": "summary",
@@ -27,7 +29,8 @@
       "type": "prescriptions",
       "label": "Prescriptions & Traitements",
       "enabled": true,
-      "prompt": "Tu es un assistant pharmacien. Extrais toutes les prescriptions, medicaments, posologies, traitements et recommandations therapeutiques mentionnes dans cette consultation. Pour chaque element, note le medicament/traitement, la posologie, la duree, et les precautions eventuelles. Return valid JSON: {\"prescriptions\": [{\"medication\": \"...\", \"dosage\": \"...\", \"frequency\": \"...\", \"duration\": \"...\", \"route\": \"oral/IV/topique/...\", \"precautions\": \"...\"}], \"non_pharma\": [\"...\"], \"allergies_mentioned\": [\"...\"], \"interactions_warning\": \"...\"}"
+      "prompt": "Tu es un assistant pharmacien. Extrais toutes les prescriptions, medicaments, posologies, traitements et recommandations therapeutiques mentionnes dans cette consultation. Pour chaque element, note le medicament/traitement, la posologie, la duree, et les precautions eventuelles. Return valid JSON: {\"prescriptions\": [{\"medication\": \"...\", \"dosage\": \"...\", \"frequency\": \"...\", \"duration\": \"...\", \"route\": \"oral/IV/topique/...\", \"precautions\": \"...\"}], \"non_pharma\": [\"...\"], \"allergies_mentioned\": [\"...\"], \"interactions_warning\": \"...\"}",
+      "prompt_v2": "Tu es un pharmacien clinicien senior. Extrais toutes les prescriptions avec details enrichis. Pour chaque medicament : nom (DCI + nom commercial si mentionne), posologie, frequence, duree, voie d'administration, et SURTOUT : interactions medicamenteuses detectees entre les medicaments prescrits, contre-indications liees au contexte patient (age, grossesse, allergies mentionnees, comorbidites). Return valid JSON: {\"medications\": [{\"name\": \"...\", \"dci\": \"...\", \"dosage\": \"...\", \"frequency\": \"...\", \"duration\": \"...\", \"route\": \"...\", \"interactions\": [{\"with\": \"...\", \"severity\": \"major/moderate/minor\", \"effect\": \"...\"}], \"contraindications\": [\"...\"], \"precautions\": \"...\"}], \"non_pharma\": [\"...\"], \"allergies_mentioned\": [\"...\"], \"patient_context\": {\"age\": \"...\", \"comorbidities\": [\"...\"], \"pregnancy\": \"unknown/yes/no\"}}"
     },
     {
       "type": "watchpoints",
@@ -59,6 +62,20 @@
       "name": "Note SOAP express",
       "type": "soap",
       "instructions": "Note SOAP ultra-concise : 2-3 lignes par section maximum. Pour saisie rapide dans le dossier patient."
+    },
+    {
+      "id": "liaison_letter",
+      "name": "Lettre de liaison",
+      "type": "summary",
+      "instructions": "Format standard hospitalier. Sections : Motif d'hospitalisation, Histoire de la maladie, Examen clinique, Examens complementaires, Diagnostic, Traitement a la sortie, Suivi prevu. Ton medical professionnel. Version v4.",
+      "version": "4.0"
+    },
+    {
+      "id": "patient_sheet",
+      "name": "Fiche patient simplifiee",
+      "type": "summary",
+      "instructions": "Langage accessible et non-medical. Ce que le patient doit retenir. Medicaments a prendre (simplifie). Quand reconsulter. Signaux d'alerte a surveiller. Destine au patient, pas au medecin. Version v4.",
+      "version": "4.0"
     }
   ]
 }

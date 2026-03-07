@@ -46,8 +46,8 @@ AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".flac", ".ogg", ".webm", ".wma", ".
 # Video formats (audio will be extracted)
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".ts", ".mts", ".m2ts", ".webm"}
 ALLOWED_EXTENSIONS = AUDIO_EXTENSIONS | VIDEO_EXTENSIONS
-# Max upload size: 2 GB
-MAX_UPLOAD_SIZE = 2 * 1024 * 1024 * 1024
+# Max upload size: configurable via env var (default 2 GB)
+MAX_UPLOAD_SIZE = int(os.environ.get("MAX_UPLOAD_SIZE_BYTES", str(2 * 1024 * 1024 * 1024)))
 
 
 @asynccontextmanager
@@ -523,3 +523,11 @@ async def reload_profiles_endpoint():
     reload_profiles()
     profiles = get_all_profiles()
     return {"status": "reloaded", "profiles": [p["id"] for p in profiles]}
+
+
+# ── Health ───────────────────────────────────────────────
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "ok", "version": "3.2"}

@@ -53,11 +53,17 @@ def get_profile_analyses(profile_id: str) -> list[dict]:
     return [a for a in profile.get("analyses", []) if a.get("enabled", True)]
 
 
-def get_analysis_prompt(profile_id: str, analysis_type: str) -> Optional[str]:
-    """Return the prompt for a specific analysis type within a profile."""
+def get_analysis_prompt(profile_id: str, analysis_type: str, version: str = "latest") -> Optional[str]:
+    """Return the prompt for a specific analysis type within a profile.
+
+    version="latest" uses prompt_v2 if available, else prompt.
+    version="v3" always uses the original prompt.
+    """
     analyses = get_profile_analyses(profile_id)
     for a in analyses:
         if a["type"] == analysis_type:
+            if version == "latest" and "prompt_v2" in a:
+                return a["prompt_v2"]
             return a.get("prompt")
     return None
 

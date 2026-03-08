@@ -8,18 +8,19 @@ import {
   Zap, Shield, Clock, Volume2, FlaskConical, Stethoscope, Briefcase,
   GraduationCap, Landmark, Target, TestTube2,
   AudioLines, Users, Settings2, RotateCcw, Brain, ListOrdered,
-  Star, SlidersHorizontal, Lightbulb, PenLine, Plus, Mic, PenTool
+  Star, SlidersHorizontal, Lightbulb, PenLine, Plus, Mic, PenTool,
+  CreditCard, Timer, ShoppingBag, Activity, Globe2
 } from 'lucide-react';
 
-const VERSION = '6.0.0';
-const LAST_UPDATED = '2026-03-06';
+const VERSION = '7.0.0';
+const LAST_UPDATED = '2026-03-07';
 
 interface Feature {
   icon: any;
   title: string;
   description: string;
   version: string;
-  category: 'core' | 'analysis' | 'v2' | 'v3' | 'v4' | 'v5' | 'v5x' | 'v6' | 'export';
+  category: 'core' | 'analysis' | 'v2' | 'v3' | 'v4' | 'v5' | 'v5x' | 'v6' | 'v7' | 'export';
 }
 
 const FEATURES: Feature[] = [
@@ -94,6 +95,14 @@ const FEATURES: Feature[] = [
   { icon: Plus, title: 'Ecran "Nouveau" unifie', description: 'Page d\'entree proposant 3 modes : fichier, enregistrement micro, dictee en direct. Selection du profil metier integree.', version: '6.0', category: 'v6' },
   { icon: Mic, title: 'Enregistrement micro (dictaphone)', description: 'Enregistrez un audio depuis votre navigateur avec indicateur de niveau, reecoute, puis envoyez-le au pipeline de transcription standard.', version: '6.0', category: 'v6' },
   { icon: PenTool, title: 'Dictee en direct', description: 'Dictez en temps reel : le texte apparait au fur et a mesure par blocs de 4 secondes. Pause/reprise, copie du texte, sauvegarde comme transcription avec analyses.', version: '6.0', category: 'v6' },
+
+  // v7 — Offres & Minutes
+  { icon: CreditCard, title: 'Plans & Abonnements', description: '4 plans adaptes a chaque usage : Free (30 min/mois), Basic (300 min, 19€), Pro (2000 min, 49€), Team (5000 min, 99€). Changement instantane.', version: '7.0', category: 'v7' },
+  { icon: Timer, title: 'Suivi des minutes', description: 'Consommation en temps reel avec barre de progression dans la sidebar. Chaque transcription deduit la duree audio de votre forfait.', version: '7.0', category: 'v7' },
+  { icon: Plus, title: 'Packs minutes supplementaires', description: 'Achetez des packs de minutes a la carte : 100 min (3€), 500 min (12€), 2000 min (40€). Cumul illimite, pas d\'expiration.', version: '7.0', category: 'v7' },
+  { icon: ShoppingBag, title: 'Commandes one-shot', description: 'Transcrivez sans abonnement : paliers S (30 min, 3€), M (60 min, 4€), L (90 min, 5€). Ideal pour un besoin ponctuel.', version: '7.0', category: 'v7' },
+  { icon: Activity, title: 'Metriques d\'usage', description: 'Tableau de bord avec nombre de transcriptions, duree totale, repartition par source (upload/micro/dictee) et par profil metier.', version: '7.0', category: 'v7' },
+  { icon: Globe2, title: 'Selection de langue', description: 'Choisissez la langue avant l\'upload parmi 12 langues (FR, EN, ES, DE, IT, PT, NL, RU, ZH, JA, KO, AR) ou laissez la detection automatique.', version: '7.0', category: 'v7' },
 ];
 
 const CATEGORIES = [
@@ -105,6 +114,7 @@ const CATEGORIES = [
   { key: 'v5', label: 'Nouveautes v5 — Qualite & Adaptation Audio', color: 'from-cyan-500 to-blue-500' },
   { key: 'v5x', label: 'Nouveautes v5.1 — Confort Transcription', color: 'from-amber-500 to-rose-500' },
   { key: 'v6', label: 'Nouveautes v6 — Multi-Entrees', color: 'from-emerald-500 to-cyan-500' },
+  { key: 'v7', label: 'Nouveautes v7 — Offres & Minutes', color: 'from-sky-500 to-indigo-500' },
   { key: 'export', label: 'Export', color: 'from-amber-500 to-orange-500' },
 ];
 
@@ -144,10 +154,10 @@ function About() {
       <div className="mb-12 p-6 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-100 dark:border-indigo-800">
         <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
           <strong>VoiceIQ</strong> est une plateforme 100% locale de transcription et d'analyse audio.
-          Uploadez un fichier audio, obtenez une transcription precise via Whisper, puis
-          des analyses IA adaptees a votre contexte metier grace aux 5 profils verticaux (Generique, Business, Education, Medical, Juridique).
-          Chaque profil active un pipeline d'analyse specifique avec des prompts optimises.
-          Le tout sans aucune donnee envoyee a l'exterieur.
+          Uploadez un fichier, enregistrez depuis votre micro ou dictez en direct — obtenez une transcription precise via Whisper,
+          puis des analyses IA adaptees a votre contexte metier grace aux 5 profils verticaux (Generique, Business, Education, Medical, Juridique).
+          Avec la v7, choisissez votre plan (Free, Basic, Pro, Team), suivez votre consommation de minutes en temps reel
+          et commandez a la carte sans abonnement. Le tout sans aucune donnee envoyee a l'exterieur.
         </p>
         <div className="flex items-center gap-6 mt-4 text-xs text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> 100% local</span>
@@ -227,6 +237,11 @@ function About() {
                       {feature.version === '6.0' && (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
                           V6
+                        </span>
+                      )}
+                      {feature.version === '7.0' && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400">
+                          V7
                         </span>
                       )}
                     </div>

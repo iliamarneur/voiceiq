@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Upload, Sun, Moon, Mic2, Menu, FileText, Info, BookMarked, Settings2, SlidersHorizontal, Plus, Cpu } from 'lucide-react';
+import { LayoutDashboard, Upload, Sun, Moon, Mic2, Menu, FileText, Info, BookMarked, Settings2, SlidersHorizontal, Plus, Cpu, CreditCard, Clock } from 'lucide-react';
 import axios from 'axios';
 import Dashboard from './pages/Dashboard';
 import UploadPage from './pages/Upload';
@@ -14,17 +14,27 @@ import PreferencesPage from './pages/Preferences';
 import NewEntryPage from './pages/NewEntry';
 import RecordPage from './pages/Record';
 import DictatePage from './pages/Dictate';
+import PlansUsagePage from './pages/PlansUsage';
 
 function App() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [llmModels, setLlmModels] = useState<{name: string; size_gb: number}[]>([]);
   const [currentModel, setCurrentModel] = useState('');
+  const [minutesInfo, setMinutesInfo] = useState<{minutes_remaining: number; minutes_included: number; extra_minutes_balance: number; plan_name: string} | null>(null);
 
   useEffect(() => {
     axios.get('/api/llm/models').then(res => {
       setLlmModels(res.data.models || []);
       setCurrentModel(res.data.current || '');
+    }).catch(() => {});
+    axios.get('/api/subscription').then(res => {
+      setMinutesInfo({
+        minutes_remaining: res.data.minutes_remaining,
+        minutes_included: res.data.minutes_included,
+        extra_minutes_balance: res.data.extra_minutes_balance,
+        plan_name: res.data.plan_name,
+      });
     }).catch(() => {});
   }, []);
 
@@ -47,6 +57,7 @@ function App() {
     { to: '/templates', icon: FileText, label: 'Templates' },
     { to: '/dictionaries', icon: BookMarked, label: 'Dictionnaires' },
     { to: '/presets', icon: Settings2, label: 'Presets' },
+    { to: '/plans', icon: CreditCard, label: 'Plans & Usage' },
     { to: '/preferences', icon: SlidersHorizontal, label: 'Preferences' },
     { to: '/about', icon: Info, label: 'A propos' },
   ];
@@ -67,7 +78,7 @@ function App() {
               </div>
               <div>
                 <h1 className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">VoiceIQ</h1>
-                <p className="text-xs text-slate-400">v6 - Multi-Entrees</p>
+                <p className="text-xs text-slate-400">v7 - Offres & Minutes</p>
               </div>
             </div>
 
@@ -92,6 +103,33 @@ function App() {
             </nav>
 
             <div className="p-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
+              {minutesInfo && (
+                <NavLink to="/plans" onClick={() => setSidebarOpen(false)} className="block px-2 mb-2">
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> {minutesInfo.plan_name}
+                    </span>
+                    <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                      {minutesInfo.minutes_remaining} min
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        minutesInfo.minutes_remaining < minutesInfo.minutes_included * 0.1
+                          ? 'bg-red-500'
+                          : minutesInfo.minutes_remaining < minutesInfo.minutes_included * 0.3
+                          ? 'bg-amber-500'
+                          : 'bg-indigo-500'
+                      }`}
+                      style={{ width: `${Math.min(100, (minutesInfo.minutes_remaining / Math.max(minutesInfo.minutes_included, 1)) * 100)}%` }}
+                    />
+                  </div>
+                  {minutesInfo.extra_minutes_balance > 0 && (
+                    <p className="text-[10px] text-slate-400 mt-0.5">+{minutesInfo.extra_minutes_balance} min extra</p>
+                  )}
+                </NavLink>
+              )}
               {llmModels.length > 0 && (
                 <div className="px-2">
                   <label className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
@@ -132,7 +170,7 @@ function App() {
               <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
                 <Menu className="w-5 h-5" />
               </button>
-              <h1 className="font-bold text-indigo-600">VoiceIQ v6</h1>
+              <h1 className="font-bold text-indigo-600">VoiceIQ v7</h1>
             </div>
 
             <AnimatePresence mode="wait">
@@ -146,6 +184,7 @@ function App() {
                 <Route path="/templates" element={<TemplatesPage />} />
                 <Route path="/dictionaries" element={<DictionariesPage />} />
                 <Route path="/presets" element={<PresetsPage />} />
+                <Route path="/plans" element={<PlansUsagePage />} />
                 <Route path="/preferences" element={<PreferencesPage />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/transcription/:id" element={<TranscriptionView />} />

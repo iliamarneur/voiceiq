@@ -17,6 +17,7 @@ from app.models import (
     Job, Transcription, Analysis, ChatMessage, Chapter, Template, TranslationCache,
     SpeakerLabel, UserDictionary, DictionaryEntry, AudioPreset, UserCorrection,
     UserPreferences, DictationSession,
+    Plan, UserSubscription, UsageLog, OneshotOrder,
 )
 from app.schemas import (
     JobOut, TranscriptionOut, AnalysisOut, StatsOut,
@@ -30,6 +31,8 @@ from app.schemas import (
     CorrectionCreate, CorrectionOut, QueueItemOut, PriorityUpdate,
     UserPreferencesOut, UserPreferencesUpdate, KeyMomentOut, ConfidenceInfo,
     DictationSessionOut, DictationStartRequest, DictationChunkResponse, DictationSaveResponse,
+    PlanOut, SubscriptionOut, UsageLogOut, UsageSummaryOut,
+    OneshotOrderOut, OneshotEstimate, AddMinutesRequest,
 )
 from app.services.transcription_service import transcribe_audio
 from app.services.llm_service import (
@@ -58,6 +61,13 @@ from app.services.dictionary_service import (
 )
 from app.services.audio_analysis_service import get_audio_type_profiles
 from app.services.confidence_service import compute_confidence_scores, get_micro_tip
+from app.services.subscription_service import (
+    get_or_create_subscription, get_subscription_info, change_plan,
+    check_minutes_available, add_extra_minutes,
+    estimate_oneshot_tier, create_oneshot_order, link_oneshot_to_transcription,
+    get_usage_summary, get_usage_logs,
+    ONESHOT_TIERS, EXTRA_PACKS, SEED_PLANS,
+)
 from app.services.dictation_service import (
     start_session as dictation_start,
     transcribe_chunk as dictation_chunk,
@@ -86,11 +96,11 @@ async def lifespan(app: FastAPI):
     os.makedirs(EXPORT_DIR, exist_ok=True)
     await init_db()
     reload_profiles()
-    logger.info("VoiceIQ v6.0 API ready (multi-entrees)")
+    logger.info("VoiceIQ v7.0 API ready (offres & minutes)")
     yield
 
 
-app = FastAPI(title="VoiceIQ v6.0", lifespan=lifespan)
+app = FastAPI(title="VoiceIQ v7.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -1008,9 +1018,125 @@ async def save_dictation(session_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# ── v7: Plans & Subscriptions ────────────────────────────
+
+@app.get("/api/plans", response_model=list[PlanOut])
+async def list_plans(db: AsyncSession = Depends(get_db)):
+    """List all available plans."""
+    result = await db.execute(select(Plan).where(Plan.active == 1))
+    return result.scalars().all()
+
+
+@app.get("/api/subscription")
+async def get_subscription(db: AsyncSession = Depends(get_db)):
+    """Get current user subscription with plan details."""
+    return await get_subscription_info(db)
+
+
+@app.put("/api/subscription/plan")
+async def update_subscription_plan(body: dict, db: AsyncSession = Depends(get_db)):
+    """Change subscription plan (stub: instant, no payment)."""
+    plan_id = body.get("plan_id")
+    if not plan_id:
+        raise HTTPException(status_code=400, detail="Missing 'plan_id'")
+    try:
+        sub = await change_plan(db, plan_id)
+        return await get_subscription_info(db)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/subscription/minutes")
+async def get_minutes_status(db: AsyncSession = Depends(get_db)):
+    """Check minutes availability."""
+    return await check_minutes_available(db)
+
+
+@app.post("/api/subscription/add-minutes")
+async def buy_extra_minutes(body: AddMinutesRequest, db: AsyncSession = Depends(get_db)):
+    """Add extra minutes (stub: no real payment)."""
+    try:
+        return await add_extra_minutes(db, body.pack)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/subscription/extra-packs")
+async def list_extra_packs():
+    """List available extra minute packs."""
+    return [
+        {"pack": k, "minutes": v["minutes"], "price_cents": v["price_cents"]}
+        for k, v in EXTRA_PACKS.items()
+    ]
+
+
+# ── v7: One-Shot ─────────────────────────────────────────
+
+@app.get("/api/oneshot/tiers")
+async def list_oneshot_tiers():
+    """List one-shot pricing tiers."""
+    return [
+        {
+            "tier": k,
+            "max_duration_minutes": v["max_duration_minutes"],
+            "price_cents": v["price_cents"],
+            "includes": v["includes"],
+        }
+        for k, v in ONESHOT_TIERS.items()
+    ]
+
+
+@app.post("/api/oneshot/estimate")
+async def estimate_oneshot(body: dict):
+    """Estimate one-shot price for a given duration."""
+    duration = body.get("duration_seconds", 0)
+    if not duration or duration <= 0:
+        raise HTTPException(status_code=400, detail="Missing or invalid 'duration_seconds'")
+    return estimate_oneshot_tier(duration)
+
+
+@app.post("/api/oneshot/order", response_model=OneshotOrderOut)
+async def create_oneshot(body: dict, db: AsyncSession = Depends(get_db)):
+    """Create a one-shot order (stub: auto-paid)."""
+    tier = body.get("tier")
+    if not tier:
+        raise HTTPException(status_code=400, detail="Missing 'tier'")
+    duration = body.get("duration_seconds")
+    try:
+        return await create_oneshot_order(db, tier, duration)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.put("/api/oneshot/order/{order_id}/link")
+async def link_oneshot(order_id: str, body: dict, db: AsyncSession = Depends(get_db)):
+    """Link a one-shot order to a transcription after processing."""
+    transcription_id = body.get("transcription_id")
+    if not transcription_id:
+        raise HTTPException(status_code=400, detail="Missing 'transcription_id'")
+    try:
+        return await link_oneshot_to_transcription(db, order_id, transcription_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ── v7: Usage & Metrics ─────────────────────────────────
+
+@app.get("/api/usage/summary")
+async def usage_summary(db: AsyncSession = Depends(get_db)):
+    """Get usage summary for the current billing period."""
+    return await get_usage_summary(db)
+
+
+@app.get("/api/usage/logs", response_model=list[UsageLogOut])
+async def usage_logs(limit: int = 50, db: AsyncSession = Depends(get_db)):
+    """Get recent usage logs."""
+    return await get_usage_logs(db, limit=limit)
+
+
 # ── Health ───────────────────────────────────────────────
 
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok", "version": "6.0"}
+    return {"status": "ok", "version": "7.0"}

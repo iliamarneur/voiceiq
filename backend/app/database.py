@@ -27,9 +27,9 @@ async def init_db():
             ("jobs", "preset_id", "VARCHAR"),
             ("transcriptions", "audio_type", "VARCHAR"),
             # v5.x migrations
-            ("transcriptions", "confidence_scores", "TEXT"),  # JSON string: list of scores per segment
+            ("transcriptions", "confidence_scores", "TEXT"),
             # v6 migrations
-            ("jobs", "source_type", "VARCHAR DEFAULT 'file'"),  # file, recording, dictation
+            ("jobs", "source_type", "VARCHAR DEFAULT 'file'"),
         ]
         for table, column, col_type in migrations:
             try:
@@ -38,3 +38,8 @@ async def init_db():
                 )
             except Exception:
                 pass  # Column already exists
+
+    # v7: seed plans
+    from app.services.subscription_service import seed_plans
+    async with AsyncSessionLocal() as session:
+        await seed_plans(session)

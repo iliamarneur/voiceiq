@@ -12,6 +12,7 @@ from app.models import DictationSession, Job, Transcription
 from app.services.transcription_service import _run_whisper_fast
 from app.services.audio_analysis_service import get_vad_params
 from app.services.dictionary_service import apply_dictionary_corrections
+from app.services.subscription_service import consume_minutes
 
 logger = logging.getLogger(__name__)
 
@@ -174,6 +175,22 @@ async def save_as_transcription(
     job.transcription_id = transcription.id
     session.transcription_id = transcription.id
     await db.commit()
+
+    # v7: consume minutes for dictation usage
+    if session.total_duration and session.total_duration > 0:
+        try:
+            await consume_minutes(
+                db,
+                audio_duration_seconds=session.total_duration,
+                transcription_id=transcription.id,
+                job_id=job.id,
+                source_type="dictation",
+                profile_used=session.profile,
+                whisper_model="small",
+                language=session.language,
+            )
+        except Exception as e:
+            logger.warning(f"Usage logging failed for dictation {session.id}: {e}")
 
     logger.info(f"Dictation session {session.id} saved as transcription {transcription.id}")
     return {

@@ -170,6 +170,58 @@ export interface ConfidenceInfo {
   micro_tip: string | null;
 }
 
+// v7 types
+export interface PlanInfo {
+  id: string;
+  name: string;
+  price_cents: number;
+  minutes_included: number;
+  features: string[];
+  max_dictionaries: number;
+  max_workspaces: number;
+  priority_default: string;
+}
+
+export interface SubscriptionInfo {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  plan_name: string;
+  status: string;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  minutes_used: number;
+  minutes_included: number;
+  minutes_remaining: number;
+  extra_minutes_balance: number;
+}
+
+export interface UsageSummary {
+  plan_id: string;
+  plan_name: string;
+  minutes_included: number;
+  minutes_used: number;
+  minutes_remaining: number;
+  extra_minutes_balance: number;
+  total_transcriptions: number;
+  total_audio_minutes: number;
+  by_source: Record<string, number>;
+  by_profile: Record<string, number>;
+}
+
+export interface OneshotTier {
+  tier: string;
+  max_duration_minutes: number;
+  price_cents: number;
+  includes: string[];
+}
+
+export interface ExtraPack {
+  pack: string;
+  minutes: number;
+  price_cents: number;
+}
+
 // v6 types
 export interface DictationSession {
   id: string;

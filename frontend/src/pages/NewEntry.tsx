@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Upload, Mic, PenLine, ArrowRight, Loader2 } from 'lucide-react';
+import { Upload, Mic, PenLine, ArrowRight, Loader2, Clock } from 'lucide-react';
 import axios from 'axios';
-import { Profile } from '../types';
+import { Profile, SubscriptionInfo } from '../types';
 
 const MODES = [
   {
@@ -36,12 +36,14 @@ function NewEntryPage() {
   const navigate = useNavigate();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState('generic');
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
 
   useEffect(() => {
     axios.get('/api/profiles').then(r => setProfiles(r.data)).catch(() => {});
     axios.get('/api/preferences').then(r => {
       if (r.data?.default_profile) setSelectedProfile(r.data.default_profile);
     }).catch(() => {});
+    axios.get('/api/subscription').then(r => setSubscription(r.data)).catch(() => {});
   }, []);
 
   const handleSelect = (mode: typeof MODES[0]) => {
@@ -53,6 +55,16 @@ function NewEntryPage() {
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold mb-2">Nouveau traitement</h1>
         <p className="text-slate-500">Choisissez votre mode d'entree</p>
+        {subscription && (
+          <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800 text-sm">
+            <Clock className="w-4 h-4 text-indigo-500" />
+            <span className="text-slate-600 dark:text-slate-300">
+              {subscription.minutes_remaining} min restantes
+              {subscription.extra_minutes_balance > 0 && ` (+${subscription.extra_minutes_balance} extra)`}
+            </span>
+            <span className="text-slate-400">— {subscription.plan_name}</span>
+          </div>
+        )}
       </div>
 
       {/* Profile selector */}

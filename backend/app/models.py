@@ -168,6 +168,64 @@ class UserPreferences(Base):
 
 # ── v6 Models ────────────────────────────────────────────
 
+# ── v7 Models ────────────────────────────────────────────
+
+class Plan(Base):
+    __tablename__ = "plans"
+    id = Column(String, primary_key=True)  # free, oneshot, basic, pro, team
+    name = Column(String, nullable=False)
+    price_cents = Column(Integer, nullable=False, default=0)
+    minutes_included = Column(Integer, nullable=False, default=0)
+    features = Column(JSON, nullable=False, default=list)
+    max_dictionaries = Column(Integer, nullable=False, default=1)
+    max_workspaces = Column(Integer, nullable=False, default=1)
+    priority_default = Column(String, nullable=False, default="P1")
+    active = Column(Integer, nullable=False, default=1)  # SQLite boolean
+
+
+class UserSubscription(Base):
+    __tablename__ = "user_subscriptions"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, nullable=False, default="default")
+    plan_id = Column(String, ForeignKey("plans.id"), nullable=False)
+    status = Column(String, nullable=False, default="active")  # active, cancelled, expired
+    current_period_start = Column(DateTime, server_default=func.now())
+    current_period_end = Column(DateTime, nullable=True)
+    minutes_used = Column(Integer, nullable=False, default=0)
+    extra_minutes_balance = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class UsageLog(Base):
+    __tablename__ = "usage_logs"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, nullable=False, default="default")
+    transcription_id = Column(String, ForeignKey("transcriptions.id"), nullable=True)
+    job_id = Column(String, ForeignKey("jobs.id"), nullable=True)
+    audio_duration_seconds = Column(Float, nullable=False, default=0.0)
+    minutes_charged = Column(Integer, nullable=False, default=0)
+    minute_source = Column(String, nullable=False, default="plan")  # plan, extra, oneshot, free
+    source_type = Column(String, nullable=False, default="file")  # file, recording, dictation
+    profile_used = Column(String, nullable=True)
+    whisper_model = Column(String, nullable=True)
+    processing_time_seconds = Column(Float, nullable=True)
+    language = Column(String, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class OneshotOrder(Base):
+    __tablename__ = "oneshot_orders"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, nullable=False, default="default")
+    tier = Column(String, nullable=False)  # S, M, L
+    price_cents = Column(Integer, nullable=False)
+    audio_duration_seconds = Column(Float, nullable=True)
+    payment_status = Column(String, nullable=False, default="pending")  # pending, paid, failed
+    transcription_id = Column(String, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+
 class DictationSession(Base):
     __tablename__ = "dictation_sessions"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))

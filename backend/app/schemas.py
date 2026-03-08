@@ -277,6 +277,86 @@ class ConfidenceInfo(BaseModel):
 
 # ── v6 Schemas ────────────────────────────────────────────
 
+# ── v7 Schemas ────────────────────────────────────────────
+
+class PlanOut(BaseModel):
+    id: str
+    name: str
+    price_cents: int
+    minutes_included: int
+    features: list
+    max_dictionaries: int
+    max_workspaces: int
+    priority_default: str
+    active: bool = True
+    model_config = {"from_attributes": True}
+
+
+class SubscriptionOut(BaseModel):
+    id: str
+    user_id: str
+    plan_id: str
+    plan_name: str = ""
+    status: str
+    current_period_start: Optional[datetime] = None
+    current_period_end: Optional[datetime] = None
+    minutes_used: int = 0
+    minutes_included: int = 0
+    minutes_remaining: int = 0
+    extra_minutes_balance: int = 0
+    created_at: Optional[datetime] = None
+
+
+class UsageLogOut(BaseModel):
+    id: str
+    transcription_id: Optional[str] = None
+    audio_duration_seconds: float
+    minutes_charged: int
+    minute_source: str
+    source_type: str
+    profile_used: Optional[str] = None
+    whisper_model: Optional[str] = None
+    processing_time_seconds: Optional[float] = None
+    language: Optional[str] = None
+    created_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
+
+
+class UsageSummaryOut(BaseModel):
+    plan_id: str
+    plan_name: str
+    minutes_included: int
+    minutes_used: int
+    minutes_remaining: int
+    extra_minutes_balance: int
+    total_transcriptions: int
+    total_audio_minutes: float
+    by_source: dict  # {upload: X, recording: Y, dictation: Z}
+    by_profile: dict  # {business: X, cours: Y, ...}
+
+
+class OneshotOrderOut(BaseModel):
+    id: str
+    tier: str
+    price_cents: int
+    audio_duration_seconds: Optional[float] = None
+    payment_status: str
+    transcription_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
+
+
+class OneshotEstimate(BaseModel):
+    tier: str
+    price_cents: int
+    max_duration_minutes: int
+    includes: List[str]
+
+
+class AddMinutesRequest(BaseModel):
+    pack: str  # S, M, L
+
+
 class DictationSessionOut(BaseModel):
     id: str
     status: str

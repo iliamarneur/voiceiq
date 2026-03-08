@@ -3,9 +3,9 @@ import logging
 import os
 import re
 from typing import Optional
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import UserDictionary, DictionaryEntry, UserCorrection
+from app.models import UserDictionary, DictionaryEntry, UserCorrection, UserSubscription, Plan
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,35 @@ async def get_dictionary(dictionary_id: str, db: AsyncSession) -> Optional[UserD
     return result.scalar_one_or_none()
 
 
+async def check_dictionary_limit(db: AsyncSession, user_id: str = "default") -> None:
+    """Check if the user can create more dictionaries based on their plan."""
+    sub_result = await db.execute(
+        select(UserSubscription).where(
+            UserSubscription.user_id == user_id,
+            UserSubscription.status == "active",
+        )
+    )
+    sub = sub_result.scalar_one_or_none()
+    if not sub:
+        return  # No subscription = no limit (free tier auto-created later)
+
+    plan_result = await db.execute(select(Plan).where(Plan.id == sub.plan_id))
+    plan = plan_result.scalar_one_or_none()
+    if not plan or plan.max_dictionaries == -1:
+        return  # Unlimited
+
+    count_result = await db.execute(select(func.count()).select_from(UserDictionary))
+    current_count = count_result.scalar() or 0
+
+    if current_count >= plan.max_dictionaries:
+        raise ValueError(
+            f"Limite atteinte : votre plan {plan.name} autorise {plan.max_dictionaries} dictionnaire(s). "
+            f"Passez a un plan superieur pour en creer davantage."
+        )
+
+
 async def create_dictionary(name: str, description: str, db: AsyncSession) -> UserDictionary:
+    await check_dictionary_limit(db)
     d = UserDictionary(name=name, description=description)
     db.add(d)
     await db.commit()

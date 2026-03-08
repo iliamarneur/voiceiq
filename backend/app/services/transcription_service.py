@@ -10,6 +10,7 @@ from app.models import Job, Transcription, AudioPreset, DictionaryEntry
 from app.services.llm_service import generate_analyses
 from app.services.audio_analysis_service import get_vad_params, detect_audio_type_heuristic
 from app.services.dictionary_service import apply_dictionary_corrections
+from app.services.subscription_service import consume_minutes
 
 logger = logging.getLogger(__name__)
 
@@ -177,6 +178,8 @@ async def transcribe_audio(job_id: str, db: AsyncSession, profile: str = "generi
             vad_params = get_vad_params(profile_id=profile)
 
         # Run Whisper in thread pool to avoid blocking the event loop
+        import time as _time
+        _transcription_start = _time.time()
         loop = asyncio.get_event_loop()
         segments, full_text, info = await loop.run_in_executor(None, _run_whisper, file_path, vad_params, language)
 
@@ -220,6 +223,24 @@ async def transcribe_audio(job_id: str, db: AsyncSession, profile: str = "generi
 
         logger.info(f"Transcription done: {transcription.id} ({len(segments)} segments, {info.language}, {info.duration:.0f}s, type={detected_audio_type})")
         logger.info(f"Job {job_id} updated: status=transcribed, transcription_id={transcription.id}")
+
+        # v7: Log usage and consume minutes
+        processing_end = _time.time()
+        whisper_model_name = "large-v3" if torch.cuda.is_available() else "medium"
+        try:
+            await consume_minutes(
+                db,
+                audio_duration_seconds=info.duration,
+                transcription_id=transcription.id,
+                job_id=job.id,
+                source_type=getattr(job, "source_type", "file") or "file",
+                profile_used=profile,
+                whisper_model=whisper_model_name,
+                processing_time_seconds=round(processing_end - _transcription_start, 1),
+                language=info.language,
+            )
+        except Exception as usage_err:
+            logger.warning(f"Usage logging failed: {usage_err}")
 
         # Trigger LLM analyses (profile-aware, with dictionary context)
         logger.info(f"Starting analyses for {transcription.id} (profile: {profile})...")

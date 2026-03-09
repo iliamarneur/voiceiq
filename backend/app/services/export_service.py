@@ -1,12 +1,6 @@
 import json
 import os
 
-try:
-    from weasyprint import HTML
-    HAS_WEASYPRINT = True
-except (OSError, ImportError):
-    HAS_WEASYPRINT = False
-
 from pptx import Presentation
 from pptx.util import Inches, Pt
 
@@ -16,21 +10,59 @@ os.makedirs(EXPORT_DIR, exist_ok=True)
 
 
 def export_to_pdf(transcription, analyses, output_path: str):
-    """Export transcription + analyses to PDF via WeasyPrint."""
-    html_parts = [
-        f"<h1>{transcription.filename}</h1>",
-        f"<p><strong>Language:</strong> {transcription.language or 'N/A'} | "
-        f"<strong>Duration:</strong> {transcription.duration or 0:.0f}s</p>",
-        f"<h2>Transcription</h2><p>{transcription.text}</p>",
-    ]
-    for a in analyses:
-        html_parts.append(f"<h2>{a.type.title()}</h2>")
-        html_parts.append(f"<pre>{json.dumps(a.content, indent=2, ensure_ascii=False)}</pre>")
+    """Export transcription + analyses to PDF via fpdf2."""
+    from fpdf import FPDF
 
-    html = f"<html><body style='font-family:sans-serif;max-width:800px;margin:auto;padding:20px'>{''.join(html_parts)}</body></html>"
-    if not HAS_WEASYPRINT:
-        raise RuntimeError("PDF export requires WeasyPrint + GTK. Install GTK: https://doc.courtbouillon.org/weasyprint/stable/first_steps.html")
-    HTML(string=html).write_pdf(output_path)
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.add_page()
+
+    # Use built-in fonts with latin-1 fallback for accented chars
+    pdf.set_font("Helvetica", "B", 18)
+    title = transcription.filename or "Transcription"
+    pdf.cell(0, 12, _sanitize_latin1(title), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    # Metadata line
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(120, 120, 120)
+    lang = transcription.language or "N/A"
+    dur = f"{transcription.duration or 0:.0f}s" if transcription.duration else "N/A"
+    pdf.cell(0, 6, _sanitize_latin1(f"Langue : {lang}  |  Duree : {dur}"), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(6)
+
+    # Transcription text
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 8, "Transcription", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.multi_cell(0, 5.5, _sanitize_latin1(transcription.text or ""))
+    pdf.ln(6)
+
+    # Analyses
+    for a in analyses:
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, _sanitize_latin1(a.type.replace("_", " ").title()), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+        pdf.set_font("Courier", "", 8)
+        content_str = json.dumps(a.content, indent=2, ensure_ascii=False)
+        pdf.multi_cell(0, 4, _sanitize_latin1(content_str))
+
+    pdf.output(output_path)
+
+
+def _sanitize_latin1(text: str) -> str:
+    """Replace characters that can't be encoded in latin-1 for fpdf built-in fonts."""
+    replacements = {
+        "\u2019": "'", "\u2018": "'", "\u201c": '"', "\u201d": '"',
+        "\u2013": "-", "\u2014": "-", "\u2026": "...", "\u00a0": " ",
+        "\u2022": "-", "\u25cf": "-", "\u2023": ">",
+    }
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    return text.encode("latin-1", errors="replace").decode("latin-1")
 
 
 def export_to_srt(transcription, output_path: str):

@@ -30,6 +30,13 @@ async def init_db():
             ("transcriptions", "confidence_scores", "TEXT"),
             # v6 migrations
             ("jobs", "source_type", "VARCHAR DEFAULT 'file'"),
+            # v7.1 migrations
+            ("transcriptions", "processing_info", "TEXT"),
+            ("transcriptions", "oneshot_order_id", "VARCHAR"),
+            # v7.2 migrations — stripe columns
+            ("user_subscriptions", "stripe_customer_id", "VARCHAR"),
+            ("user_subscriptions", "stripe_subscription_id", "VARCHAR"),
+            ("oneshot_orders", "stripe_session_id", "VARCHAR"),
         ]
         for table, column, col_type in migrations:
             try:

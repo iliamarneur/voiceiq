@@ -2,10 +2,17 @@ import os
 import shutil
 import asyncio
 import logging
+import time
+from collections import defaultdict
+from datetime import datetime
+
+# Load .env file if present (for OPENAI_API_KEY, STRIPE keys, etc.)
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 from contextlib import asynccontextmanager
 from typing import Optional, List
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Form, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Form, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -17,7 +24,7 @@ from app.models import (
     Job, Transcription, Analysis, ChatMessage, Chapter, Template, TranslationCache,
     SpeakerLabel, UserDictionary, DictionaryEntry, AudioPreset, UserCorrection,
     UserPreferences, DictationSession,
-    Plan, UserSubscription, UsageLog, OneshotOrder,
+    Plan, UserSubscription, UsageLog, OneshotOrder, BillingEvent,
 )
 from app.schemas import (
     JobOut, TranscriptionOut, AnalysisOut, StatsOut,
@@ -65,9 +72,17 @@ from app.services.subscription_service import (
     get_or_create_subscription, get_subscription_info, change_plan,
     check_minutes_available, add_extra_minutes,
     estimate_oneshot_tier, create_oneshot_order, link_oneshot_to_transcription,
-    get_usage_summary, get_usage_logs,
-    ONESHOT_TIERS, EXTRA_PACKS, SEED_PLANS,
+    get_usage_summary, get_usage_logs, get_subscription_alerts,
+    get_oneshot_tiers, get_extra_packs, get_seed_plans,
+    seed_plans,
 )
+from app.services.feature_gate import require_feature_check, get_plan_features, check_dictionary_limit
+from app.services.stripe_service import (
+    is_stripe_configured, create_oneshot_checkout, create_pack_checkout,
+    create_plan_checkout, verify_webhook_signature, extract_checkout_metadata,
+)
+from app.services.stt_backends import get_stt_backends, resolve_stt_backend
+from app.services.llm_backends import get_llm_backends, resolve_llm_backend
 from app.services.dictation_service import (
     start_session as dictation_start,
     transcribe_chunk as dictation_chunk,
@@ -94,10 +109,37 @@ MAX_UPLOAD_SIZE = int(os.environ.get("MAX_UPLOAD_SIZE_BYTES", str(2 * 1024 * 102
 async def lifespan(app: FastAPI):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     os.makedirs(EXPORT_DIR, exist_ok=True)
-    await init_db()
+    await init_db()  # Also seeds plans via database.py
     reload_profiles()
+    # Pre-load dictation model in background to avoid cold start
+    def _preload_dictation_model():
+        try:
+            from app.services.transcription_service import get_fast_whisper_model, get_dictation_model_name
+            logger.info(f"Pre-loading dictation model '{get_dictation_model_name()}'...")
+            get_fast_whisper_model()
+            logger.info("Dictation model pre-loaded and ready")
+        except Exception as e:
+            logger.warning(f"Dictation model pre-load failed (will load on first use): {e}")
+    asyncio.get_event_loop().run_in_executor(None, _preload_dictation_model)
+
+    # Periodic cleanup of expired anonymous sessions
+    async def _cleanup_anonymous_sessions():
+        from app.services.anonymous_service import cleanup_expired
+        while True:
+            try:
+                async with AsyncSessionLocal() as db:
+                    deleted = await cleanup_expired(db)
+                    if deleted:
+                        logger.info(f"Cleaned up {deleted} expired anonymous sessions")
+            except Exception as e:
+                logger.warning(f"Anonymous session cleanup error: {e}")
+            await asyncio.sleep(3600)  # Run every hour
+
+    cleanup_task = asyncio.create_task(_cleanup_anonymous_sessions())
+
     logger.info("VoiceIQ v7.0 API ready (offres & minutes)")
     yield
+    cleanup_task.cancel()
 
 
 app = FastAPI(title="VoiceIQ v7.0", lifespan=lifespan)
@@ -108,7 +150,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Uploads dir is created at startup via lifespan
+# ── Rate limiter (billing endpoints) ─────────────────────
+_rate_limits: dict[str, list[float]] = defaultdict(list)
+RATE_LIMIT_WINDOW = 60  # seconds
+RATE_LIMIT_MAX = 10  # max requests per window per IP
+
+
+def _check_rate_limit(client_ip: str, endpoint: str) -> bool:
+    """Return True if rate limit exceeded."""
+    key = f"{client_ip}:{endpoint}"
+    now = time.time()
+    _rate_limits[key] = [t for t in _rate_limits[key] if now - t < RATE_LIMIT_WINDOW]
+    if len(_rate_limits[key]) >= RATE_LIMIT_MAX:
+        return True
+    _rate_limits[key].append(now)
+    return False
 
 
 async def get_db():
@@ -125,8 +181,13 @@ async def upload_audio(
     priority: str = Form("P1"),
     preset_id: Optional[str] = Form(None),
     language: Optional[str] = Form(None),
+    stt_backend: Optional[str] = Form(None),
+    llm_backend: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
+    # Feature gate: transcription required
+    await require_feature_check(db, "transcription")
+
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}. Supported: audio (mp3, wav, m4a, flac, ogg, aac, opus) and video (mp4, mkv, avi, mov, wmv)")
@@ -174,10 +235,11 @@ async def upload_audio(
     await db.commit()
     await db.refresh(job)
 
-    async def _bg_transcribe(job_id: str, prof: str, lang: str | None = None):
+    async def _bg_transcribe(job_id: str, prof: str, lang: str | None = None, stt_ov: str = None, llm_ov: str = None):
         async with AsyncSessionLocal() as bg_db:
-            await transcribe_audio(job_id, bg_db, profile=prof, language=lang)
-    asyncio.create_task(_bg_transcribe(job.id, profile, language))
+            await transcribe_audio(job_id, bg_db, profile=prof, language=lang,
+                                   stt_override=stt_ov, llm_override=llm_ov, mode_id="file_upload")
+    asyncio.create_task(_bg_transcribe(job.id, profile, language, stt_backend, llm_backend))
     return job
 
 
@@ -188,9 +250,17 @@ async def upload_batch(
     priority: str = Form("P1"),
     preset_id: Optional[str] = Form(None),
     language: Optional[str] = Form(None),
+    stt_backend: Optional[str] = Form(None),
+    llm_backend: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Upload multiple audio files at once."""
+    MAX_BATCH_FILES = 20
+    if len(files) > MAX_BATCH_FILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many files. Maximum {MAX_BATCH_FILES} files per batch."
+        )
     if priority not in ("P0", "P1", "P2"):
         priority = "P1"
 
@@ -230,9 +300,10 @@ async def upload_batch(
 
     # Start all transcriptions in background
     for j in jobs:
-        async def _bg(jid=j["id"], prof=profile, lang=language):
+        async def _bg(jid=j["id"], prof=profile, lang=language, stt_ov=stt_backend, llm_ov=llm_backend):
             async with AsyncSessionLocal() as bg_db:
-                await transcribe_audio(jid, bg_db, profile=prof, language=lang)
+                await transcribe_audio(jid, bg_db, profile=prof, language=lang,
+                                       stt_override=stt_ov, llm_override=llm_ov, mode_id="file_upload")
         asyncio.create_task(_bg())
 
     total_est = sum(j.get("estimated_seconds", 0) or 0 for j in jobs)
@@ -358,6 +429,15 @@ async def regenerate_all(id: str, db: AsyncSession = Depends(get_db)):
 
 @app.post("/api/transcriptions/{id}/analyses/{type}/regenerate")
 async def regenerate(id: str, type: str, instructions: Optional[str] = None, db: AsyncSession = Depends(get_db)):
+    # Gate analysis types to plan features
+    ANALYSIS_FEATURE_MAP = {
+        "summary": "summary", "keypoints": "keypoints", "actions": "actions",
+        "flashcards": "flashcards", "quiz": "quiz", "mindmap": "mindmap",
+        "slides": "slides", "infographic": "infographic", "tables": "tables",
+    }
+    feature = ANALYSIS_FEATURE_MAP.get(type)
+    if feature:
+        await require_feature_check(db, feature)
     content = await regenerate_analysis(id, type, db, instructions)
     if content is None:
         raise HTTPException(status_code=404, detail="Transcription not found")
@@ -368,6 +448,7 @@ async def regenerate(id: str, type: str, instructions: Optional[str] = None, db:
 
 @app.post("/api/transcriptions/{id}/chat")
 async def chat_endpoint(id: str, body: ChatRequest, db: AsyncSession = Depends(get_db)):
+    await require_feature_check(db, "chat")
     result = await db.execute(select(Transcription).where(Transcription.id == id))
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Transcription not found")
@@ -463,6 +544,7 @@ async def list_templates(db: AsyncSession = Depends(get_db)):
 
 @app.post("/api/templates", response_model=TemplateOut, status_code=201)
 async def create_template(body: TemplateCreate, db: AsyncSession = Depends(get_db)):
+    await require_feature_check(db, "templates")
     template = Template(name=body.name, type=body.type, instructions=body.instructions)
     db.add(template)
     await db.commit()
@@ -530,10 +612,59 @@ async def get_audio(id: str, db: AsyncSession = Depends(get_db)):
     return FileResponse(job.file_path)
 
 
+# ── Mise en page (LLM formatting) ────────────────────────
+
+@app.post("/api/transcriptions/{id}/format")
+async def format_transcription(id: str, db: AsyncSession = Depends(get_db)):
+    """Run LLM to produce a beautifully formatted version of the transcript."""
+    result = await db.execute(select(Transcription).where(Transcription.id == id))
+    transcription = result.scalar_one_or_none()
+    if not transcription:
+        raise HTTPException(status_code=404, detail="Transcription not found")
+
+    raw_text = transcription.text or ""
+    if not raw_text.strip():
+        raise HTTPException(status_code=400, detail="No text to format")
+
+    backend_id = resolve_llm_backend("file_upload")
+
+    prompt = (
+        "Tu es un expert en mise en page de textes. On te donne la transcription brute d'un audio. "
+        "Ton travail :\n"
+        "1. Ne change RIEN au contenu. Ne reformule pas, ne resume pas, ne supprime rien.\n"
+        "2. Corrige UNIQUEMENT les grosses fautes d'orthographe ou de grammaire evidentes (erreurs de transcription).\n"
+        "3. Cree une belle mise en page en Markdown adaptee au type de contenu :\n"
+        "   - Reunion : titre, participants si mentionnes, sections par sujet, points d'action\n"
+        "   - Cours/Conference : titre, plan structure avec titres et sous-titres\n"
+        "   - Interview/Podcast : identification des locuteurs si possible, paragraphes\n"
+        "   - Monologue/Note vocale : paragraphes logiques avec titres si pertinent\n"
+        "4. Ajoute des sauts de ligne et paragraphes pour la lisibilite.\n"
+        "5. Utilise des titres Markdown (## ###) pour structurer.\n"
+        "6. Si tu identifies des locuteurs, mets-les en **gras**.\n\n"
+        "IMPORTANT: Retourne UNIQUEMENT le texte formate en Markdown, sans aucun JSON, sans ```markdown```, "
+        "sans explication. Juste le texte mis en page."
+    )
+
+    llm_result = await analyze_transcript_via_backend(prompt, raw_text, backend_id)
+
+    # The LLM may return a dict with "content" key or the text directly
+    if isinstance(llm_result, dict):
+        formatted = llm_result.get("content", llm_result.get("text", json.dumps(llm_result, ensure_ascii=False)))
+    else:
+        formatted = str(llm_result)
+
+    return {"formatted_text": formatted}
+
+
 # ── Export ─────────────────────────────────────────────────
 
 @app.get("/api/transcriptions/{id}/export/{format}")
 async def export_transcription(id: str, format: str, db: AsyncSession = Depends(get_db)):
+    # Gate export by format (PDF and TXT are free for all users)
+    free_export_formats = {"pdf", "txt"}
+    if format not in free_export_formats:
+        export_feature = f"export_{format}"
+        await require_feature_check(db, export_feature)
     result = await db.execute(select(Transcription).where(Transcription.id == id))
     transcription = result.scalar_one_or_none()
     if not transcription:
@@ -732,6 +863,7 @@ async def list_presets(db: AsyncSession = Depends(get_db)):
 
 @app.post("/api/presets", response_model=AudioPresetOut, status_code=201)
 async def create_preset(body: AudioPresetCreate, db: AsyncSession = Depends(get_db)):
+    await require_feature_check(db, "presets")
     preset = AudioPreset(
         name=body.name, description=body.description,
         profile_id=body.profile_id, audio_type=body.audio_type,
@@ -932,11 +1064,123 @@ async def change_model(body: dict):
     return {"model": model_name, "status": "ok"}
 
 
+# ── v7: Whisper Info ────────────────────────────────────
+
+
+@app.get("/api/whisper/info")
+async def whisper_info():
+    """Get current Whisper STT model configuration."""
+    import torch as _torch
+    from app.services.transcription_service import get_whisper_model_name, get_dictation_model_name, VALID_WHISPER_MODELS
+    gpu_available = _torch.cuda.is_available()
+    gpu_name = _torch.cuda.get_device_name(0) if gpu_available else None
+    return {
+        "transcription_model": get_whisper_model_name(),
+        "dictation_model": get_dictation_model_name(),
+        "device": "cuda" if gpu_available else "cpu",
+        "compute_type": "float16" if gpu_available else "int8",
+        "gpu_available": gpu_available,
+        "gpu_name": gpu_name,
+        "available_models": [
+            {"name": "large-v3", "description": "Meilleure qualite, plus lent", "size_gb": 3.1, "recommended_for": "transcription"},
+            {"name": "large-v2", "description": "Stable, tres bonne qualite", "size_gb": 3.1, "recommended_for": "transcription"},
+            {"name": "medium", "description": "Bon compromis qualite/vitesse", "size_gb": 1.5, "recommended_for": "transcription"},
+            {"name": "small", "description": "Rapide, qualite correcte", "size_gb": 0.5, "recommended_for": "dictation"},
+            {"name": "base", "description": "Tres rapide, qualite basique", "size_gb": 0.1, "recommended_for": "dictation"},
+            {"name": "tiny", "description": "Ultra rapide, qualite minimale", "size_gb": 0.04, "recommended_for": "test"},
+        ],
+        "valid_models": VALID_WHISPER_MODELS,
+    }
+
+
+@app.put("/api/whisper/model")
+async def change_whisper_model(body: dict):
+    """Change Whisper model at runtime. Model reloads on next transcription."""
+    from app.services.transcription_service import set_whisper_model, VALID_WHISPER_MODELS, get_whisper_model_name, get_dictation_model_name
+    transcription_model = body.get("transcription_model")
+    dictation_model = body.get("dictation_model")
+    if transcription_model and transcription_model not in VALID_WHISPER_MODELS:
+        raise HTTPException(status_code=400, detail=f"Modele invalide '{transcription_model}'. Valides: {VALID_WHISPER_MODELS}")
+    if dictation_model and dictation_model not in VALID_WHISPER_MODELS:
+        raise HTTPException(status_code=400, detail=f"Modele invalide '{dictation_model}'. Valides: {VALID_WHISPER_MODELS}")
+    set_whisper_model(transcription_model=transcription_model, dictation_model=dictation_model)
+    return {
+        "status": "ok",
+        "transcription_model": get_whisper_model_name(),
+        "dictation_model": get_dictation_model_name(),
+    }
+
+
+@app.get("/api/openai/models")
+async def get_openai_models():
+    """List available OpenAI models and current selection."""
+    from app.services.llm_backends import get_openai_model, VALID_OPENAI_MODELS
+    return {
+        "current": get_openai_model(),
+        "models": VALID_OPENAI_MODELS,
+        "configured": bool(os.environ.get("OPENAI_LLM_API_KEY")),
+    }
+
+
+@app.put("/api/openai/model")
+async def change_openai_model(body: dict):
+    """Change OpenAI LLM model."""
+    from app.services.llm_backends import set_openai_model, get_openai_model, VALID_OPENAI_MODEL_NAMES
+    model = body.get("model")
+    if not model:
+        raise HTTPException(status_code=400, detail="Missing 'model' field")
+    if model not in VALID_OPENAI_MODEL_NAMES:
+        raise HTTPException(status_code=400, detail=f"Modele invalide '{model}'. Valides: {VALID_OPENAI_MODEL_NAMES}")
+    set_openai_model(model)
+    return {"status": "ok", "model": get_openai_model()}
+
+
+# ── v7: Audio/LLM Backends ──────────────────────────────
+
+
+@app.get("/api/backends")
+async def list_backends():
+    """List available STT and LLM backends with their config per mode."""
+    from app.services.stt_backends import _load_config as _stt_config
+    config = _stt_config()
+    return {
+        "stt": get_stt_backends(),
+        "llm": get_llm_backends(),
+        "modes": config.get("modes", {}),
+    }
+
+
+@app.put("/api/backends/mode/{mode_id}")
+async def update_mode_backends(mode_id: str, body: dict):
+    """Update STT/LLM backend for a mode (dev/admin). Changes are in-memory only."""
+    from app.services.stt_backends import _load_config
+    config = _load_config()
+    modes = config.get("modes", {})
+    if mode_id not in modes:
+        raise HTTPException(status_code=404, detail=f"Unknown mode '{mode_id}'. Valid: {list(modes.keys())}")
+
+    stt = body.get("stt_backend")
+    llm = body.get("llm_backend")
+    if stt:
+        stt_backends = config.get("stt_backends", {})
+        if stt not in stt_backends:
+            raise HTTPException(status_code=400, detail=f"Unknown STT backend '{stt}'")
+        modes[mode_id]["stt_backend"] = stt
+    if llm:
+        llm_backends = config.get("llm_backends", {})
+        if llm not in llm_backends:
+            raise HTTPException(status_code=400, detail=f"Unknown LLM backend '{llm}'")
+        modes[mode_id]["llm_backend"] = llm
+
+    return {"mode": mode_id, "config": modes[mode_id]}
+
+
 # ── v6: Dictation ────────────────────────────────────────
 
 @app.post("/api/dictation/start", response_model=DictationSessionOut, status_code=201)
 async def start_dictation(data: DictationStartRequest, db: AsyncSession = Depends(get_db)):
     """Start a new dictation session."""
+    await require_feature_check(db, "dictation")
     session = await dictation_start(db, profile=data.profile)
     return session
 
@@ -957,6 +1201,7 @@ async def get_dictation(session_id: str, db: AsyncSession = Depends(get_db)):
 async def send_dictation_chunk(
     session_id: str,
     audio: UploadFile = File(...),
+    stt_backend: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Send an audio chunk for transcription."""
@@ -964,7 +1209,7 @@ async def send_dictation_chunk(
     if len(audio_data) > 10 * 1024 * 1024:  # 10 MB max per chunk
         raise HTTPException(status_code=413, detail="Chunk too large (max 10 MB)")
     try:
-        result = await dictation_chunk(session_id, audio_data, db)
+        result = await dictation_chunk(session_id, audio_data, db, stt_override=stt_backend)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1002,17 +1247,7 @@ async def save_dictation(session_id: str, db: AsyncSession = Depends(get_db)):
     """Save a completed dictation session as a standard Transcription."""
     try:
         result = await dictation_save(session_id, db)
-        # Optionally trigger analyses in background
-        async def _bg_analyses():
-            async with AsyncSessionLocal() as bg_db:
-                from app.services.llm_service import generate_analyses
-                session_result = await bg_db.execute(
-                    select(DictationSession).where(DictationSession.id == session_id)
-                )
-                session = session_result.scalar_one_or_none()
-                if session and session.transcription_id:
-                    await generate_analyses(session.transcription_id, bg_db, profile_id=session.profile)
-        asyncio.create_task(_bg_analyses())
+        # Analyses are generated on-demand when user clicks on an analysis tab
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1035,13 +1270,35 @@ async def get_subscription(db: AsyncSession = Depends(get_db)):
 
 @app.put("/api/subscription/plan")
 async def update_subscription_plan(body: dict, db: AsyncSession = Depends(get_db)):
-    """Change subscription plan (stub: instant, no payment)."""
+    """Change subscription plan. If Stripe configured, creates checkout session."""
     plan_id = body.get("plan_id")
     if not plan_id:
         raise HTTPException(status_code=400, detail="Missing 'plan_id'")
     try:
-        sub = await change_plan(db, plan_id)
-        return await get_subscription_info(db)
+        # Look up plan details
+        result = await db.execute(select(Plan).where(Plan.id == plan_id, Plan.active == 1))
+        plan = result.scalar_one_or_none()
+        if not plan:
+            raise HTTPException(status_code=404, detail=f"Plan '{plan_id}' not found")
+
+        # Free plan: apply immediately (no payment needed)
+        if plan.price_cents == 0:
+            await change_plan(db, plan_id)
+            return await get_subscription_info(db)
+
+        # Paid plan: route through Stripe if configured
+        checkout = await create_plan_checkout(
+            plan_id=plan_id,
+            plan_name=plan.name,
+            price_cents=plan.price_cents,
+        )
+        if checkout.get("mode") == "stub":
+            # Stub mode: apply immediately
+            await change_plan(db, plan_id)
+            await _log_billing_event(db, "plan.changed", amount_cents=plan.price_cents,
+                                     event_data={"plan_id": plan_id})
+            return await get_subscription_info(db)
+        return checkout
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -1054,9 +1311,24 @@ async def get_minutes_status(db: AsyncSession = Depends(get_db)):
 
 @app.post("/api/subscription/add-minutes")
 async def buy_extra_minutes(body: AddMinutesRequest, db: AsyncSession = Depends(get_db)):
-    """Add extra minutes (stub: no real payment)."""
+    """Buy extra minutes pack. If Stripe configured, creates checkout session."""
     try:
-        return await add_extra_minutes(db, body.pack)
+        packs = get_extra_packs()
+        pack_info = packs.get(body.pack)
+        if not pack_info:
+            raise HTTPException(status_code=400, detail=f"Unknown pack '{body.pack}'")
+
+        checkout = await create_pack_checkout(
+            pack_id=body.pack,
+            minutes=pack_info["minutes"],
+            price_cents=pack_info["price_cents"],
+        )
+        if checkout.get("mode") == "stub":
+            result = await add_extra_minutes(db, body.pack)
+            await _log_billing_event(db, "pack.purchased", amount_cents=pack_info["price_cents"],
+                                     event_data={"pack": body.pack, "minutes": pack_info["minutes"]})
+            return result
+        return checkout
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -1064,10 +1336,23 @@ async def buy_extra_minutes(body: AddMinutesRequest, db: AsyncSession = Depends(
 @app.get("/api/subscription/extra-packs")
 async def list_extra_packs():
     """List available extra minute packs."""
+    packs = get_extra_packs()
     return [
         {"pack": k, "minutes": v["minutes"], "price_cents": v["price_cents"]}
-        for k, v in EXTRA_PACKS.items()
+        for k, v in packs.items()
     ]
+
+
+@app.get("/api/subscription/alerts")
+async def subscription_alerts(db: AsyncSession = Depends(get_db)):
+    """Check quota usage and return alerts (warning at 75%, critical at 90%)."""
+    return await get_subscription_alerts(db)
+
+
+@app.get("/api/subscription/features")
+async def subscription_features(db: AsyncSession = Depends(get_db)):
+    """Get features available for the current plan."""
+    return await get_plan_features(db)
 
 
 # ── v7: One-Shot ─────────────────────────────────────────
@@ -1075,14 +1360,16 @@ async def list_extra_packs():
 @app.get("/api/oneshot/tiers")
 async def list_oneshot_tiers():
     """List one-shot pricing tiers."""
+    tiers = get_oneshot_tiers()
     return [
         {
             "tier": k,
+            "label": f"Fichier {k.lower()}" if k != "Court" else "Fichier court",
             "max_duration_minutes": v["max_duration_minutes"],
             "price_cents": v["price_cents"],
             "includes": v["includes"],
         }
-        for k, v in ONESHOT_TIERS.items()
+        for k, v in tiers.items()
     ]
 
 
@@ -1092,18 +1379,48 @@ async def estimate_oneshot(body: dict):
     duration = body.get("duration_seconds", 0)
     if not duration or duration <= 0:
         raise HTTPException(status_code=400, detail="Missing or invalid 'duration_seconds'")
+    if duration > 5400:  # 90 minutes
+        raise HTTPException(
+            status_code=400,
+            detail="La durée maximale pour un one-shot est de 90 minutes. "
+                   "Pour des fichiers plus longs, souscrivez un abonnement.",
+        )
     return estimate_oneshot_tier(duration)
 
 
-@app.post("/api/oneshot/order", response_model=OneshotOrderOut)
+@app.post("/api/oneshot/order")
 async def create_oneshot(body: dict, db: AsyncSession = Depends(get_db)):
-    """Create a one-shot order (stub: auto-paid)."""
+    """Create a one-shot order. If Stripe configured, creates checkout session."""
     tier = body.get("tier")
     if not tier:
         raise HTTPException(status_code=400, detail="Missing 'tier'")
     duration = body.get("duration_seconds")
     try:
-        return await create_oneshot_order(db, tier, duration)
+        # Create the order first (pending status)
+        order = await create_oneshot_order(db, tier, duration)
+
+        tiers = get_oneshot_tiers()
+        tier_info = tiers.get(tier)
+        if not tier_info:
+            raise HTTPException(status_code=400, detail=f"Unknown tier '{tier}'")
+
+        checkout = await create_oneshot_checkout(
+            order_id=order.id,
+            tier=tier,
+            price_cents=tier_info["price_cents"],
+            includes=tier_info["includes"],
+        )
+        if checkout.get("mode") == "stub":
+            # Stub: order already auto-paid by create_oneshot_order
+            await _log_billing_event(db, "oneshot.purchased", amount_cents=tier_info["price_cents"],
+                                     event_data={"tier": tier, "order_id": order.id})
+            return order
+        # Stripe: return checkout URL, order stays pending until webhook
+        return {
+            "order_id": order.id,
+            "checkout_url": checkout["checkout_url"],
+            "session_id": checkout["session_id"],
+        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -1120,6 +1437,193 @@ async def link_oneshot(order_id: str, body: dict, db: AsyncSession = Depends(get
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/oneshot/upload", response_model=JobOut, status_code=202)
+async def oneshot_upload(
+    file: UploadFile = File(...),
+    tier: str = Form(...),
+    profile: str = Form("generic"),
+    language: Optional[str] = Form(None),
+    stt_backend: Optional[str] = Form(None),
+    llm_backend: Optional[str] = Form(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """One-shot upload: create order + upload + transcribe in one step.
+    Bypasses subscription feature gating (oneshot is pre-paid).
+    """
+    # Validate tier
+    tiers = get_oneshot_tiers()
+    if tier not in tiers:
+        raise HTTPException(status_code=400, detail=f"Palier inconnu : '{tier}'")
+
+    # Validate file
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"Type de fichier non supporte : {ext}")
+
+    # Save file
+    safe_name = file.filename.replace("/", "_").replace("\\", "_")
+    file_location = os.path.join(UPLOAD_DIR, safe_name)
+    total_size = 0
+    chunk_size = 8 * 1024 * 1024
+    with open(file_location, "wb") as buffer:
+        while True:
+            chunk = await file.read(chunk_size)
+            if not chunk:
+                break
+            total_size += len(chunk)
+            if total_size > MAX_UPLOAD_SIZE:
+                buffer.close()
+                os.remove(file_location)
+                raise HTTPException(status_code=413, detail="Fichier trop volumineux (max 2 Go)")
+            buffer.write(chunk)
+
+    logger.info(f"Oneshot upload: {safe_name} ({total_size / (1024*1024):.1f} MB), tier={tier}")
+
+    # Validate profile
+    available = get_all_profiles()
+    valid_ids = {p["id"] for p in available}
+    if profile not in valid_ids:
+        profile = "generic"
+
+    # Estimate duration from file size (rough: 1 MB ~ 1 min audio)
+    estimated_duration = max(60, (total_size / (1024 * 1024)) * 60)
+
+    # Create oneshot order (stub: auto-paid)
+    try:
+        order = await create_oneshot_order(db, tier, estimated_duration)
+    except ValueError as e:
+        os.remove(file_location)
+        raise HTTPException(status_code=400, detail=str(e))
+
+    tier_info = tiers[tier]
+    checkout = await create_oneshot_checkout(
+        order_id=order.id, tier=tier, price_cents=tier_info["price_cents"],
+        includes=tier_info["includes"],
+    )
+    if checkout.get("mode") == "stub":
+        await _log_billing_event(db, "oneshot.purchased", amount_cents=tier_info["price_cents"],
+                                 event_data={"tier": tier, "order_id": order.id})
+
+    # Create job with source_type="oneshot"
+    num_analyses = len(get_profile_analyses(profile)) or 9
+    est_seconds = estimate_processing_time(total_size, num_analyses)
+    job = Job(
+        status="pending", file_path=file_location, profile=profile,
+        priority="P1", estimated_seconds=est_seconds, source_type="oneshot",
+    )
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+
+    # Start transcription in background with oneshot_order_id
+    async def _bg_oneshot(job_id=job.id, prof=profile, lang=language,
+                          stt_ov=stt_backend, llm_ov=llm_backend, oid=order.id):
+        async with AsyncSessionLocal() as bg_db:
+            await transcribe_audio(job_id, bg_db, profile=prof, language=lang,
+                                   stt_override=stt_ov, llm_override=llm_ov,
+                                   mode_id="file_upload", oneshot_order_id=oid)
+    asyncio.create_task(_bg_oneshot())
+    return job
+
+
+# ── v7: Stripe Webhook ──────────────────────────────────
+
+
+async def _log_billing_event(
+    db: AsyncSession,
+    event_type: str,
+    stripe_event_id: str = None,
+    stripe_session_id: str = None,
+    amount_cents: int = None,
+    event_data: dict = None,
+    status: str = "success",
+):
+    """Log a billing event for audit trail."""
+    event = BillingEvent(
+        event_type=event_type,
+        stripe_event_id=stripe_event_id,
+        stripe_session_id=stripe_session_id,
+        amount_cents=amount_cents,
+        event_data=event_data,
+        status=status,
+    )
+    db.add(event)
+    await db.commit()
+    return event
+
+
+@app.post("/api/stripe/webhook")
+async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    """Handle Stripe webhook events (idempotent)."""
+    client_ip = request.client.host if request.client else "unknown"
+    if _check_rate_limit(client_ip, "webhook"):
+        raise HTTPException(status_code=429, detail="Too many requests")
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature", "")
+
+    try:
+        event = verify_webhook_signature(payload, sig_header)
+    except ValueError as e:
+        logger.warning(f"Stripe webhook signature failed: {e}")
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    event_id = event.get("id")
+    event_type = event.get("type")
+    logger.info(f"Stripe webhook: {event_type} ({event_id})")
+
+    # Idempotency check: skip if already processed
+    existing = await db.execute(
+        select(BillingEvent).where(BillingEvent.stripe_event_id == event_id)
+    )
+    if existing.scalar_one_or_none():
+        logger.info(f"Webhook {event_id} already processed, skipping")
+        await _log_billing_event(db, f"webhook.{event_type}", stripe_event_id=f"{event_id}_dup",
+                                 status="duplicate")
+        return {"status": "duplicate"}
+
+    if event_type == "checkout.session.completed":
+        checkout_data = extract_checkout_metadata(event)
+        checkout_type = checkout_data.get("type")
+        meta = checkout_data.get("metadata", {})
+
+        if checkout_type == "oneshot":
+            order_id = meta.get("order_id")
+            if order_id:
+                result = await db.execute(
+                    select(OneshotOrder).where(OneshotOrder.id == order_id)
+                )
+                order = result.scalar_one_or_none()
+                if order and order.payment_status == "pending":
+                    order.payment_status = "paid"
+                    order.stripe_session_id = checkout_data.get("session_id")
+                    await db.commit()
+                    logger.info(f"One-shot order {order_id} marked as paid")
+
+        elif checkout_type == "extra_pack":
+            pack_id = meta.get("pack_id")
+            if pack_id:
+                await add_extra_minutes(db, pack_id)
+                logger.info(f"Extra pack {pack_id} applied")
+
+        elif checkout_type == "plan_upgrade":
+            plan_id = meta.get("plan_id")
+            if plan_id:
+                await change_plan(db, plan_id)
+                logger.info(f"Plan changed to {plan_id}")
+
+        await _log_billing_event(
+            db, f"webhook.{event_type}",
+            stripe_event_id=event_id,
+            stripe_session_id=checkout_data.get("session_id"),
+            amount_cents=checkout_data.get("amount_total"),
+            event_data=meta,
+        )
+    else:
+        await _log_billing_event(db, f"webhook.{event_type}", stripe_event_id=event_id)
+
+    return {"status": "ok"}
+
+
 # ── v7: Usage & Metrics ─────────────────────────────────
 
 @app.get("/api/usage/summary")
@@ -1134,9 +1638,248 @@ async def usage_logs(limit: int = 50, db: AsyncSession = Depends(get_db)):
     return await get_usage_logs(db, limit=limit)
 
 
+# ── RGPD / Data Privacy ─────────────────────────────────
+
+@app.get("/api/account/export")
+async def export_account_data(db: AsyncSession = Depends(get_db), user_id: str = "default"):
+    """RGPD Art. 20 — Export all user data as JSON."""
+    # Subscription
+    sub_info = await get_subscription_info(db, user_id)
+
+    # Transcriptions with analyses
+    trans_result = await db.execute(
+        select(Transcription).join(Job, Transcription.job_id == Job.id)
+    )
+    transcriptions = trans_result.scalars().all()
+    transcriptions_data = []
+    for t in transcriptions:
+        analyses_result = await db.execute(
+            select(Analysis).where(Analysis.transcription_id == t.id)
+        )
+        analyses = analyses_result.scalars().all()
+        transcriptions_data.append({
+            "id": t.id,
+            "filename": t.filename,
+            "text": t.text,
+            "language": t.language,
+            "duration": t.duration,
+            "profile": t.profile,
+            "created_at": str(t.created_at) if t.created_at else None,
+            "analyses": [
+                {"type": a.type, "content": a.content, "created_at": str(a.created_at) if a.created_at else None}
+                for a in analyses
+            ],
+        })
+
+    # Usage logs
+    usage_result = await db.execute(
+        select(UsageLog).where(UsageLog.user_id == user_id).order_by(UsageLog.created_at.desc())
+    )
+    usage_logs = usage_result.scalars().all()
+    usage_data = [
+        {
+            "id": u.id,
+            "audio_duration_seconds": u.audio_duration_seconds,
+            "minutes_charged": u.minutes_charged,
+            "minute_source": u.minute_source,
+            "source_type": u.source_type,
+            "profile_used": u.profile_used,
+            "created_at": str(u.created_at) if u.created_at else None,
+        }
+        for u in usage_logs
+    ]
+
+    # Oneshot orders
+    orders_result = await db.execute(
+        select(OneshotOrder).where(OneshotOrder.user_id == user_id)
+    )
+    orders = orders_result.scalars().all()
+    orders_data = [
+        {
+            "id": o.id,
+            "tier": o.tier,
+            "price_cents": o.price_cents,
+            "payment_status": o.payment_status,
+            "created_at": str(o.created_at) if o.created_at else None,
+        }
+        for o in orders
+    ]
+
+    # Billing events
+    billing_result = await db.execute(
+        select(BillingEvent).where(BillingEvent.user_id == user_id)
+    )
+    billing_events = billing_result.scalars().all()
+    billing_data = [
+        {
+            "id": b.id,
+            "event_type": b.event_type,
+            "amount_cents": b.amount_cents,
+            "status": b.status,
+            "created_at": str(b.created_at) if b.created_at else None,
+        }
+        for b in billing_events
+    ]
+
+    # Preferences
+    prefs_result = await db.execute(
+        select(UserPreferences).where(UserPreferences.id == user_id)
+    )
+    prefs = prefs_result.scalar_one_or_none()
+    prefs_data = None
+    if prefs:
+        prefs_data = {
+            "summary_detail": prefs.summary_detail,
+            "summary_tone": prefs.summary_tone,
+            "default_profile": prefs.default_profile,
+        }
+
+    # Dictionaries
+    dict_result = await db.execute(select(UserDictionary))
+    dicts = dict_result.scalars().all()
+    dicts_data = []
+    for d in dicts:
+        entries_result = await db.execute(
+            select(DictionaryEntry).where(DictionaryEntry.dictionary_id == d.id)
+        )
+        entries = entries_result.scalars().all()
+        dicts_data.append({
+            "id": d.id,
+            "name": d.name,
+            "entries": [{"term": e.term, "replacement": e.replacement, "category": e.category} for e in entries],
+        })
+
+    return {
+        "export_date": datetime.utcnow().isoformat(),
+        "user_id": user_id,
+        "subscription": sub_info,
+        "transcriptions": transcriptions_data,
+        "usage_logs": usage_data,
+        "oneshot_orders": orders_data,
+        "billing_events": billing_data,
+        "preferences": prefs_data,
+        "dictionaries": dicts_data,
+    }
+
+
+@app.delete("/api/account", status_code=200)
+async def delete_account_data(db: AsyncSession = Depends(get_db), user_id: str = "default"):
+    """RGPD Art. 17 — Delete all user data (right to erasure).
+
+    Returns a summary of what was deleted. Audio files on disk are also removed.
+
+    NOTE: Single-user assumption — Job, Transcription, UserDictionary,
+    UserCorrection, AudioPreset, and DictationSession have no user_id column,
+    so we delete ALL rows.  This is correct while user_id is always "default".
+    TODO: When multi-user support is added, add user_id columns to these models
+    and filter every DELETE/SELECT below by user_id.
+    """
+    deleted = {}
+
+    # 1. Delete billing events
+    result = await db.execute(delete(BillingEvent).where(BillingEvent.user_id == user_id))
+    deleted["billing_events"] = result.rowcount
+
+    # 2. Delete usage logs
+    result = await db.execute(delete(UsageLog).where(UsageLog.user_id == user_id))
+    deleted["usage_logs"] = result.rowcount
+
+    # 3. Delete oneshot orders
+    result = await db.execute(delete(OneshotOrder).where(OneshotOrder.user_id == user_id))
+    deleted["oneshot_orders"] = result.rowcount
+
+    # 4. Delete transcriptions via ORM (cascade deletes analyses, chat_messages, chapters, translations, speaker_labels)
+    trans_result = await db.execute(select(Transcription))
+    transcriptions = trans_result.scalars().all()
+    audio_files = []
+    for t in transcriptions:
+        job_result = await db.execute(select(Job).where(Job.id == t.job_id))
+        job = job_result.scalar_one_or_none()
+        if job and job.file_path and os.path.exists(job.file_path):
+            audio_files.append(job.file_path)
+        await db.delete(t)
+    deleted["transcriptions"] = len(transcriptions)
+
+    # 5. Delete jobs
+    result = await db.execute(delete(Job))
+    deleted["jobs"] = result.rowcount
+
+    # 6. Delete user corrections
+    result = await db.execute(delete(UserCorrection))
+    deleted["corrections"] = result.rowcount
+
+    # 7. Delete dictionaries via ORM (cascade deletes entries)
+    dict_result = await db.execute(select(UserDictionary))
+    dictionaries = dict_result.scalars().all()
+    for d in dictionaries:
+        await db.delete(d)
+    deleted["dictionaries"] = len(dictionaries)
+
+    # 8. Delete audio presets
+    result = await db.execute(delete(AudioPreset))
+    deleted["presets"] = result.rowcount
+
+    # 9. Delete preferences
+    result = await db.execute(delete(UserPreferences).where(UserPreferences.id == user_id))
+    deleted["preferences"] = result.rowcount
+
+    # 10. Delete subscriptions
+    result = await db.execute(delete(UserSubscription).where(UserSubscription.user_id == user_id))
+    deleted["subscriptions"] = result.rowcount
+
+    # 11. Delete dictation sessions
+    result = await db.execute(delete(DictationSession))
+    deleted["dictation_sessions"] = result.rowcount
+
+    await db.commit()
+
+    # 12. Delete audio files from disk
+    files_deleted = 0
+    for fpath in audio_files:
+        try:
+            os.remove(fpath)
+            files_deleted += 1
+        except OSError:
+            logger.warning(f"Could not delete audio file: {fpath}")
+    deleted["audio_files"] = files_deleted
+
+    logger.info(f"Account data deleted for user {user_id}: {deleted}")
+    return {"status": "deleted", "user_id": user_id, "deleted": deleted}
+
+
+# ── Admin ────────────────────────────────────────────────
+
+@app.get("/api/admin/stats")
+async def admin_stats(db: AsyncSession = Depends(get_db)):
+    """Admin dashboard — aggregate platform statistics."""
+    from app.services.admin_service import get_admin_stats
+    return await get_admin_stats(db)
+
+
+@app.get("/api/admin/queue")
+async def admin_queue(limit: int = 50, db: AsyncSession = Depends(get_db)):
+    """Admin — current job queue."""
+    from app.services.admin_service import get_queue_jobs
+    return await get_queue_jobs(db, limit=limit)
+
+
+@app.get("/api/admin/billing")
+async def admin_billing(limit: int = 50, db: AsyncSession = Depends(get_db)):
+    """Admin — recent billing events."""
+    from app.services.admin_service import get_recent_billing_events
+    return await get_recent_billing_events(db, limit=limit)
+
+
+@app.get("/api/admin/backends")
+async def admin_backends():
+    """Admin — backends health check."""
+    from app.services.admin_service import get_backends_health
+    return await get_backends_health()
+
+
 # ── Health ───────────────────────────────────────────────
 
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok", "version": "7.0"}
+    return {"status": "ok", "version": "7.1"}

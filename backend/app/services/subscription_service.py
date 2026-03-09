@@ -1,8 +1,15 @@
-"""v7 — Subscription & usage service: plans, minutes tracking, one-shot orders."""
+"""v7 — Subscription & usage service: plans, minutes tracking, one-shot orders.
+
+All plan definitions, pricing, packs, and thresholds are loaded from
+backend/config/plans.json — the single source of truth for pricing config.
+"""
+import json
 import logging
 import math
+import os
 import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,96 +18,61 @@ from app.models import Plan, UserSubscription, UsageLog, OneshotOrder
 
 logger = logging.getLogger(__name__)
 
-# ── Plan definitions (seeded on startup) ─────────────────
+# ── Load config from JSON ─────────────────────────────────
 
-SEED_PLANS = [
-    {
-        "id": "free",
-        "name": "Gratuit",
-        "price_cents": 0,
-        "minutes_included": 30,
-        "features": ["transcription", "summary", "keypoints"],
-        "max_dictionaries": 3,
-        "max_workspaces": 1,
-        "priority_default": "P2",
-        "active": 1,
-    },
-    {
-        "id": "basic",
-        "name": "Basic (Solo)",
-        "price_cents": 1900,
-        "minutes_included": 300,
-        "features": [
-            "transcription", "summary", "keypoints", "actions",
-            "flashcards", "quiz", "chat", "dictation",
-            "export_txt", "export_pdf", "export_md",
-        ],
-        "max_dictionaries": 10,
-        "max_workspaces": 3,
-        "priority_default": "P1",
-        "active": 1,
-    },
-    {
-        "id": "pro",
-        "name": "Pro (PME)",
-        "price_cents": 4900,
-        "minutes_included": 2000,
-        "features": [
-            "transcription", "summary", "keypoints", "actions",
-            "flashcards", "quiz", "chat", "dictation",
-            "mindmap", "slides", "infographic", "tables",
-            "export_txt", "export_pdf", "export_md", "export_pptx",
-            "templates", "presets", "priority_queue",
-        ],
-        "max_dictionaries": -1,
-        "max_workspaces": 10,
-        "priority_default": "P1",
-        "active": 1,
-    },
-    {
-        "id": "team",
-        "name": "Equipe+ (Education)",
-        "price_cents": 9900,
-        "minutes_included": 5000,
-        "features": [
-            "transcription", "summary", "keypoints", "actions",
-            "flashcards", "quiz", "chat", "dictation",
-            "mindmap", "slides", "infographic", "tables",
-            "export_txt", "export_pdf", "export_md", "export_pptx",
-            "templates", "presets", "priority_queue",
-            "multi_workspace", "shared_presets", "batch_export",
-        ],
-        "max_dictionaries": -1,
-        "max_workspaces": -1,
-        "priority_default": "P0",
-        "active": 1,
-    },
-]
+_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "config" / "plans.json"
 
-# ── One-shot tiers ──────────────────────────────────────
 
-ONESHOT_TIERS = {
-    "S": {"max_duration_minutes": 30, "price_cents": 300, "includes": ["transcription", "summary", "keypoints"]},
-    "M": {"max_duration_minutes": 60, "price_cents": 400, "includes": ["transcription", "summary", "keypoints", "actions"]},
-    "L": {"max_duration_minutes": 90, "price_cents": 500, "includes": ["transcription", "summary", "keypoints", "actions", "quiz"]},
-}
+def _load_config() -> dict:
+    """Load plans configuration from JSON file."""
+    with open(_CONFIG_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-# ── Extra minute packs ──────────────────────────────────
 
-EXTRA_PACKS = {
-    "S": {"minutes": 100, "price_cents": 300},
-    "M": {"minutes": 500, "price_cents": 1200},
-    "L": {"minutes": 2000, "price_cents": 4000},
-}
+def get_config() -> dict:
+    """Public accessor — reloads from disk each time for hot-reload support."""
+    return _load_config()
+
+
+def get_seed_plans() -> list[dict]:
+    cfg = get_config()
+    plans = []
+    for p in cfg["plans"]:
+        plans.append({**p, "active": 1})
+    return plans
+
+
+def get_extra_packs() -> dict:
+    return get_config()["extra_packs"]
+
+
+def get_oneshot_tiers() -> dict:
+    return get_config()["oneshot_tiers"]
+
+
+def get_alert_thresholds() -> dict:
+    return get_config()["alert_thresholds"]
 
 
 # ── Seed plans ──────────────────────────────────────────
 
 async def seed_plans(db: AsyncSession):
-    """Insert default plans if they don't exist."""
-    for plan_data in SEED_PLANS:
+    """Insert or update plans from config."""
+    for plan_data in get_seed_plans():
         result = await db.execute(select(Plan).where(Plan.id == plan_data["id"]))
-        if not result.scalar_one_or_none():
+        existing = result.scalar_one_or_none()
+        if existing:
+            # Update existing plan with latest config values
+            existing.name = plan_data["name"]
+            existing.price_cents = plan_data["price_cents"]
+            existing.minutes_included = plan_data["minutes_included"]
+            existing.features = plan_data["features"]
+            existing.max_dictionaries = plan_data.get("max_dictionaries", 1)
+            existing.max_workspaces = plan_data.get("max_workspaces", 1)
+            existing.priority_default = plan_data.get("priority_default", "P1")
+            existing.active = plan_data.get("active", 1)
+            logger.info(f"Updated plan: {plan_data['id']}")
+        else:
             plan = Plan(**plan_data)
             db.add(plan)
             logger.info(f"Seeded plan: {plan_data['id']}")
@@ -243,13 +215,11 @@ async def consume_minutes(
             sub.extra_minutes_balance -= from_extra
             minute_source = "plan+extra"
         elif sub.extra_minutes_balance > 0:
-            # Use all remaining plan + all remaining extra, rest is exceeded
             sub.minutes_used += from_plan
             sub.extra_minutes_balance = 0
             minute_source = "plan+extra+exceeded"
             logger.warning(f"User {user_id} partially exceeded quota")
         else:
-            # No extra at all — use plan + exceeded
             sub.minutes_used += minutes_needed
             minute_source = "plan_exceeded"
             logger.warning(f"User {user_id} exceeded minutes quota")
@@ -257,7 +227,6 @@ async def consume_minutes(
         minute_source = "extra"
         sub.extra_minutes_balance -= minutes_needed
     else:
-        # No minutes at all — allow but log exceeded
         sub.minutes_used += minutes_needed
         minute_source = "exceeded"
         logger.warning(f"User {user_id} has no minutes remaining")
@@ -290,10 +259,11 @@ async def consume_minutes(
 
 async def add_extra_minutes(db: AsyncSession, pack: str, user_id: str = "default") -> dict:
     """Add extra minutes to subscription (stub: no real payment)."""
-    if pack not in EXTRA_PACKS:
-        raise ValueError(f"Unknown pack '{pack}'. Available: {list(EXTRA_PACKS.keys())}")
+    packs = get_extra_packs()
+    if pack not in packs:
+        raise ValueError(f"Unknown pack '{pack}'. Available: {list(packs.keys())}")
 
-    pack_info = EXTRA_PACKS[pack]
+    pack_info = packs[pack]
     sub = await get_or_create_subscription(db, user_id)
     sub.extra_minutes_balance += pack_info["minutes"]
     await db.commit()
@@ -308,13 +278,61 @@ async def add_extra_minutes(db: AsyncSession, pack: str, user_id: str = "default
     }
 
 
+# ── Alerts ──────────────────────────────────────────────
+
+async def get_subscription_alerts(db: AsyncSession, user_id: str = "default") -> dict:
+    """Check quota usage and return alerts if thresholds are reached."""
+    sub = await get_or_create_subscription(db, user_id)
+    plan_result = await db.execute(select(Plan).where(Plan.id == sub.plan_id))
+    plan = plan_result.scalar_one_or_none()
+    minutes_included = plan.minutes_included if plan else 0
+
+    if minutes_included <= 0:
+        return {"alerts": [], "usage_percent": 0, "minutes_remaining": 0}
+
+    usage_percent = round((sub.minutes_used / minutes_included) * 100, 1)
+    minutes_remaining = max(0, minutes_included - sub.minutes_used)
+    thresholds = get_alert_thresholds()
+    critical_pct = thresholds["critical_percent"]
+    warning_pct = thresholds["warning_percent"]
+
+    alerts = []
+    if usage_percent >= 100:
+        alerts.append({
+            "level": "blocked",
+            "message": f"Quota epuise. Achetez un pack ou passez au plan superieur.",
+            "percent": usage_percent,
+        })
+    elif usage_percent >= critical_pct:
+        alerts.append({
+            "level": "critical",
+            "message": f"Attention : seulement {minutes_remaining} minutes restantes.",
+            "percent": usage_percent,
+        })
+    elif usage_percent >= warning_pct:
+        alerts.append({
+            "level": "warning",
+            "message": f"Il vous reste {minutes_remaining} minutes sur votre plan {plan.name if plan else ''}.",
+            "percent": usage_percent,
+        })
+
+    return {
+        "alerts": alerts,
+        "usage_percent": usage_percent,
+        "minutes_remaining": minutes_remaining,
+        "minutes_included": minutes_included,
+        "extra_minutes_balance": sub.extra_minutes_balance,
+    }
+
+
 # ── One-shot ────────────────────────────────────────────
 
 def estimate_oneshot_tier(duration_seconds: float) -> dict:
     """Estimate which one-shot tier fits the audio duration."""
+    tiers = get_oneshot_tiers()
     duration_minutes = math.ceil(duration_seconds / 60)
-    for tier_id in ["S", "M", "L"]:
-        tier = ONESHOT_TIERS[tier_id]
+    for tier_id in ["Court", "Standard", "Long"]:
+        tier = tiers[tier_id]
         if duration_minutes <= tier["max_duration_minutes"]:
             return {
                 "tier": tier_id,
@@ -324,10 +342,10 @@ def estimate_oneshot_tier(duration_seconds: float) -> dict:
             }
     # Exceeds all tiers
     return {
-        "tier": "L",
-        "price_cents": ONESHOT_TIERS["L"]["price_cents"],
-        "max_duration_minutes": ONESHOT_TIERS["L"]["max_duration_minutes"],
-        "includes": ONESHOT_TIERS["L"]["includes"],
+        "tier": "Long",
+        "price_cents": tiers["Long"]["price_cents"],
+        "max_duration_minutes": tiers["Long"]["max_duration_minutes"],
+        "includes": tiers["Long"]["includes"],
         "warning": "Audio exceeds 90 minutes, consider a subscription",
     }
 
@@ -336,10 +354,11 @@ async def create_oneshot_order(
     db: AsyncSession, tier: str, audio_duration_seconds: float = None, user_id: str = "default"
 ) -> OneshotOrder:
     """Create a one-shot order (stub: auto-paid)."""
-    if tier not in ONESHOT_TIERS:
+    tiers = get_oneshot_tiers()
+    if tier not in tiers:
         raise ValueError(f"Unknown tier '{tier}'")
 
-    tier_info = ONESHOT_TIERS[tier]
+    tier_info = tiers[tier]
     order = OneshotOrder(
         user_id=user_id,
         tier=tier,

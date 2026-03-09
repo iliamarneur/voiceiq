@@ -38,8 +38,10 @@ class Transcription(Base):
     chapters = relationship("Chapter", back_populates="transcription", cascade="all, delete-orphan")
     audio_type = Column(String, nullable=True)  # meeting, podcast, lecture, phone_call, etc.
     confidence_scores = Column(JSON, nullable=True)  # v5.x: list of confidence scores per segment [0-100]
+    processing_info = Column(JSON, nullable=True)  # {stt_backend, llm_backend, stt_model, llm_model, processing_seconds}
     translations = relationship("TranslationCache", back_populates="transcription", cascade="all, delete-orphan")
     speaker_labels = relationship("SpeakerLabel", back_populates="transcription", cascade="all, delete-orphan")
+    oneshot_order_id = Column(String, nullable=True)  # set when transcription comes from a one-shot order
 
 
 class Analysis(Base):
@@ -193,6 +195,8 @@ class UserSubscription(Base):
     current_period_end = Column(DateTime, nullable=True)
     minutes_used = Column(Integer, nullable=False, default=0)
     extra_minutes_balance = Column(Integer, nullable=False, default=0)
+    stripe_customer_id = Column(String, nullable=True)
+    stripe_subscription_id = Column(String, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -218,11 +222,25 @@ class OneshotOrder(Base):
     __tablename__ = "oneshot_orders"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, nullable=False, default="default")
-    tier = Column(String, nullable=False)  # S, M, L
+    tier = Column(String, nullable=False)  # Court, Standard, Long
     price_cents = Column(Integer, nullable=False)
     audio_duration_seconds = Column(Float, nullable=True)
     payment_status = Column(String, nullable=False, default="pending")  # pending, paid, failed
+    stripe_session_id = Column(String, nullable=True)
     transcription_id = Column(String, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class BillingEvent(Base):
+    __tablename__ = "billing_events"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, nullable=False, default="default")
+    event_type = Column(String, nullable=False)  # checkout.completed, plan.changed, pack.purchased, webhook.received
+    stripe_event_id = Column(String, nullable=True, unique=True)  # idempotency key
+    stripe_session_id = Column(String, nullable=True)
+    amount_cents = Column(Integer, nullable=True)
+    event_data = Column(JSON, nullable=True)
+    status = Column(String, nullable=False, default="success")  # success, failed, duplicate
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -238,3 +256,17 @@ class DictationSession(Base):
     transcription_id = Column(String, nullable=True)  # set when saved as Transcription
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+# ── v7.1 Models (Simple mode / Anonymous sessions) ─────
+
+class AnonymousSession(Base):
+    __tablename__ = "anonymous_sessions"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cookie_token = Column(String, nullable=False, unique=True, index=True)
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    oneshot_count = Column(Integer, nullable=False, default=0)
+    last_job_id = Column(String, nullable=True)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())

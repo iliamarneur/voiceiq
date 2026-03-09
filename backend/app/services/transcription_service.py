@@ -2,15 +2,24 @@ import asyncio
 import logging
 import os
 import tempfile
-import torch
-from faster_whisper import WhisperModel
+try:
+    import torch
+except ImportError:
+    torch = None
+
+try:
+    from faster_whisper import WhisperModel
+    WHISPER_AVAILABLE = True
+except ImportError:
+    WHISPER_AVAILABLE = False
+    WhisperModel = None
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Job, Transcription, AudioPreset, DictionaryEntry
-from app.services.llm_service import generate_analyses
 from app.services.audio_analysis_service import get_vad_params, detect_audio_type_heuristic
 from app.services.dictionary_service import apply_dictionary_corrections
 from app.services.subscription_service import consume_minutes
+from app.services.stt_backends import resolve_stt_backend, transcribe_audio_via_backend
 
 logger = logging.getLogger(__name__)
 
@@ -19,28 +28,63 @@ VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".ts", ".mts
 _model = None
 _fast_model = None
 
-# Dictation model: prioritize speed over accuracy for real-time chunks
-DICTATION_MODEL = os.environ.get("WHISPER_DICTATION_MODEL", "small")
+# Current model names (configurable at runtime)
+_current_transcription_model = os.environ.get("WHISPER_TRANSCRIPTION_MODEL", None)  # None = auto (large-v3 GPU / medium CPU)
+_current_dictation_model = os.environ.get("WHISPER_DICTATION_MODEL", "small")
+
+VALID_WHISPER_MODELS = ["large-v3", "large-v2", "medium", "small", "base", "tiny"]
+
+
+def get_whisper_model_name() -> str:
+    """Return the current transcription model name."""
+    if _current_transcription_model:
+        return _current_transcription_model
+    return "large-v3" if torch.cuda.is_available() else "medium"
+
+
+def get_dictation_model_name() -> str:
+    """Return the current dictation model name."""
+    return _current_dictation_model
+
+
+def set_whisper_model(transcription_model: str = None, dictation_model: str = None):
+    """Change whisper models at runtime. Forces reload on next transcription."""
+    global _model, _fast_model, _current_transcription_model, _current_dictation_model
+    if transcription_model and transcription_model in VALID_WHISPER_MODELS:
+        _current_transcription_model = transcription_model
+        _model = None  # Force reload
+        logger.info(f"Whisper transcription model changed to '{transcription_model}' (will load on next use)")
+    if dictation_model and dictation_model in VALID_WHISPER_MODELS:
+        _current_dictation_model = dictation_model
+        _fast_model = None  # Force reload
+        logger.info(f"Whisper dictation model changed to '{dictation_model}' (will load on next use)")
 
 
 def get_whisper_model():
     global _model
+    model_name = get_whisper_model_name()
     if _model is None:
-        if torch.cuda.is_available():
-            logger.info("Loading Whisper large-v3 on GPU (CUDA)")
-            _model = WhisperModel("large-v3", device="cuda", compute_type="float16")
+        if torch and torch.cuda.is_available():
+            logger.info(f"Loading Whisper '{model_name}' on GPU (CUDA)")
+            _model = WhisperModel(model_name, device="cuda", compute_type="float16")
         else:
-            logger.info("Loading Whisper medium on CPU")
-            _model = WhisperModel("medium", device="cpu", compute_type="int8")
+            logger.info(f"Loading Whisper '{model_name}' on CPU")
+            _model = WhisperModel(model_name, device="cpu", compute_type="int8")
     return _model
 
 
 def get_fast_whisper_model():
-    """Get a lightweight Whisper model optimized for real-time dictation."""
+    """Get a lightweight Whisper model optimized for real-time dictation.
+    Uses GPU if available for maximum speed."""
     global _fast_model
+    model_name = get_dictation_model_name()
     if _fast_model is None:
-        logger.info(f"Loading fast Whisper '{DICTATION_MODEL}' for dictation (CPU, int8)")
-        _fast_model = WhisperModel(DICTATION_MODEL, device="cpu", compute_type="int8")
+        if torch and torch.cuda.is_available():
+            logger.info(f"Loading fast Whisper '{model_name}' for dictation (GPU, float16)")
+            _fast_model = WhisperModel(model_name, device="cuda", compute_type="float16")
+        else:
+            logger.info(f"Loading fast Whisper '{model_name}' for dictation (CPU, int8)")
+            _fast_model = WhisperModel(model_name, device="cpu", compute_type="int8")
     return _fast_model
 
 
@@ -140,7 +184,11 @@ def _run_whisper(file_path: str, vad_params: dict = None, language: str = None):
     return segments, full_text, info
 
 
-async def transcribe_audio(job_id: str, db: AsyncSession, profile: str = "generic", language: str | None = None):
+async def transcribe_audio(
+    job_id: str, db: AsyncSession, profile: str = "generic", language: str | None = None,
+    stt_override: str | None = None, llm_override: str | None = None,
+    mode_id: str = "file_upload", oneshot_order_id: str | None = None,
+):
     """Background task: transcribe audio file and trigger analyses."""
     try:
         result = await db.execute(select(Job).where(Job.id == job_id))
@@ -177,11 +225,16 @@ async def transcribe_audio(job_id: str, db: AsyncSession, profile: str = "generi
         if not vad_params:
             vad_params = get_vad_params(profile_id=profile)
 
-        # Run Whisper in thread pool to avoid blocking the event loop
+        # Resolve STT backend and run transcription
         import time as _time
         _transcription_start = _time.time()
-        loop = asyncio.get_event_loop()
-        segments, full_text, info = await loop.run_in_executor(None, _run_whisper, file_path, vad_params, language)
+        stt_backend = resolve_stt_backend(mode_id, override=stt_override)
+        # Default to French if no language specified (avoids misdetection like Nynorsk)
+        effective_language = language or os.environ.get("DEFAULT_STT_LANGUAGE", "fr")
+        logger.info(f"Job {job_id}: using STT backend '{stt_backend}' (mode={mode_id}, lang={effective_language})")
+        segments, full_text, info = await transcribe_audio_via_backend(
+            file_path, language=effective_language, backend_id=stt_backend, vad_params=vad_params,
+        )
 
         # Apply dictionary post-corrections if available
         if dictionary_entries:
@@ -203,6 +256,21 @@ async def transcribe_audio(job_id: str, db: AsyncSession, profile: str = "generi
             logger.error(f"Job {job_id} disappeared during transcription")
             return
 
+        # Build processing info for traceability
+        from app.services.llm_backends import resolve_llm_backend, get_openai_model
+        llm_backend = resolve_llm_backend(mode_id, override=llm_override)
+        _processing_seconds = round(_time.time() - _transcription_start, 1)
+        _processing_info = {
+            "stt_backend": stt_backend,
+            "stt_model": get_whisper_model_name() if stt_backend == "stt_open_source" else "whisper-1",
+            "llm_backend": llm_backend,
+            "llm_model": get_openai_model() if llm_backend == "llm_openai" else (
+                "ollama" if llm_backend == "llm_open_source" else llm_backend
+            ),
+            "processing_seconds": _processing_seconds,
+            "mode": mode_id,
+        }
+
         transcription = Transcription(
             filename=os.path.basename(file_path),
             text=full_text,
@@ -212,6 +280,8 @@ async def transcribe_audio(job_id: str, db: AsyncSession, profile: str = "generi
             profile=profile,
             audio_type=detected_audio_type,
             job_id=job.id,
+            processing_info=_processing_info,
+            oneshot_order_id=oneshot_order_id,
         )
         db.add(transcription)
         await db.flush()  # Ensure transcription.id is generated
@@ -227,13 +297,14 @@ async def transcribe_audio(job_id: str, db: AsyncSession, profile: str = "generi
         # v7: Log usage and consume minutes
         processing_end = _time.time()
         whisper_model_name = "large-v3" if torch.cuda.is_available() else "medium"
+        _usage_source_type = "oneshot" if oneshot_order_id else (getattr(job, "source_type", "file") or "file")
         try:
             await consume_minutes(
                 db,
                 audio_duration_seconds=info.duration,
                 transcription_id=transcription.id,
                 job_id=job.id,
-                source_type=getattr(job, "source_type", "file") or "file",
+                source_type=_usage_source_type,
                 profile_used=profile,
                 whisper_model=whisper_model_name,
                 processing_time_seconds=round(processing_end - _transcription_start, 1),
@@ -242,17 +313,22 @@ async def transcribe_audio(job_id: str, db: AsyncSession, profile: str = "generi
         except Exception as usage_err:
             logger.warning(f"Usage logging failed: {usage_err}")
 
-        # Trigger LLM analyses (profile-aware, with dictionary context)
-        logger.info(f"Starting analyses for {transcription.id} (profile: {profile})...")
-        await generate_analyses(transcription.id, db, profile_id=profile, dictionary_entries=dictionary_entries)
+        # v7: Auto-link oneshot order to transcription
+        if oneshot_order_id:
+            try:
+                from app.services.subscription_service import link_oneshot_to_transcription
+                await link_oneshot_to_transcription(db, oneshot_order_id, transcription.id)
+                logger.info(f"Oneshot order {oneshot_order_id} linked to transcription {transcription.id}")
+            except Exception as link_err:
+                logger.warning(f"Failed to link oneshot order: {link_err}")
 
-        # Mark job as fully completed after analyses
+        # Mark job as completed (analyses are generated on-demand by user)
         result = await db.execute(select(Job).where(Job.id == job_id))
         job = result.scalar_one_or_none()
         if job:
             job.status = "completed"
             await db.commit()
-        logger.info(f"All analyses complete for {transcription.id}, job {job_id} → completed")
+        logger.info(f"Transcription complete for {transcription.id}, job {job_id} → completed (analyses on-demand)")
 
     except Exception as e:
         logger.error(f"Transcription failed for job {job_id}: {e}", exc_info=True)

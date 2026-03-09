@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Transcription, Analysis, Chapter, TranslationCache, ChatMessage
 from app.services.profile_service import get_profile_analyses, get_analysis_prompt
+from app.services.llm_backends import resolve_llm_backend, analyze_transcript_via_backend
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +212,7 @@ def _call_ollama_text(system_prompt: str, user_prompt: str) -> str:
     return f"Error: {str(last_error)}"
 
 
-async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id: str = None, prompt_version: str = "latest", dictionary_entries: list = None):
+async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id: str = None, prompt_version: str = "latest", dictionary_entries: list = None, llm_backend_id: str = None):
     """Generate analyses for a transcription based on its profile."""
     result = await db.execute(select(Transcription).where(Transcription.id == transcription_id))
     transcription = result.scalar_one_or_none()
@@ -230,6 +231,15 @@ async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id:
     # Get analyses from profile config
     profile_analyses = get_profile_analyses(effective_profile)
 
+    # Choose LLM call function based on backend
+    async def _llm_call(prompt_text: str, text: str) -> dict:
+        if llm_backend_id and llm_backend_id != "llm_open_source":
+            return await analyze_transcript_via_backend(prompt_text, text, backend_id=llm_backend_id)
+        return await _call_ollama_async(prompt_text, text)
+
+    if llm_backend_id:
+        logger.info(f"Using LLM backend: {llm_backend_id}")
+
     if profile_analyses:
         # Profile-driven pipeline
         success_count = 0
@@ -246,7 +256,7 @@ async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id:
                 prompt = prompt + dict_context
             logger.info(f"[{effective_profile}] Generating {analysis_type} (v={prompt_version}) for {transcription_id}...")
             try:
-                content = await _call_ollama_async(prompt, transcription.text)
+                content = await _llm_call(prompt, transcription.text)
                 if "error" in content and len(content) == 1:
                     logger.warning(f"[{effective_profile}] {analysis_type} returned error: {content['error']}")
                     error_count += 1
@@ -271,7 +281,7 @@ async def generate_analyses(transcription_id: str, db: AsyncSession, profile_id:
             if dict_context:
                 prompt = prompt + dict_context
             logger.info(f"Generating {analysis_type} for {transcription_id}...")
-            content = await _call_ollama_async(prompt, transcription.text)
+            content = await _llm_call(prompt, transcription.text)
             analysis = Analysis(
                 transcription_id=transcription_id,
                 type=analysis_type,

@@ -31,6 +31,8 @@ class TranscriptionOut(BaseModel):
     duration: Optional[float] = None
     status: str
     profile: str = "generic"
+    processing_info: Optional[dict] = None
+    oneshot_order_id: Optional[str] = None
     created_at: Optional[datetime] = None
     model_config = {"from_attributes": True}
 

@@ -1,0 +1,75 @@
+{
+  "plans": [
+    {
+      "id": "free",
+      "name": "Gratuit",
+      "price_cents": 0,
+      "minutes_included": 60,
+      "features": ["transcription", "summary", "keypoints"],
+      "max_dictionaries": 3,
+      "max_workspaces": 1,
+      "priority_default": "P2"
+    },
+    {
+      "id": "basic",
+      "name": "Basic (Solo)",
+      "price_cents": 1900,
+      "minutes_included": 300,
+      "features": [
+        "transcription", "summary", "keypoints", "actions",
+        "flashcards", "quiz", "chat", "dictation",
+        "export_txt", "export_pdf", "export_md"
+      ],
+      "max_dictionaries": 1,
+      "max_workspaces": 1,
+      "priority_default": "P1"
+    },
+    {
+      "id": "pro",
+      "name": "Pro (PME)",
+      "price_cents": 4900,
+      "minutes_included": 2000,
+      "features": [
+        "transcription", "summary", "keypoints", "actions",
+        "flashcards", "quiz", "chat", "dictation",
+        "mindmap", "slides", "infographic", "tables",
+        "export_txt", "export_pdf", "export_md", "export_pptx",
+        "templates", "presets", "priority_queue"
+      ],
+      "max_dictionaries": -1,
+      "max_workspaces": 1,
+      "priority_default": "P1"
+    },
+    {
+      "id": "team",
+      "name": "Equipe+ (Education)",
+      "price_cents": 9900,
+      "minutes_included": 5000,
+      "features": [
+        "transcription", "summary", "keypoints", "actions",
+        "flashcards", "quiz", "chat", "dictation",
+        "mindmap", "slides", "infographic", "tables",
+        "export_txt", "export_pdf", "export_md", "export_pptx",
+        "templates", "presets", "priority_queue",
+        "multi_workspace", "shared_presets", "batch_export"
+      ],
+      "max_dictionaries": -1,
+      "max_workspaces": -1,
+      "priority_default": "P0"
+    }
+  ],
+  "extra_packs": {
+    "S": { "minutes": 100, "price_cents": 300 },
+    "M": { "minutes": 500, "price_cents": 1200 },
+    "L": { "minutes": 2000, "price_cents": 4000 }
+  },
+  "oneshot_tiers": {
+    "Court": { "max_duration_minutes": 30, "price_cents": 300, "includes": ["transcription", "summary", "keypoints"] },
+    "Standard": { "max_duration_minutes": 60, "price_cents": 400, "includes": ["transcription", "summary", "keypoints", "actions"] },
+    "Long": { "max_duration_minutes": 90, "price_cents": 500, "includes": ["transcription", "summary", "keypoints", "actions", "quiz"] }
+  },
+  "alert_thresholds": {
+    "warning_percent": 75,
+    "critical_percent": 90
+  }
+}

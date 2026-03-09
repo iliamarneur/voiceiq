@@ -1,0 +1,64 @@
+{
+  "_comment": "Backend STT/LLM configuration per input mode. Change backend_id values to switch providers.",
+  "stt_backends": {
+    "stt_open_source": {
+      "name": "Whisper local (open-source)",
+      "provider": "faster_whisper",
+      "description": "faster-whisper en local, GPU si disponible"
+    },
+    "stt_whisper_api": {
+      "name": "OpenAI Whisper API",
+      "provider": "openai_whisper",
+      "description": "API OpenAI Whisper (requiert OPENAI_STT_API_KEY)",
+      "env_key": "OPENAI_STT_API_KEY"
+    },
+    "stt_deepgram_api": {
+      "name": "Deepgram API",
+      "provider": "deepgram",
+      "description": "API Deepgram Nova-2 (requiert DEEPGRAM_API_KEY)",
+      "env_key": "DEEPGRAM_API_KEY"
+    },
+    "stt_google_api": {
+      "name": "Google Speech-to-Text",
+      "provider": "google_stt",
+      "description": "API Google STT (requiert GOOGLE_APPLICATION_CREDENTIALS)",
+      "env_key": "GOOGLE_APPLICATION_CREDENTIALS"
+    }
+  },
+  "llm_backends": {
+    "llm_open_source": {
+      "name": "Ollama local (open-source)",
+      "provider": "ollama",
+      "description": "LLM local via Ollama (qwen2.5, llama3, mistral...)"
+    },
+    "llm_openai": {
+      "name": "OpenAI GPT",
+      "provider": "openai",
+      "description": "API OpenAI GPT-4.1 (requiert OPENAI_LLM_API_KEY)",
+      "env_key": "OPENAI_LLM_API_KEY"
+    },
+    "llm_anthropic": {
+      "name": "Anthropic Claude",
+      "provider": "anthropic",
+      "description": "API Claude Opus/Sonnet (requiert ANTHROPIC_API_KEY)",
+      "env_key": "ANTHROPIC_API_KEY"
+    }
+  },
+  "modes": {
+    "file_upload": {
+      "stt_backend": "stt_whisper_api",
+      "llm_backend": "llm_openai",
+      "stt_model_hint": "large-v3"
+    },
+    "recording": {
+      "stt_backend": "stt_whisper_api",
+      "llm_backend": "llm_openai",
+      "stt_model_hint": "large-v3"
+    },
+    "live_dictation": {
+      "stt_backend": "stt_whisper_api",
+      "llm_backend": "llm_openai",
+      "stt_model_hint": "small"
+    }
+  }
+}

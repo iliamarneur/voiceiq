@@ -5,10 +5,10 @@ import {
   FileText, ListChecks, CheckSquare, BookOpen, HelpCircle,
   Network, Presentation, BarChart3, Table2, Clock, Globe,
   ArrowLeft, Download, RefreshCw, Loader2, Send, MessageSquare, X,
-  Play, Pause, BookMarked, Languages, Volume2, Trash2,
+  Play, Pause, BookMarked, Languages, Volume2, Trash2, Copy, Check,
   HeartPulse, Landmark, Shield, AlertTriangle, Calendar, Pill,
   Eye, Users, ClipboardList, Target, Dumbbell,
-  Lightbulb, Star, Sparkles, PenLine
+  Lightbulb, Star, Sparkles, PenLine, Zap
 } from 'lucide-react';
 import axios from 'axios';
 import { Transcription, Analysis, AnalysisType, Chapter, ChatMessage, GlossaryTerm, Profile, ProfileAnalysis, KeyMoment, ConfidenceInfo } from '../types';
@@ -79,6 +79,10 @@ function TranscriptionView() {
   // Profile
   const [profileData, setProfileData] = useState<Profile | null>(null);
 
+  // Mise en page (LLM formatting)
+  const [formattedText, setFormattedText] = useState<string>('');
+  const [formattingLoading, setFormattingLoading] = useState(false);
+
   // v5.x: Confidence & Key Moments
   const [confidenceInfo, setConfidenceInfo] = useState<ConfidenceInfo | null>(null);
   const [keyMoments, setKeyMoments] = useState<KeyMoment[]>([]);
@@ -119,13 +123,22 @@ function TranscriptionView() {
     setLoading(false);
   };
 
+  const [gateError, setGateError] = useState<string | null>(null);
+
   const handleRegenerate = async (type: AnalysisType) => {
     setRegenerating(true);
+    setGateError(null);
     try {
       await axios.post(`/api/transcriptions/${id}/analyses/${type}/regenerate`);
       const res = await axios.get(`/api/transcriptions/${id}/analyses`);
       setAnalyses(res.data);
-    } catch (e) { console.error(e); }
+    } catch (e: any) {
+      if (e.response?.status === 403 && e.response?.data?.detail?.upgrade_required) {
+        setGateError(e.response.data.detail.message);
+      } else {
+        console.error(e);
+      }
+    }
     setRegenerating(false);
   };
 
@@ -227,6 +240,18 @@ function TranscriptionView() {
     setKeyMomentsLoading(false);
   };
 
+  const handleFormat = async () => {
+    setFormattingLoading(true);
+    setFormattedText('');
+    try {
+      const res = await axios.post(`/api/transcriptions/${id}/format`);
+      setFormattedText(res.data.formatted_text || '');
+    } catch (e: any) {
+      console.error(e);
+    }
+    setFormattingLoading(false);
+  };
+
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
@@ -292,7 +317,28 @@ function TranscriptionView() {
                   {profileData?.name || transcription.profile}
                 </span>
               )}
+              {transcription.oneshot_order_id && (
+                <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-medium">
+                  One-shot
+                </span>
+              )}
             </div>
+            {/* Processing info badges */}
+            {transcription.processing_info && (
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                  STT: {transcription.processing_info.stt_model}
+                  <span className="text-blue-400 dark:text-blue-500 font-normal">({transcription.processing_info.stt_backend.replace('stt_', '')})</span>
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
+                  LLM: {transcription.processing_info.llm_model}
+                  <span className="text-purple-400 dark:text-purple-500 font-normal">({transcription.processing_info.llm_backend.replace('llm_', '')})</span>
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                  {transcription.processing_info.processing_seconds}s de traitement
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Audio player controls */}
@@ -354,6 +400,7 @@ function TranscriptionView() {
           <div className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-x-auto scrollbar-thin">
             <div className="flex px-6 gap-1 min-w-max">
               <TabButton active={activeTab === 'transcript'} onClick={() => setActiveTab('transcript')} icon={FileText} label="Transcript" />
+              <TabButton active={activeTab === 'mise_en_page'} onClick={() => setActiveTab('mise_en_page')} icon={Sparkles} label="Mise en page" badge={!!formattedText} />
               <TabButton active={activeTab === 'chapters'} onClick={() => { setActiveTab('chapters'); fetchChapters(); }} icon={BookMarked} label="Chapters" />
               <TabButton active={activeTab === 'key_moments'} onClick={() => { setActiveTab('key_moments'); fetchKeyMoments(); }} icon={Star} label="Key Moments" badge={keyMoments.length > 0} />
               {analysisTabs.map(({ type, label, icon }) => (
@@ -376,6 +423,13 @@ function TranscriptionView() {
             <div className="max-w-4xl mx-auto">
               {activeTab === 'transcript' ? (
                 <TranscriptPanel transcription={transcription} currentTime={currentTime} onSeek={seekTo} confidenceScores={confidenceInfo?.scores || null} />
+              ) : activeTab === 'mise_en_page' ? (
+                <MiseEnPagePanel
+                  formattedText={formattedText}
+                  loading={formattingLoading}
+                  onGenerate={handleFormat}
+                  transcription={transcription}
+                />
               ) : activeTab === 'key_moments' ? (
                 <KeyMomentsPanel moments={keyMoments} loading={keyMomentsLoading} onSeek={seekTo} onGenerate={() => fetchKeyMoments(true)} error={keyMomentsError} />
               ) : activeTab === 'chapters' ? (
@@ -399,13 +453,33 @@ function TranscriptionView() {
                 />
               ) : (
                 <div className="text-center py-20 text-slate-500">
-                  <p>This analysis hasn't been generated yet.</p>
-                  <button
-                    onClick={() => handleRegenerate(activeTab as AnalysisType)}
-                    className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm"
-                  >
-                    Generate Now
-                  </button>
+                  <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center mx-auto mb-4">
+                    <Zap className="w-8 h-8 text-indigo-400" />
+                  </div>
+                  <p className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-1">Analyse non generee</p>
+                  {gateError ? (
+                    <>
+                      <p className="text-sm text-red-500 mb-4">{gateError}</p>
+                      <a href="/plans" className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-2">
+                        Voir les plans
+                      </a>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-slate-400 mb-6">Cliquez pour lancer la generation avec votre backend LLM actif</p>
+                      <button
+                        onClick={() => handleRegenerate(activeTab as AnalysisType)}
+                        disabled={regenerating}
+                        className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-2"
+                      >
+                        {regenerating ? (
+                          <><RefreshCw className="w-4 h-4 animate-spin" /> Generation en cours...</>
+                        ) : (
+                          <><Zap className="w-4 h-4" /> Generer maintenant</>
+                        )}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -505,6 +579,9 @@ function TabButton({ active, onClick, icon: Icon, label, badge }: {
 function TranscriptPanel({ transcription, currentTime, onSeek, confidenceScores }: {
   transcription: Transcription; currentTime: number; onSeek: (t: number) => void; confidenceScores: number[] | null;
 }) {
+  const [viewMode, setViewMode] = React.useState<'segments' | 'text'>('text');
+  const [copied, setCopied] = React.useState(false);
+
   const getConfidenceColor = (score: number) => {
     if (score >= 70) return 'bg-green-500';
     if (score >= 40) return 'bg-amber-500';
@@ -516,9 +593,102 @@ function TranscriptPanel({ transcription, currentTime, onSeek, confidenceScores 
     return 'Faible';
   };
 
+  const fullText = transcription.text || transcription.segments?.map(s => s.text).join(' ') || '';
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(fullText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadPdf = async () => {
+    try {
+      const res = await axios.get(`/api/transcriptions/${transcription.id}/export/pdf`, { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${transcription.filename || 'transcription'}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Fallback: generate PDF client-side from text
+      const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${transcription.filename || 'transcription'}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleDownloadTxt = () => {
+    const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${transcription.filename || 'transcription'}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="space-y-1">
-      {transcription.segments && transcription.segments.length > 0 ? (
+    <div className="space-y-3">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-slate-700">
+          <button
+            onClick={() => setViewMode('segments')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              viewMode === 'segments' ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            Segments
+          </button>
+          <button
+            onClick={() => setViewMode('text')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              viewMode === 'text' ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            Texte brut
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCopy}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              copied
+                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+            }`}
+          >
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? 'Copie !' : 'Copier'}
+          </button>
+          <button
+            onClick={handleDownloadPdf}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all"
+          >
+            <Download className="w-3.5 h-3.5" /> PDF
+          </button>
+          <button
+            onClick={handleDownloadTxt}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all"
+          >
+            <Download className="w-3.5 h-3.5" /> TXT
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      {viewMode === 'text' ? (
+        <div className="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6">
+          <p className="text-sm leading-relaxed whitespace-pre-wrap text-slate-800 dark:text-slate-200 selection:bg-indigo-200 dark:selection:bg-indigo-800">
+            {fullText}
+          </p>
+        </div>
+      ) : transcription.segments && transcription.segments.length > 0 ? (
         transcription.segments.map((seg, i) => {
           const isActive = currentTime >= seg.start && currentTime < seg.end;
           const confidence = confidenceScores ? confidenceScores[i] : null;
@@ -557,12 +727,152 @@ function TranscriptPanel({ transcription, currentTime, onSeek, confidenceScores 
           );
         })
       ) : (
-        <div className="prose dark:prose-invert max-w-none">
-          <p className="leading-relaxed whitespace-pre-wrap">{transcription.text}</p>
+        <div className="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6">
+          <p className="text-sm leading-relaxed whitespace-pre-wrap text-slate-800 dark:text-slate-200">{transcription.text}</p>
         </div>
       )}
     </div>
   );
+}
+
+// ── Mise en page Panel ───────────────────────────────────
+
+function MiseEnPagePanel({ formattedText, loading, onGenerate, transcription }: {
+  formattedText: string; loading: boolean; onGenerate: () => void; transcription: Transcription;
+}) {
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(formattedText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadPdf = async () => {
+    try {
+      const res = await axios.get(`/api/transcriptions/${transcription.id}/export/pdf`, { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${transcription.filename || 'transcription'}_formatted.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Fallback: download as markdown
+      const blob = new Blob([formattedText], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${transcription.filename || 'transcription'}_formatted.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+        <p className="text-slate-500">Mise en page en cours... Le LLM analyse et formate votre transcription.</p>
+      </div>
+    );
+  }
+
+  if (!formattedText) {
+    return (
+      <div className="text-center py-20 text-slate-500">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/30 dark:to-indigo-900/30 flex items-center justify-center mx-auto mb-4">
+          <Sparkles className="w-8 h-8 text-indigo-400" />
+        </div>
+        <p className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">Mise en page intelligente</p>
+        <p className="text-sm text-slate-400 mb-6 max-w-md mx-auto">
+          Le LLM va analyser votre transcription et creer une mise en page structuree adaptee au type de contenu (reunion, cours, interview...) sans modifier le fond du texte.
+        </p>
+        <button
+          onClick={onGenerate}
+          className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:scale-105 transition-all inline-flex items-center gap-2"
+        >
+          <Sparkles className="w-4 h-4" />
+          Generer la mise en page
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-end gap-2">
+        <button
+          onClick={handleCopy}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            copied
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+              : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+          }`}
+        >
+          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? 'Copie !' : 'Copier'}
+        </button>
+        <button
+          onClick={handleDownloadPdf}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all"
+        >
+          <Download className="w-3.5 h-3.5" /> PDF
+        </button>
+        <button
+          onClick={onGenerate}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-800/30 transition-all"
+        >
+          <RefreshCw className="w-3.5 h-3.5" /> Regenerer
+        </button>
+      </div>
+      <div className="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 prose prose-slate dark:prose-invert prose-sm max-w-none">
+        <FormattedMarkdown text={formattedText} />
+      </div>
+    </div>
+  );
+}
+
+// ── Simple Markdown Renderer ─────────────────────────────
+
+function FormattedMarkdown({ text }: { text: string }) {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let key = 0;
+
+  for (const line of lines) {
+    if (line.startsWith('### ')) {
+      elements.push(<h3 key={key++} className="text-base font-semibold text-slate-800 dark:text-slate-200 mt-4 mb-2">{line.slice(4)}</h3>);
+    } else if (line.startsWith('## ')) {
+      elements.push(<h2 key={key++} className="text-lg font-bold text-slate-800 dark:text-slate-200 mt-5 mb-2 pb-1 border-b border-slate-200 dark:border-slate-700">{line.slice(3)}</h2>);
+    } else if (line.startsWith('# ')) {
+      elements.push(<h1 key={key++} className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-4 mb-3">{line.slice(2)}</h1>);
+    } else if (line.startsWith('- ') || line.startsWith('* ')) {
+      elements.push(
+        <div key={key++} className="flex gap-2 ml-2 my-0.5">
+          <span className="text-indigo-400 mt-1.5 text-xs">●</span>
+          <span className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">{renderInline(line.slice(2))}</span>
+        </div>
+      );
+    } else if (line.trim() === '') {
+      elements.push(<div key={key++} className="h-2" />);
+    } else {
+      elements.push(<p key={key++} className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 my-1">{renderInline(line)}</p>);
+    }
+  }
+
+  return <>{elements}</>;
+}
+
+function renderInline(text: string): React.ReactNode {
+  // Handle **bold** patterns
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="font-semibold text-slate-900 dark:text-slate-100">{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
 }
 
 // ── Key Moments Panel (v5.x) ─────────────────────────────

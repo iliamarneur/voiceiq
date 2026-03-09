@@ -9,10 +9,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import DictationSession, Job, Transcription
-from app.services.transcription_service import _run_whisper_fast
+from app.services.transcription_service import _run_whisper_fast, get_dictation_model_name
 from app.services.audio_analysis_service import get_vad_params
 from app.services.dictionary_service import apply_dictionary_corrections
 from app.services.subscription_service import consume_minutes
+from app.services.stt_backends import resolve_stt_backend, transcribe_audio_via_backend
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,8 @@ async def start_session(db: AsyncSession, profile: str = "generic") -> Dictation
 
 
 async def transcribe_chunk(
-    session_id: str, audio_data: bytes, db: AsyncSession
+    session_id: str, audio_data: bytes, db: AsyncSession,
+    stt_override: str = None,
 ) -> dict:
     """Transcribe a single audio chunk and append to session text."""
     result = await db.execute(
@@ -50,12 +52,14 @@ async def transcribe_chunk(
         f.write(audio_data)
 
     try:
-        # Transcribe with fast Whisper model (optimized for real-time dictation)
+        # Transcribe via STT backend (defaults to local fast Whisper for dictation)
         vad_params = {"min_silence_duration_ms": 200}
-
-        loop = asyncio.get_event_loop()
-        segments, chunk_text, info = await loop.run_in_executor(
-            None, _run_whisper_fast, chunk_path, vad_params
+        stt_backend = resolve_stt_backend("live_dictation", override=stt_override)
+        dictation_model = get_dictation_model_name()
+        # Use session language or default to French
+        effective_lang = session.language or os.environ.get("DEFAULT_STT_LANGUAGE", "fr")
+        segments, chunk_text, info = await transcribe_audio_via_backend(
+            chunk_path, language=effective_lang, backend_id=stt_backend, vad_params=vad_params, model_hint=dictation_model,
         )
 
         # Update session
@@ -186,7 +190,7 @@ async def save_as_transcription(
                 job_id=job.id,
                 source_type="dictation",
                 profile_used=session.profile,
-                whisper_model="small",
+                whisper_model=get_dictation_model_name(),
                 language=session.language,
             )
         except Exception as e:

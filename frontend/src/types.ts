@@ -1,3 +1,12 @@
+export interface ProcessingInfo {
+  stt_backend: string;
+  stt_model: string;
+  llm_backend: string;
+  llm_model: string;
+  processing_seconds: number;
+  mode: string;
+}
+
 export interface Transcription {
   id: string;
   filename: string;
@@ -7,6 +16,8 @@ export interface Transcription {
   duration: number | null;
   status: string;
   profile: string;
+  processing_info: ProcessingInfo | null;
+  oneshot_order_id: string | null;
   created_at: string | null;
 }
 
@@ -211,6 +222,7 @@ export interface UsageSummary {
 
 export interface OneshotTier {
   tier: string;
+  label: string;
   max_duration_minutes: number;
   price_cents: number;
   includes: string[];
@@ -220,6 +232,20 @@ export interface ExtraPack {
   pack: string;
   minutes: number;
   price_cents: number;
+}
+
+export interface QuotaAlert {
+  level: 'warning' | 'critical' | 'blocked';
+  message: string;
+  percent: number;
+}
+
+export interface AlertsResponse {
+  alerts: QuotaAlert[];
+  usage_percent: number;
+  minutes_remaining: number;
+  minutes_included: number;
+  extra_minutes_balance: number;
 }
 
 // v6 types

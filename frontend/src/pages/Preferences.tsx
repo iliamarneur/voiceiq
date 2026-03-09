@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Save, Loader2, BookOpen, Mic, ListOrdered, FileText, Palette } from 'lucide-react';
+import { Settings, Save, Loader2, BookOpen, Mic, ListOrdered, FileText, Palette, Shield, Download, Trash2, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
 import { UserPreferences, AudioPreset, UserDictionary, Profile } from '../types';
 
@@ -11,6 +11,7 @@ function PreferencesPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,7 +37,11 @@ function PreferencesPage() {
       setPrefs(res.data);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      setSaveError('Impossible d\'enregistrer vos préférences. Veuillez réessayer.');
+      setTimeout(() => setSaveError(''), 4000);
+    }
     setSaving(false);
   };
 
@@ -57,17 +62,17 @@ function PreferencesPage() {
           <Settings className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Vos preferences</h1>
-          <p className="text-sm text-slate-500">Personnalisez votre experience VoiceIQ</p>
+          <h1 className="text-2xl font-bold">Vos préférences</h1>
+          <p className="text-sm text-slate-500">Personnalisez votre expérience VoiceIQ</p>
         </div>
       </div>
 
       <div className="space-y-6">
         {/* Summary Style */}
-        <Section icon={FileText} title="Style de resume" description="Choisissez le niveau de detail et le ton de vos resumes">
+        <Section icon={FileText} title="Style de résumé" description="Choisissez le niveau de détail et le ton de vos résumés">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2 block">Niveau de detail</label>
+              <label className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2 block">Niveau de détail</label>
               <div className="flex gap-2">
                 {(['short', 'balanced', 'detailed'] as const).map(level => (
                   <button
@@ -79,7 +84,7 @@ function PreferencesPage() {
                         : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                     }`}
                   >
-                    {level === 'short' ? 'Court' : level === 'balanced' ? 'Equilibre' : 'Detaille'}
+                    {level === 'short' ? 'Court' : level === 'balanced' ? 'Équilibré' : 'Détaillé'}
                   </button>
                 ))}
               </div>
@@ -106,7 +111,7 @@ function PreferencesPage() {
         </Section>
 
         {/* Default Profile */}
-        <Section icon={Palette} title="Profil par defaut" description="Le profil utilise automatiquement a l'upload">
+        <Section icon={Palette} title="Profil par défaut" description="Le profil utilisé automatiquement à l'upload">
           <select
             value={prefs.default_profile}
             onChange={e => setPrefs({ ...prefs, default_profile: e.target.value })}
@@ -119,7 +124,7 @@ function PreferencesPage() {
         </Section>
 
         {/* Default Priority */}
-        <Section icon={ListOrdered} title="Priorite par defaut" description="La priorite appliquee aux nouveaux uploads">
+        <Section icon={ListOrdered} title="Priorité par défaut" description="La priorité appliquée aux nouveaux uploads">
           <div className="flex gap-3">
             {[
               { value: 'P0', label: 'P0 Urgent', color: 'from-red-500 to-rose-500' },
@@ -142,13 +147,13 @@ function PreferencesPage() {
         </Section>
 
         {/* Default Preset */}
-        <Section icon={Mic} title="Preset par defaut" description="Le preset audio applique automatiquement">
+        <Section icon={Mic} title="Preset par défaut" description="Le preset audio appliqué automatiquement">
           <select
             value={prefs.default_preset_id || ''}
             onChange={e => setPrefs({ ...prefs, default_preset_id: e.target.value || null })}
             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="">Aucun preset par defaut</option>
+            <option value="">Aucun preset par défaut</option>
             {presets.map(p => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
@@ -156,7 +161,7 @@ function PreferencesPage() {
         </Section>
 
         {/* Recap */}
-        <Section icon={BookOpen} title="Vos ressources" description="Recap de vos dictionnaires et presets">
+        <Section icon={BookOpen} title="Vos ressources" description="Récap de vos dictionnaires et presets">
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
               <p className="text-2xl font-bold text-indigo-600">{dictionaries.length}</p>
@@ -184,11 +189,134 @@ function PreferencesPage() {
             } disabled:opacity-50`}
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Save className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-            {saving ? 'Enregistrement...' : saved ? 'Enregistre !' : 'Enregistrer'}
+            {saving ? 'Enregistrement...' : saved ? 'Enregistré !' : 'Enregistrer'}
           </button>
         </div>
+
+        {saveError && (
+          <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-2">
+            {saveError}
+          </p>
+        )}
+
+        {/* RGPD / Data Privacy */}
+        <RgpdSection />
       </div>
     </motion.div>
+  );
+}
+
+function RgpdSection() {
+  const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteResult, setDeleteResult] = useState<string | null>(null);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const resp = await axios.get('/api/account/export');
+      const blob = new Blob([JSON.stringify(resp.data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `voiceiq-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      // silently fail
+    }
+    setExporting(false);
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const resp = await axios.delete('/api/account');
+      setDeleteResult(`Compte supprimé. ${resp.data.message || ''}`);
+      setConfirmDelete(false);
+    } catch {
+      setDeleteResult('Erreur lors de la suppression.');
+    }
+    setDeleting(false);
+  };
+
+  return (
+    <div className="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+      <div className="flex items-center gap-3 mb-4">
+        <Shield className="w-5 h-5 text-indigo-500" />
+        <div>
+          <h3 className="font-semibold">Vos données personnelles</h3>
+          <p className="text-xs text-slate-500">RGPD — Export et suppression de vos données</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {/* Export */}
+        <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600">
+          <div>
+            <p className="font-medium text-sm">Exporter mes données</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Téléchargez toutes vos données au format JSON (Art. 20 RGPD)
+            </p>
+          </div>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-all disabled:opacity-50"
+          >
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Exporter
+          </button>
+        </div>
+
+        {/* Delete */}
+        <div className="flex items-center justify-between p-4 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/50">
+          <div>
+            <p className="font-medium text-sm text-red-700 dark:text-red-400">Supprimer mon compte</p>
+            <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-0.5">
+              Supprime toutes vos données de façon irréversible (Art. 17 RGPD)
+            </p>
+          </div>
+          {!confirmDelete ? (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all"
+            >
+              <Trash2 className="w-4 h-4" />
+              Supprimer
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="px-3 py-2 rounded-xl text-sm text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-all disabled:opacity-50"
+              >
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
+                Confirmer la suppression
+              </button>
+            </div>
+          )}
+        </div>
+
+        {deleteResult && (
+          <p className={`text-sm px-4 py-2 rounded-xl ${
+            deleteResult.includes('Erreur')
+              ? 'bg-red-50 dark:bg-red-900/20 text-red-600'
+              : 'bg-green-50 dark:bg-green-900/20 text-green-600'
+          }`}>
+            {deleteResult}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 

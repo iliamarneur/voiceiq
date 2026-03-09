@@ -4,6 +4,9 @@ import { motion } from 'framer-motion';
 import { Upload, FileAudio, Loader2, CheckCircle, XCircle, Mic2, Files, Trash2, GraduationCap, Briefcase, Sparkles, HeartPulse, Landmark, Clock, Zap, AlertTriangle, RotateCcw, Settings2 } from 'lucide-react';
 import axios from 'axios';
 import { Profile, AudioPreset } from '../types';
+import MinutesEstimate from '../components/MinutesEstimate';
+import TranscriptionProgress from '../components/TranscriptionProgress';
+import BackendSelector from '../components/BackendSelector';
 
 interface BatchJob {
   id: string;
@@ -32,7 +35,9 @@ function UploadPage() {
   const [selectedPriority, setSelectedPriority] = useState('P1');
   const [presets, setPresets] = useState<AudioPreset[]>([]);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
-  const [selectedLanguage, setSelectedLanguage] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState('fr');
+  const [sttBackend, setSttBackend] = useState<string | null>(null);
+  const [llmBackend, setLlmBackend] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -66,6 +71,8 @@ function UploadPage() {
         formData.append('priority', selectedPriority);
         if (selectedPreset) formData.append('preset_id', selectedPreset);
         if (selectedLanguage) formData.append('language', selectedLanguage);
+        if (sttBackend) formData.append('stt_backend', sttBackend);
+        if (llmBackend) formData.append('llm_backend', llmBackend);
         const res = await axios.post('/api/upload', formData, {
           onUploadProgress: (e) => {
             if (e.total) setProgress(Math.round((e.loaded / e.total) * 100));
@@ -82,6 +89,8 @@ function UploadPage() {
         formData.append('priority', selectedPriority);
         if (selectedPreset) formData.append('preset_id', selectedPreset);
         if (selectedLanguage) formData.append('language', selectedLanguage);
+        if (sttBackend) formData.append('stt_backend', sttBackend);
+        if (llmBackend) formData.append('llm_backend', llmBackend);
         const res = await axios.post('/api/upload/batch', formData, {
           onUploadProgress: (e) => {
             if (e.total) setProgress(Math.round((e.loaded / e.total) * 100));
@@ -308,45 +317,15 @@ function UploadPage() {
       )}
 
       {/* Single file progress */}
-      {uploading && batchJobs.length <= 1 && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
-          <div className="flex items-center gap-3 mb-3">
-            {phase === 'done' ? (
-              <CheckCircle className="w-5 h-5 text-green-500" />
-            ) : phase === 'error' ? (
-              <XCircle className="w-5 h-5 text-red-500" />
-            ) : (
-              <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
-            )}
-            <span className="text-sm font-medium">
-              {phase === 'uploading' && `Uploading... ${progress}%`}
-              {phase === 'transcribing' && 'Transcribing audio with Whisper...'}
-              {phase === 'analyzing' && 'Running 9 AI analyses...'}
-              {phase === 'done' && 'Complete! Redirecting...'}
-              {phase === 'error' && error}
-            </span>
-          </div>
-          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
-            <motion.div
-              className={`h-full rounded-full ${phase === 'done' ? 'bg-green-500' : phase === 'error' ? 'bg-red-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`}
-              initial={{ width: 0 }}
-              animate={{ width: phase === 'done' ? '100%' : `${progress}%` }}
-              transition={{ duration: 0.5 }}
-            />
-          </div>
-          <div className="flex items-center justify-between mt-4 text-xs">
-            {['Upload', 'Transcription', 'Analysis', 'Done'].map((step, i) => {
-              const phaseIdx = { uploading: 0, transcribing: 1, analyzing: 2, done: 3, error: -1, idle: -1 }[phase];
-              const active = i <= (phaseIdx ?? -1);
-              return (
-                <div key={step} className={`flex items-center gap-1.5 ${active ? 'text-indigo-600 dark:text-indigo-400 font-medium' : 'text-slate-400'}`}>
-                  <div className={`w-2 h-2 rounded-full ${active ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
-                  {step}
-                </div>
-              );
-            })}
-          </div>
-        </motion.div>
+      {uploading && batchJobs.length <= 1 && phase !== 'error' && (
+        <div className="mt-6">
+          <TranscriptionProgress
+            filename={files[0]?.name || ''}
+            estimatedMinutes={files[0] ? Math.max(1, Math.ceil(files[0].size / (1024 * 1024))) : undefined}
+            profile={selectedProfile}
+            phase={phase as 'uploading' | 'transcribing' | 'analyzing' | 'done'}
+          />
+        </div>
       )}
 
       {/* Profile Selector */}
@@ -462,6 +441,22 @@ function UploadPage() {
           </select>
           <p className="text-xs text-slate-400 mt-1">Forcer la langue ameliore la precision de la transcription</p>
         </div>
+      )}
+
+      {/* Backend Selector (dev only) */}
+      {!uploading && files.length > 0 && (
+        <div className="mt-4">
+          <BackendSelector
+            modeId="file_upload"
+            onSttChange={setSttBackend}
+            onLlmChange={setLlmBackend}
+          />
+        </div>
+      )}
+
+      {/* Minutes Estimate */}
+      {!uploading && files.length > 0 && (
+        <MinutesEstimate files={files} />
       )}
 
       {/* Upload Button */}

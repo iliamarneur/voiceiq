@@ -7,3 +7,6 @@ python-pptx
 uvicorn[standard]
 python-multipart
 av
+stripe
+openai
+python-dotenv

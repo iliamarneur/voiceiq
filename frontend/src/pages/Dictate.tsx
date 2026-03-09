@@ -7,7 +7,7 @@ import { DictationSession } from '../types';
 
 type DictateState = 'idle' | 'recording' | 'paused' | 'stopped' | 'saving';
 
-const CHUNK_INTERVAL_MS = 4000; // send chunk every 4 seconds
+const CHUNK_INTERVAL_MS = 2000; // send chunk every 2 seconds for faster feedback
 
 function DictatePage() {
   const navigate = useNavigate();
@@ -28,6 +28,7 @@ function DictatePage() {
   const chunksRef = useRef<Blob[]>([]);
   const chunkIntervalRef = useRef<number | null>(null);
   const sessionIdRef = useRef<string>('');
+  const sendingRef = useRef(false);  // prevent overlapping chunk sends
 
   const cleanup = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -42,11 +43,13 @@ function DictatePage() {
 
   const sendCurrentChunk = useCallback(async () => {
     if (chunksRef.current.length === 0 || !sessionIdRef.current) return;
+    if (sendingRef.current) return; // skip if previous chunk still processing
     const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
     chunksRef.current = [];
 
     if (blob.size < 100) return; // skip tiny chunks
 
+    sendingRef.current = true;
     setChunkLoading(true);
     try {
       const formData = new FormData();
@@ -57,6 +60,7 @@ function DictatePage() {
       console.error('Chunk error:', e);
     }
     setChunkLoading(false);
+    sendingRef.current = false;
   }, []);
 
   const startDictation = async () => {

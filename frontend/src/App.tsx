@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Upload, Sun, Moon, Mic2, Menu, FileText, Info, BookMarked, Settings2, SlidersHorizontal, Plus, Cpu, CreditCard, Clock } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import axios from 'axios';
 import Dashboard from './pages/Dashboard';
 import UploadPage from './pages/Upload';
@@ -15,19 +15,26 @@ import NewEntryPage from './pages/NewEntry';
 import RecordPage from './pages/Record';
 import DictatePage from './pages/Dictate';
 import PlansUsagePage from './pages/PlansUsage';
+import OneshotPage from './pages/Oneshot';
+import ModelsPage from './pages/Models';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import QuotaAlertBanner from './components/QuotaAlert';
+import Sidebar from './components/app/Sidebar';
+import { usePlanFeatures } from './hooks/usePlanFeatures';
+// Simple mode (public, no auth)
+import SimpleLayout from './layouts/SimpleLayout';
+import OneShotSimple from './pages/simple/OneShotSimple';
+import TranscriptionWaiting from './pages/simple/TranscriptionWaiting';
+import TranscriptionResult from './pages/simple/TranscriptionResult';
+import PlansPublic from './pages/simple/PlansPublic';
 
-function App() {
+function AppShell() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [llmModels, setLlmModels] = useState<{name: string; size_gb: number}[]>([]);
-  const [currentModel, setCurrentModel] = useState('');
   const [minutesInfo, setMinutesInfo] = useState<{minutes_remaining: number; minutes_included: number; extra_minutes_balance: number; plan_name: string} | null>(null);
+  const { features } = usePlanFeatures();
 
   useEffect(() => {
-    axios.get('/api/llm/models').then(res => {
-      setLlmModels(res.data.models || []);
-      setCurrentModel(res.data.current || '');
-    }).catch(() => {});
     axios.get('/api/subscription').then(res => {
       setMinutesInfo({
         minutes_remaining: res.data.minutes_remaining,
@@ -38,162 +45,101 @@ function App() {
     }).catch(() => {});
   }, []);
 
-  const changeModel = async (model: string) => {
-    try {
-      await axios.put('/api/llm/model', { model });
-      setCurrentModel(model);
-    } catch {}
-  };
-
   const toggleDark = () => {
     setDark(!dark);
     localStorage.setItem('theme', !dark ? 'dark' : 'light');
   };
 
-  const navItems = [
-    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/new', icon: Plus, label: 'Nouveau' },
-    { to: '/upload', icon: Upload, label: 'Upload' },
-    { to: '/templates', icon: FileText, label: 'Templates' },
-    { to: '/dictionaries', icon: BookMarked, label: 'Dictionnaires' },
-    { to: '/presets', icon: Settings2, label: 'Presets' },
-    { to: '/plans', icon: CreditCard, label: 'Plans & Usage' },
-    { to: '/preferences', icon: SlidersHorizontal, label: 'Preferences' },
-    { to: '/about', icon: Info, label: 'A propos' },
-  ];
-
   return (
     <div className={dark ? 'dark' : ''}>
-      <Router>
-        <div className="flex h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors duration-300">
-          {/* Sidebar */}
-          <aside className={`
-            fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700
-            transform transition-transform duration-300 lg:translate-x-0 lg:static lg:flex flex-col
-            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          `}>
-            <div className="flex items-center gap-3 p-6 border-b border-slate-200 dark:border-slate-700">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                <Mic2 className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">VoiceIQ</h1>
-                <p className="text-xs text-slate-400">v7 - Offres & Minutes</p>
-              </div>
-            </div>
+      <div className="flex h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors duration-300">
+        <Sidebar
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          dark={dark}
+          toggleDark={toggleDark}
+          minutesInfo={minutesInfo}
+          planFeatures={features}
+        />
 
-            <nav className="flex-1 p-4 space-y-1">
-              {navItems.map(({ to, icon: Icon, label }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={to === '/'}
-                  onClick={() => setSidebarOpen(false)}
-                  className={({ isActive }) => `
-                    flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                    ${isActive
-                      ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'}
-                  `}
-                >
-                  <Icon className="w-5 h-5" />
-                  {label}
-                </NavLink>
-              ))}
-            </nav>
+        {/* Mobile overlay */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        )}
 
-            <div className="p-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
-              {minutesInfo && (
-                <NavLink to="/plans" onClick={() => setSidebarOpen(false)} className="block px-2 mb-2">
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {minutesInfo.plan_name}
-                    </span>
-                    <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                      {minutesInfo.minutes_remaining} min
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        minutesInfo.minutes_remaining < minutesInfo.minutes_included * 0.1
-                          ? 'bg-red-500'
-                          : minutesInfo.minutes_remaining < minutesInfo.minutes_included * 0.3
-                          ? 'bg-amber-500'
-                          : 'bg-indigo-500'
-                      }`}
-                      style={{ width: `${Math.min(100, (minutesInfo.minutes_remaining / Math.max(minutesInfo.minutes_included, 1)) * 100)}%` }}
-                    />
-                  </div>
-                  {minutesInfo.extra_minutes_balance > 0 && (
-                    <p className="text-[10px] text-slate-400 mt-0.5">+{minutesInfo.extra_minutes_balance} min extra</p>
-                  )}
-                </NavLink>
-              )}
-              {llmModels.length > 0 && (
-                <div className="px-2">
-                  <label className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
-                    <Cpu className="w-3.5 h-3.5" /> Modele LLM
-                  </label>
-                  <select
-                    value={currentModel}
-                    onChange={(e) => changeModel(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-xs bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    {llmModels.map(m => (
-                      <option key={m.name} value={m.name}>
-                        {m.name} ({m.size_gb} GB)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <button
-                onClick={toggleDark}
-                className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all"
-              >
-                {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                {dark ? 'Light Mode' : 'Dark Mode'}
-              </button>
-            </div>
-          </aside>
+        {/* Main content */}
+        <main className="flex-1 overflow-auto">
+          {/* Mobile header */}
+          <div className="lg:hidden flex items-center gap-3 p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+              <Menu className="w-5 h-5" />
+            </button>
+            <h1 className="font-bold text-indigo-600">VoiceIQ v7</h1>
+          </div>
 
-          {/* Mobile overlay */}
-          {sidebarOpen && (
-            <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
-          )}
-
-          {/* Main content */}
-          <main className="flex-1 overflow-auto">
-            {/* Mobile header */}
-            <div className="lg:hidden flex items-center gap-3 p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
-                <Menu className="w-5 h-5" />
-              </button>
-              <h1 className="font-bold text-indigo-600">VoiceIQ v7</h1>
-            </div>
-
-            <AnimatePresence mode="wait">
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/new" element={<NewEntryPage />} />
-                <Route path="/upload" element={<UploadPage />} />
-                <Route path="/record" element={<RecordPage />} />
-                <Route path="/dictate" element={<DictatePage />} />
-                <Route path="/templates" element={<TemplatesPage />} />
-                <Route path="/dictionaries" element={<DictionariesPage />} />
-                <Route path="/presets" element={<PresetsPage />} />
-                <Route path="/plans" element={<PlansUsagePage />} />
-                <Route path="/preferences" element={<PreferencesPage />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/transcription/:id" element={<TranscriptionView />} />
-              </Routes>
-            </AnimatePresence>
-          </main>
-        </div>
-      </Router>
+          <AnimatePresence mode="wait">
+            <Routes>
+              <Route index element={<Dashboard />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="new" element={<NewEntryPage />} />
+              <Route path="upload" element={<UploadPage />} />
+              <Route path="record" element={<RecordPage />} />
+              <Route path="dictate" element={<DictatePage />} />
+              <Route path="templates" element={<TemplatesPage />} />
+              <Route path="dictionaries" element={<DictionariesPage />} />
+              <Route path="presets" element={<PresetsPage />} />
+              <Route path="plans" element={<PlansUsagePage />} />
+              <Route path="oneshot" element={<OneshotPage />} />
+              <Route path="models" element={<ModelsPage />} />
+              <Route path="preferences" element={<PreferencesPage />} />
+              <Route path="about" element={<About />} />
+              <Route path="admin" element={<AdminDashboard />} />
+              <Route path="transcription/:id" element={<TranscriptionView />} />
+            </Routes>
+          </AnimatePresence>
+          <QuotaAlertBanner />
+        </main>
+      </div>
     </div>
+  );
+}
+
+function LegacyTranscriptionRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/app/transcription/${id}`} replace />;
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        {/* ========== Simple mode (public, no sidebar) ========== */}
+        <Route element={<SimpleLayout />}>
+          <Route index element={<OneShotSimple />} />
+          <Route path="processing/:jobId" element={<TranscriptionWaiting />} />
+          <Route path="result/:id" element={<TranscriptionResult />} />
+          <Route path="plans" element={<PlansPublic />} />
+        </Route>
+
+        {/* ========== App mode (sidebar, authenticated) ========== */}
+        <Route path="/app/*" element={<AppShell />} />
+
+        {/* ========== Legacy redirects (old URLs → /app/*) ========== */}
+        <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
+        <Route path="/upload" element={<Navigate to="/app/upload" replace />} />
+        <Route path="/new" element={<Navigate to="/app/new" replace />} />
+        <Route path="/record" element={<Navigate to="/app/record" replace />} />
+        <Route path="/dictate" element={<Navigate to="/app/dictate" replace />} />
+        <Route path="/templates" element={<Navigate to="/app/templates" replace />} />
+        <Route path="/dictionaries" element={<Navigate to="/app/dictionaries" replace />} />
+        <Route path="/presets" element={<Navigate to="/app/presets" replace />} />
+        <Route path="/oneshot" element={<Navigate to="/app/oneshot" replace />} />
+        <Route path="/models" element={<Navigate to="/app/models" replace />} />
+        <Route path="/preferences" element={<Navigate to="/app/preferences" replace />} />
+        <Route path="/about" element={<Navigate to="/app/about" replace />} />
+        <Route path="/transcription/:id" element={<LegacyTranscriptionRedirect />} />
+      </Routes>
+    </Router>
   );
 }
 

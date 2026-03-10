@@ -7,6 +7,7 @@ import { Profile, AudioPreset } from '../types';
 import MinutesEstimate from '../components/MinutesEstimate';
 import TranscriptionProgress from '../components/TranscriptionProgress';
 import BackendSelector from '../components/BackendSelector';
+import { useAuth } from '../contexts/AuthContext';
 
 interface BatchJob {
   id: string;
@@ -39,6 +40,7 @@ function UploadPage() {
   const [sttBackend, setSttBackend] = useState<string | null>(null);
   const [llmBackend, setLlmBackend] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
 
   useEffect(() => {
     axios.get('/api/profiles').then(r => setProfiles(r.data)).catch(() => {});
@@ -362,31 +364,33 @@ function UploadPage() {
         </div>
       )}
 
-      {/* Priority & Preset */}
+      {/* Preset (user) + Priority (admin only) */}
       {!uploading && files.length > 0 && (
         <div className="mt-6 flex flex-col sm:flex-row gap-4">
-          {/* Priority */}
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Priorite</label>
-            <div className="flex gap-2">
-              {[
-                { value: 'P0', label: 'Urgent', color: 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: Zap },
-                { value: 'P1', label: 'Normal', color: 'border-slate-300 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300', icon: Clock },
-                { value: 'P2', label: 'Basse', color: 'border-slate-200 bg-slate-50 dark:bg-slate-800/50 text-slate-500', icon: Clock },
-              ].map(({ value, label, color, icon: PIcon }) => (
-                <button
-                  key={value}
-                  onClick={() => setSelectedPriority(value)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 text-xs font-medium transition-all ${
-                    selectedPriority === value ? color + ' shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-700 text-slate-400'
-                  }`}
-                >
-                  <PIcon className="w-3.5 h-3.5" />
-                  {label}
-                </button>
-              ))}
+          {/* Priority — admin only */}
+          {isAdmin && (
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Priorite</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'P0', label: 'Urgent', color: 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: Zap },
+                  { value: 'P1', label: 'Normal', color: 'border-slate-300 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300', icon: Clock },
+                  { value: 'P2', label: 'Basse', color: 'border-slate-200 bg-slate-50 dark:bg-slate-800/50 text-slate-500', icon: Clock },
+                ].map(({ value, label, color, icon: PIcon }) => (
+                  <button
+                    key={value}
+                    onClick={() => setSelectedPriority(value)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 text-xs font-medium transition-all ${
+                      selectedPriority === value ? color + ' shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-700 text-slate-400'
+                    }`}
+                  >
+                    <PIcon className="w-3.5 h-3.5" />
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Preset */}
           {presets.length > 0 && (
@@ -443,8 +447,8 @@ function UploadPage() {
         </div>
       )}
 
-      {/* Backend Selector (dev only) */}
-      {!uploading && files.length > 0 && (
+      {/* Backend Selector — admin only */}
+      {isAdmin && !uploading && files.length > 0 && (
         <div className="mt-4">
           <BackendSelector
             modeId="file_upload"

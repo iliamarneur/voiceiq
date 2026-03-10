@@ -93,7 +93,16 @@ def resolve_llm_backend(mode_id: str, override: Optional[str] = None) -> str:
 
     modes = config.get("modes", {})
     mode_config = modes.get(mode_id, {})
-    return mode_config.get("llm_backend", "llm_open_source")
+    default_backend = mode_config.get("llm_backend", "llm_open_source")
+
+    # Check if the default backend's API key is available; fall back if not
+    backends = config.get("llm_backends", {})
+    backend_info = backends.get(default_backend, {})
+    env_key = backend_info.get("env_key")
+    if env_key and not os.environ.get(env_key):
+        return "llm_open_source"
+
+    return default_backend
 
 
 # ── Backend implementations ──────────────────────────────

@@ -37,6 +37,8 @@ async def init_db():
             ("user_subscriptions", "stripe_customer_id", "VARCHAR"),
             ("user_subscriptions", "stripe_subscription_id", "VARCHAR"),
             ("oneshot_orders", "stripe_session_id", "VARCHAR"),
+            # v7.3 migrations — auth
+            ("jobs", "user_id", "VARCHAR DEFAULT 'default'"),
         ]
         for table, column, col_type in migrations:
             try:

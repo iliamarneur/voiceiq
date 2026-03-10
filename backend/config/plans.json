@@ -1,24 +1,23 @@
 {
   "plans": [
     {
-      "id": "free",
-      "name": "Gratuit",
-      "price_cents": 0,
-      "minutes_included": 60,
-      "features": ["transcription", "summary", "keypoints"],
-      "max_dictionaries": 3,
-      "max_workspaces": 1,
-      "priority_default": "P2"
-    },
-    {
       "id": "basic",
       "name": "Basic (Solo)",
       "price_cents": 1900,
-      "minutes_included": 300,
+      "minutes_included": 500,
+      "stripe_price_id": "price_1T9EuMDTeuYAK0abBc54p8wN",
       "features": [
-        "transcription", "summary", "keypoints", "actions",
-        "flashcards", "quiz", "chat", "dictation",
-        "export_txt", "export_pdf", "export_md"
+        "transcription",
+        "summary",
+        "keypoints",
+        "actions",
+        "flashcards",
+        "quiz",
+        "chat",
+        "dictation",
+        "export_txt",
+        "export_pdf",
+        "export_md"
       ],
       "max_dictionaries": 1,
       "max_workspaces": 1,
@@ -28,13 +27,28 @@
       "id": "pro",
       "name": "Pro (PME)",
       "price_cents": 4900,
-      "minutes_included": 2000,
+      "minutes_included": 3000,
+      "stripe_price_id": "price_1T9EuNDTeuYAK0abF9UZofYk",
       "features": [
-        "transcription", "summary", "keypoints", "actions",
-        "flashcards", "quiz", "chat", "dictation",
-        "mindmap", "slides", "infographic", "tables",
-        "export_txt", "export_pdf", "export_md", "export_pptx",
-        "templates", "presets", "priority_queue"
+        "transcription",
+        "summary",
+        "keypoints",
+        "actions",
+        "flashcards",
+        "quiz",
+        "chat",
+        "dictation",
+        "mindmap",
+        "slides",
+        "infographic",
+        "tables",
+        "export_txt",
+        "export_pdf",
+        "export_md",
+        "export_pptx",
+        "templates",
+        "presets",
+        "priority_queue"
       ],
       "max_dictionaries": -1,
       "max_workspaces": 1,
@@ -42,16 +56,33 @@
     },
     {
       "id": "team",
-      "name": "Equipe+ (Education)",
+      "name": "Équipe+ (Éducation)",
       "price_cents": 9900,
-      "minutes_included": 5000,
+      "minutes_included": 10000,
+      "stripe_price_id": "price_1T9EuNDTeuYAK0abd1L2OgH0",
       "features": [
-        "transcription", "summary", "keypoints", "actions",
-        "flashcards", "quiz", "chat", "dictation",
-        "mindmap", "slides", "infographic", "tables",
-        "export_txt", "export_pdf", "export_md", "export_pptx",
-        "templates", "presets", "priority_queue",
-        "multi_workspace", "shared_presets", "batch_export"
+        "transcription",
+        "summary",
+        "keypoints",
+        "actions",
+        "flashcards",
+        "quiz",
+        "chat",
+        "dictation",
+        "mindmap",
+        "slides",
+        "infographic",
+        "tables",
+        "export_txt",
+        "export_pdf",
+        "export_md",
+        "export_pptx",
+        "templates",
+        "presets",
+        "priority_queue",
+        "multi_workspace",
+        "shared_presets",
+        "batch_export"
       ],
       "max_dictionaries": -1,
       "max_workspaces": -1,
@@ -59,14 +90,131 @@
     }
   ],
   "extra_packs": {
-    "S": { "minutes": 100, "price_cents": 300 },
-    "M": { "minutes": 500, "price_cents": 1200 },
-    "L": { "minutes": 2000, "price_cents": 4000 }
+    "S": {
+      "minutes": 100,
+      "price_cents": 300,
+      "stripe_price_id": "price_1T9EuRDTeuYAK0abGc7xHT6T"
+    },
+    "M": {
+      "minutes": 500,
+      "price_cents": 1200,
+      "stripe_price_id": "price_1T9EuSDTeuYAK0ab3j9bejwv"
+    },
+    "L": {
+      "minutes": 2000,
+      "price_cents": 4000,
+      "stripe_price_id": "price_1T9EuSDTeuYAK0abtspyGaS9"
+    }
   },
   "oneshot_tiers": {
-    "Court": { "max_duration_minutes": 30, "price_cents": 300, "includes": ["transcription", "summary", "keypoints"] },
-    "Standard": { "max_duration_minutes": 60, "price_cents": 400, "includes": ["transcription", "summary", "keypoints", "actions"] },
-    "Long": { "max_duration_minutes": 90, "price_cents": 500, "includes": ["transcription", "summary", "keypoints", "actions", "quiz"] }
+    "Court": {
+      "max_duration_minutes": 30,
+      "price_cents": 300,
+      "stripe_price_id": "price_1T9EuODTeuYAK0abHiPJ0G2G",
+      "auto": ["transcription", "summary", "keypoints", "chapters"],
+      "includes": [
+        "transcription",
+        "summary",
+        "keypoints",
+        "chapters",
+        "actions",
+        "faq",
+        "quiz",
+        "flashcards",
+        "export_md",
+        "export_pdf"
+      ]
+    },
+    "Standard": {
+      "max_duration_minutes": 60,
+      "price_cents": 600,
+      "stripe_price_id": "price_1T9EuODTeuYAK0ab4sA9eNau",
+      "auto": ["transcription", "summary", "keypoints", "chapters"],
+      "includes": [
+        "transcription",
+        "summary",
+        "keypoints",
+        "chapters",
+        "actions",
+        "faq",
+        "quiz",
+        "flashcards",
+        "export_md",
+        "export_pdf"
+      ]
+    },
+    "Long": {
+      "max_duration_minutes": 90,
+      "price_cents": 900,
+      "stripe_price_id": "price_1T9EuPDTeuYAK0abbYmKF1Tz",
+      "auto": ["transcription", "summary", "keypoints", "chapters"],
+      "includes": [
+        "transcription",
+        "summary",
+        "keypoints",
+        "chapters",
+        "actions",
+        "faq",
+        "quiz",
+        "flashcards",
+        "export_md",
+        "export_pdf"
+      ]
+    },
+    "XLong": {
+      "max_duration_minutes": 120,
+      "price_cents": 1200,
+      "stripe_price_id": "price_1T9EuPDTeuYAK0abTC36PmkR",
+      "auto": ["transcription", "summary", "keypoints", "chapters"],
+      "includes": [
+        "transcription",
+        "summary",
+        "keypoints",
+        "chapters",
+        "actions",
+        "faq",
+        "quiz",
+        "flashcards",
+        "export_md",
+        "export_pdf"
+      ]
+    },
+    "XXLong": {
+      "max_duration_minutes": 150,
+      "price_cents": 1500,
+      "stripe_price_id": "price_1T9EuQDTeuYAK0abZZ9yDb8e",
+      "auto": ["transcription", "summary", "keypoints", "chapters"],
+      "includes": [
+        "transcription",
+        "summary",
+        "keypoints",
+        "chapters",
+        "actions",
+        "faq",
+        "quiz",
+        "flashcards",
+        "export_md",
+        "export_pdf"
+      ]
+    },
+    "XXXLong": {
+      "max_duration_minutes": 180,
+      "price_cents": 1800,
+      "stripe_price_id": "price_1T9EuQDTeuYAK0abFF5YQ6BC",
+      "auto": ["transcription", "summary", "keypoints", "chapters"],
+      "includes": [
+        "transcription",
+        "summary",
+        "keypoints",
+        "chapters",
+        "actions",
+        "faq",
+        "quiz",
+        "flashcards",
+        "export_md",
+        "export_pdf"
+      ]
+    }
   },
   "alert_thresholds": {
     "warning_percent": 75,

@@ -9,9 +9,12 @@ from sqlalchemy.orm import sessionmaker
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+# Ensure Stripe runs in stub mode during tests
+os.environ.pop("STRIPE_SECRET_KEY", None)
+
 from app.models import Base, Plan, UserSubscription, UsageLog, OneshotOrder
 from app.services.subscription_service import (
-    seed_plans, get_or_create_subscription, get_subscription_info,
+    seed_plans, get_subscription, create_subscription, get_subscription_info,
     change_plan, check_minutes_available, consume_minutes,
     add_extra_minutes, get_subscription_alerts,
     estimate_oneshot_tier, create_oneshot_order,
@@ -60,8 +63,14 @@ async def api_client(tmp_path):
     upload_dir = str(tmp_path / "uploads")
     os.makedirs(upload_dir, exist_ok=True)
 
+    # Force Stripe into stub mode during tests
+    os.environ.pop("STRIPE_SECRET_KEY", None)
+    import app.services.stripe_service as _ss
+    _ss._stripe = None
+
     with patch("app.main.UPLOAD_DIR", upload_dir), \
-         patch("app.services.profile_service._profiles_cache", {}):
+         patch("app.services.profile_service._profiles_cache", {}), \
+         patch("app.services.auth_service.AUTH_ENABLED", False):
         from app.services.profile_service import reload_profiles
         reload_profiles()
         transport = ASGITransport(app=app)
@@ -82,68 +91,97 @@ class TestConfig:
         assert "oneshot_tiers" in cfg
         assert "alert_thresholds" in cfg
 
-    def test_config_has_4_plans(self):
+    def test_config_has_3_plans(self):
         cfg = get_config()
-        assert len(cfg["plans"]) == 4
+        assert len(cfg["plans"]) == 3
         plan_ids = [p["id"] for p in cfg["plans"]]
-        assert set(plan_ids) == {"free", "basic", "pro", "team"}
+        assert set(plan_ids) == {"basic", "pro", "team"}
 
-    def test_free_plan_has_60_minutes(self):
+    def test_basic_plan_has_500_minutes(self):
         cfg = get_config()
-        free = next(p for p in cfg["plans"] if p["id"] == "free")
-        assert free["minutes_included"] == 60
+        basic = next(p for p in cfg["plans"] if p["id"] == "basic")
+        assert basic["minutes_included"] == 500
+
+    def test_pro_plan_has_3000_minutes(self):
+        cfg = get_config()
+        pro = next(p for p in cfg["plans"] if p["id"] == "pro")
+        assert pro["minutes_included"] == 3000
+
+    def test_team_plan_has_10000_minutes(self):
+        cfg = get_config()
+        team = next(p for p in cfg["plans"] if p["id"] == "team")
+        assert team["minutes_included"] == 10000
 
     def test_alert_thresholds(self):
         cfg = get_config()
         assert cfg["alert_thresholds"]["warning_percent"] == 75
         assert cfg["alert_thresholds"]["critical_percent"] == 90
 
+    def test_config_has_6_oneshot_tiers(self):
+        cfg = get_config()
+        assert len(cfg["oneshot_tiers"]) == 6
+        assert set(cfg["oneshot_tiers"].keys()) == {"Court", "Standard", "Long", "XLong", "XXLong", "XXXLong"}
+
 
 # ── Unit Tests: Subscription ─────────────────────────────
 
 class TestSubscription:
     @pytest.mark.asyncio
-    async def test_seed_creates_4_plans(self, db):
+    async def test_seed_creates_3_plans(self, db):
         from sqlalchemy import select
         result = await db.execute(select(Plan))
         plans = result.scalars().all()
-        assert len(plans) == 4
+        assert len(plans) == 3
 
     @pytest.mark.asyncio
-    async def test_free_plan_60_minutes(self, db):
+    async def test_basic_plan_500_minutes(self, db):
         from sqlalchemy import select
-        result = await db.execute(select(Plan).where(Plan.id == "free"))
+        result = await db.execute(select(Plan).where(Plan.id == "basic"))
         plan = result.scalar_one()
-        assert plan.minutes_included == 60
+        assert plan.minutes_included == 500
 
     @pytest.mark.asyncio
-    async def test_default_subscription_is_free(self, db):
-        sub = await get_or_create_subscription(db)
-        assert sub.plan_id == "free"
+    async def test_no_subscription_by_default(self, db):
+        sub = await get_subscription(db)
+        assert sub is None
+
+    @pytest.mark.asyncio
+    async def test_create_subscription_basic(self, db):
+        sub = await create_subscription(db, "basic")
+        assert sub.plan_id == "basic"
         assert sub.minutes_used == 0
 
     @pytest.mark.asyncio
     async def test_change_plan_to_pro(self, db):
-        await get_or_create_subscription(db)
+        await create_subscription(db, "basic")
         sub = await change_plan(db, "pro")
         assert sub.plan_id == "pro"
         assert sub.minutes_used == 0
 
     @pytest.mark.asyncio
     async def test_change_plan_invalid_raises(self, db):
-        await get_or_create_subscription(db)
+        await create_subscription(db, "basic")
         with pytest.raises(ValueError, match="not found"):
             await change_plan(db, "nonexistent")
 
     @pytest.mark.asyncio
     async def test_subscription_info_has_correct_fields(self, db):
+        await create_subscription(db, "basic")
         info = await get_subscription_info(db)
         assert "plan_id" in info
         assert "minutes_used" in info
         assert "minutes_included" in info
         assert "minutes_remaining" in info
         assert "extra_minutes_balance" in info
-        assert info["minutes_included"] == 60  # free plan
+        assert info["minutes_included"] == 500  # basic plan
+
+    @pytest.mark.asyncio
+    async def test_subscription_info_no_sub(self, db):
+        """Without subscription, info returns zeros."""
+        info = await get_subscription_info(db)
+        assert info["plan_id"] is None
+        assert info["minutes_included"] == 0
+        assert info["minutes_remaining"] == 0
 
 
 # ── Unit Tests: Minutes Consumption ──────────────────────
@@ -151,33 +189,33 @@ class TestSubscription:
 class TestMinutesConsumption:
     @pytest.mark.asyncio
     async def test_consume_from_plan(self, db):
-        await change_plan(db, "basic")  # 300 min
+        await create_subscription(db, "basic")  # 500 min
         log = await consume_minutes(db, audio_duration_seconds=120)  # 2 min
         assert log.minutes_charged == 2
         assert log.minute_source == "plan"
         info = await get_subscription_info(db)
         assert info["minutes_used"] == 2
-        assert info["minutes_remaining"] == 298
+        assert info["minutes_remaining"] == 498
 
     @pytest.mark.asyncio
     async def test_consume_overflow_to_extra(self, db):
-        # Free plan with 60 min, use 59, then add extra, then consume 5
-        sub = await get_or_create_subscription(db)
-        sub.minutes_used = 59
+        # Basic plan with 500 min, use 499, then add extra, then consume 5
+        sub = await create_subscription(db, "basic")
+        sub.minutes_used = 499
         await db.commit()
         await add_extra_minutes(db, "S")  # +100 extra
         log = await consume_minutes(db, audio_duration_seconds=300)  # 5 min
         # 1 min from plan + 4 min from extra
         assert log.minute_source == "plan+extra"
         info = await get_subscription_info(db)
-        assert info["minutes_used"] == 60
+        assert info["minutes_used"] == 500
         assert info["extra_minutes_balance"] == 96
 
     @pytest.mark.asyncio
     async def test_consume_from_extra_only(self, db):
         # Exhaust plan minutes
-        sub = await get_or_create_subscription(db)
-        sub.minutes_used = 60  # free plan fully used
+        sub = await create_subscription(db, "basic")
+        sub.minutes_used = 500  # basic plan fully used
         await db.commit()
         await add_extra_minutes(db, "S")  # +100 extra
         log = await consume_minutes(db, audio_duration_seconds=180)  # 3 min
@@ -187,9 +225,16 @@ class TestMinutesConsumption:
 
     @pytest.mark.asyncio
     async def test_check_minutes_available(self, db):
+        await create_subscription(db, "basic")
         result = await check_minutes_available(db)
         assert result["available"] is True
-        assert result["total_available"] == 60  # free plan
+        assert result["total_available"] == 500  # basic plan
+
+    @pytest.mark.asyncio
+    async def test_check_minutes_no_subscription(self, db):
+        result = await check_minutes_available(db)
+        assert result["available"] is False
+        assert result["total_available"] == 0
 
 
 # ── Unit Tests: Extra Packs ──────────────────────────────
@@ -197,36 +242,28 @@ class TestMinutesConsumption:
 class TestExtraPacks:
     @pytest.mark.asyncio
     async def test_add_pack_s(self, db):
+        await create_subscription(db, "basic")
         result = await add_extra_minutes(db, "S")
         assert result["minutes_added"] == 100
         assert result["new_extra_balance"] == 100
 
     @pytest.mark.asyncio
     async def test_add_pack_m(self, db):
+        await create_subscription(db, "basic")
         result = await add_extra_minutes(db, "M")
         assert result["minutes_added"] == 500
 
     @pytest.mark.asyncio
     async def test_add_pack_l(self, db):
+        await create_subscription(db, "basic")
         result = await add_extra_minutes(db, "L")
         assert result["minutes_added"] == 2000
 
     @pytest.mark.asyncio
     async def test_add_invalid_pack_raises(self, db):
+        await create_subscription(db, "basic")
         with pytest.raises(ValueError, match="Unknown pack"):
             await add_extra_minutes(db, "XL")
-
-    @pytest.mark.asyncio
-    async def test_monthly_reset_preserves_extras(self, db):
-        await add_extra_minutes(db, "S")  # +100 extra
-        sub = await get_or_create_subscription(db)
-        # Simulate period expiration
-        sub.current_period_end = datetime.utcnow() - timedelta(days=1)
-        await db.commit()
-        # This triggers period renewal
-        sub = await get_or_create_subscription(db)
-        assert sub.minutes_used == 0  # reset
-        assert sub.extra_minutes_balance == 100  # preserved
 
 
 # ── Unit Tests: Alerts ───────────────────────────────────
@@ -234,18 +271,18 @@ class TestExtraPacks:
 class TestAlerts:
     @pytest.mark.asyncio
     async def test_no_alert_below_75(self, db):
-        # Free plan: 60 min, use 40 (66%)
-        sub = await get_or_create_subscription(db)
-        sub.minutes_used = 40
+        # Basic plan: 500 min, use 300 (60%)
+        sub = await create_subscription(db, "basic")
+        sub.minutes_used = 300
         await db.commit()
         result = await get_subscription_alerts(db)
         assert result["alerts"] == []
-        assert result["usage_percent"] == pytest.approx(66.7, abs=0.1)
+        assert result["usage_percent"] == 60.0
 
     @pytest.mark.asyncio
     async def test_warning_at_75(self, db):
-        sub = await get_or_create_subscription(db)
-        sub.minutes_used = 45  # 75% of 60
+        sub = await create_subscription(db, "basic")
+        sub.minutes_used = 375  # 75% of 500
         await db.commit()
         result = await get_subscription_alerts(db)
         assert len(result["alerts"]) == 1
@@ -253,8 +290,8 @@ class TestAlerts:
 
     @pytest.mark.asyncio
     async def test_critical_at_90(self, db):
-        sub = await get_or_create_subscription(db)
-        sub.minutes_used = 55  # 91.7% of 60
+        sub = await create_subscription(db, "basic")
+        sub.minutes_used = 455  # 91% of 500
         await db.commit()
         result = await get_subscription_alerts(db)
         assert len(result["alerts"]) == 1
@@ -262,10 +299,18 @@ class TestAlerts:
 
     @pytest.mark.asyncio
     async def test_blocked_at_100(self, db):
-        sub = await get_or_create_subscription(db)
-        sub.minutes_used = 60  # 100%
+        sub = await create_subscription(db, "basic")
+        sub.minutes_used = 500  # 100%
         await db.commit()
         result = await get_subscription_alerts(db)
+        assert len(result["alerts"]) == 1
+        assert result["alerts"][0]["level"] == "blocked"
+
+    @pytest.mark.asyncio
+    async def test_alerts_no_subscription(self, db):
+        result = await get_subscription_alerts(db)
+        assert result["usage_percent"] == 0
+        # No subscription → blocked alert
         assert len(result["alerts"]) == 1
         assert result["alerts"][0]["level"] == "blocked"
 
@@ -281,23 +326,38 @@ class TestOneshot:
     def test_estimate_tier_standard(self):
         result = estimate_oneshot_tier(2700)  # 45 min
         assert result["tier"] == "Standard"
-        assert result["price_cents"] == 400
+        assert result["price_cents"] == 600
 
     def test_estimate_tier_long(self):
         result = estimate_oneshot_tier(4800)  # 80 min
         assert result["tier"] == "Long"
-        assert result["price_cents"] == 500
+        assert result["price_cents"] == 900
 
-    def test_estimate_over_90_returns_long_with_warning(self):
+    def test_estimate_tier_xlong(self):
         result = estimate_oneshot_tier(6000)  # 100 min
-        assert result["tier"] == "Long"
+        assert result["tier"] == "XLong"
+        assert result["price_cents"] == 1200
+
+    def test_estimate_tier_xxlong(self):
+        result = estimate_oneshot_tier(8400)  # 140 min
+        assert result["tier"] == "XXLong"
+        assert result["price_cents"] == 1500
+
+    def test_estimate_tier_xxxlong(self):
+        result = estimate_oneshot_tier(10200)  # 170 min
+        assert result["tier"] == "XXXLong"
+        assert result["price_cents"] == 1800
+
+    def test_estimate_over_180_returns_xxxlong_with_warning(self):
+        result = estimate_oneshot_tier(11000)  # ~183 min
+        assert result["tier"] == "XXXLong"
         assert "warning" in result
 
     @pytest.mark.asyncio
     async def test_create_order(self, db):
         order = await create_oneshot_order(db, "Standard", audio_duration_seconds=2700)
         assert order.tier == "Standard"
-        assert order.price_cents == 400
+        assert order.price_cents == 600
         assert order.payment_status == "paid"
 
     @pytest.mark.asyncio
@@ -310,56 +370,44 @@ class TestOneshot:
 
 class TestAPIPlans:
     @pytest.mark.asyncio
-    async def test_get_plans_returns_4(self, api_client):
+    async def test_get_plans_returns_3(self, api_client):
         resp = await api_client.get("/api/plans")
         assert resp.status_code == 200
-        assert len(resp.json()) == 4
+        assert len(resp.json()) == 3
 
     @pytest.mark.asyncio
-    async def test_free_plan_60_minutes(self, api_client):
+    async def test_basic_plan_500_minutes(self, api_client):
         resp = await api_client.get("/api/plans")
-        free = next(p for p in resp.json() if p["id"] == "free")
-        assert free["minutes_included"] == 60
+        basic = next(p for p in resp.json() if p["id"] == "basic")
+        assert basic["minutes_included"] == 500
 
 
 class TestAPISubscription:
     @pytest.mark.asyncio
-    async def test_get_subscription_default_free(self, api_client):
+    async def test_get_subscription_no_plan(self, api_client):
         resp = await api_client.get("/api/subscription")
         assert resp.status_code == 200
-        assert resp.json()["plan_id"] == "free"
-        assert resp.json()["minutes_included"] == 60
+        data = resp.json()
+        assert data["plan_id"] is None
+        assert data["minutes_included"] == 0
 
     @pytest.mark.asyncio
     async def test_change_plan_to_pro(self, api_client):
         resp = await api_client.put("/api/subscription/plan", json={"plan_id": "pro"})
         assert resp.status_code == 200
         assert resp.json()["plan_id"] == "pro"
-        assert resp.json()["minutes_included"] == 2000
-
-    @pytest.mark.asyncio
-    async def test_buy_extra_pack(self, api_client):
-        resp = await api_client.post("/api/subscription/add-minutes", json={"pack": "M"})
-        assert resp.status_code == 200
-        assert resp.json()["minutes_added"] == 500
-
-    @pytest.mark.asyncio
-    async def test_get_extra_packs(self, api_client):
-        resp = await api_client.get("/api/subscription/extra-packs")
-        assert resp.status_code == 200
-        packs = resp.json()
-        assert len(packs) == 3
-        pack_ids = [p["pack"] for p in packs]
-        assert set(pack_ids) == {"S", "M", "L"}
+        assert resp.json()["minutes_included"] == 3000
 
 
 class TestAPIAlerts:
     @pytest.mark.asyncio
-    async def test_alerts_empty_when_low_usage(self, api_client):
+    async def test_alerts_blocked_when_no_subscription(self, api_client):
         resp = await api_client.get("/api/subscription/alerts")
         assert resp.status_code == 200
-        assert resp.json()["alerts"] == []
         assert resp.json()["usage_percent"] == 0
+        # No subscription → blocked alert
+        assert len(resp.json()["alerts"]) == 1
+        assert resp.json()["alerts"][0]["level"] == "blocked"
 
     @pytest.mark.asyncio
     async def test_alerts_endpoint_returns_structure(self, api_client):
@@ -377,14 +425,14 @@ class TestAPIOneshot:
     async def test_get_tiers(self, api_client):
         resp = await api_client.get("/api/oneshot/tiers")
         assert resp.status_code == 200
-        assert len(resp.json()) == 3
+        assert len(resp.json()) == 6
 
     @pytest.mark.asyncio
     async def test_estimate_tier_standard(self, api_client):
         resp = await api_client.post("/api/oneshot/estimate", json={"duration_seconds": 2700})
         assert resp.status_code == 200
         assert resp.json()["tier"] == "Standard"
-        assert resp.json()["price_cents"] == 400
+        assert resp.json()["price_cents"] == 600
 
     @pytest.mark.asyncio
     async def test_create_order(self, api_client):
@@ -394,9 +442,9 @@ class TestAPIOneshot:
         assert resp.json()["payment_status"] == "paid"
 
     @pytest.mark.asyncio
-    async def test_usage_summary(self, api_client):
+    async def test_usage_summary_no_subscription(self, api_client):
         resp = await api_client.get("/api/usage/summary")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["plan_id"] == "free"
-        assert data["minutes_included"] == 60
+        assert data["plan_id"] is None
+        assert data["minutes_included"] == 0

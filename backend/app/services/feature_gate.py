@@ -53,13 +53,14 @@ async def get_plan_features(db: AsyncSession, user_id: str = "default") -> dict:
         )
     )
     sub = result.scalar_one_or_none()
-    plan_id = sub.plan_id if sub else "free"
+    if not sub:
+        return {"plan_id": None, "features": [], "max_dictionaries": 0, "max_workspaces": 0}
 
-    plan_result = await db.execute(select(Plan).where(Plan.id == plan_id))
+    plan_result = await db.execute(select(Plan).where(Plan.id == sub.plan_id))
     plan = plan_result.scalar_one_or_none()
 
     if not plan:
-        return {"plan_id": "free", "features": ["transcription", "summary", "keypoints"], "max_dictionaries": 3, "max_workspaces": 1}
+        return {"plan_id": sub.plan_id, "features": [], "max_dictionaries": 0, "max_workspaces": 0}
 
     return {
         "plan_id": plan.id,

@@ -25,7 +25,7 @@ _ollama = ollama_client.Client(host=OLLAMA_HOST)
 
 ANALYSIS_TYPES = [
     "summary", "keypoints", "actions", "flashcards",
-    "quiz", "mindmap", "slides", "infographic", "tables"
+    "quiz", "faq", "mindmap", "slides", "infographic", "tables"
 ]
 
 PROMPTS = {
@@ -34,6 +34,7 @@ PROMPTS = {
     "actions": "Extract action items, decisions taken, and open questions from this transcript. Return valid JSON: {\"actions\": [\"...\"], \"decisions\": [\"...\"], \"questions\": [\"...\"]}",
     "flashcards": "Create revision flashcards (question/answer pairs) from this transcript. Return valid JSON: {\"cards\": [{\"question\": \"...\", \"answer\": \"...\"}]}",
     "quiz": "Create a multiple-choice quiz (4-5 questions) from this transcript. Each choice must be a full text answer, not just a letter. Return valid JSON: {\"questions\": [{\"question\": \"What is...?\", \"choices\": [\"The actual answer text A\", \"The actual answer text B\", \"The actual answer text C\", \"The actual answer text D\"], \"answer\": \"A\", \"explanation\": \"Because...\"}]}",
+    "faq": "Generate a FAQ (Frequently Asked Questions) from this transcript. Create 5-8 relevant questions and detailed answers based on the content. Return valid JSON: {\"faq\": [{\"question\": \"...\", \"answer\": \"...\"}]}",
     "mindmap": "Create a hierarchical mindmap of this transcript in Markmap-compatible markdown. Return valid JSON: {\"markdown\": \"# Topic\\n## Subtopic\\n- Point\"}",
     "slides": "Create a slide presentation from this transcript. Return valid JSON: {\"slides\": [{\"title\": \"...\", \"bullets\": [\"...\"]}]}",
     "infographic": "Extract data points for a Vega-Lite chart from this transcript. Return valid JSON: {\"description\": \"...\", \"spec\": {}}",
@@ -376,6 +377,55 @@ async def chat_with_transcript(transcription_id: str, message: str, db: AsyncSes
     await db.commit()
 
     return answer
+
+
+async def polish_transcription(raw_text: str, language: str = "fr") -> str:
+    """Polish raw transcription text: fix formatting, punctuation, paragraphs.
+
+    Rules:
+    - Fix obvious punctuation and capitalization errors
+    - Add paragraph breaks at natural topic changes
+    - Fix clearly misspelled proper nouns ONLY if obvious from context
+    - Do NOT guess unknown names — keep them as-is
+    - Do NOT add, remove, or rephrase any content
+    - Keep the same language as the original
+    - Return clean, beautifully formatted text ready for PDF export
+    """
+    lang_name = {
+        "fr": "français", "en": "English", "es": "español", "de": "Deutsch",
+        "it": "italiano", "pt": "português", "nl": "Nederlands",
+    }.get(language, language or "la langue d'origine")
+
+    system_prompt = (
+        "Tu es un correcteur professionnel spécialisé dans la mise en forme de transcriptions audio. "
+        "Tu ne modifies JAMAIS le sens ni le contenu. Tu ne devines JAMAIS les noms propres inconnus. "
+        f"Tu travailles en {lang_name}."
+    )
+
+    user_prompt = (
+        "Voici une transcription brute générée par reconnaissance vocale. "
+        "Mets-la en page proprement en suivant ces règles strictes :\n\n"
+        "1. PONCTUATION : Corrige la ponctuation (majuscules en début de phrase, points, virgules)\n"
+        "2. PARAGRAPHES : Découpe en paragraphes logiques quand le sujet change\n"
+        "3. NOMS PROPRES : Corrige UNIQUEMENT les noms clairement identifiables dans le contexte "
+        "(ex: 'micro soft' → 'Microsoft', 'chat gpt' → 'ChatGPT'). "
+        "Ne devine JAMAIS un nom incertain — laisse-le tel quel.\n"
+        "4. RÉPÉTITIONS : Supprime les hésitations évidentes ('euh', 'hum', 'ben', 'you know', 'like') "
+        "et les répétitions involontaires\n"
+        "5. NE JAMAIS : ajouter du contenu, reformuler, résumer, supprimer des informations, "
+        "changer la langue, ajouter des titres ou des commentaires\n"
+        "6. FORMAT : Retourne UNIQUEMENT le texte reformaté, sans aucun commentaire ni explication\n\n"
+        f"--- TRANSCRIPTION BRUTE ---\n{raw_text}"
+    )
+
+    result = await _call_ollama_text_async(system_prompt, user_prompt)
+
+    # Sanity check: if result is much shorter or contains "Error:", keep original
+    if len(result) < len(raw_text) * 0.5 or result.startswith("Error:"):
+        logger.warning("Polish result too short or error, keeping original text")
+        return raw_text
+
+    return result.strip()
 
 
 async def generate_chapters(transcription_id: str, db: AsyncSession) -> list:

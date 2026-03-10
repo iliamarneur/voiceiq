@@ -9,6 +9,154 @@ EXPORT_DIR = "exports"
 os.makedirs(EXPORT_DIR, exist_ok=True)
 
 
+def _render_summary_pdf(pdf, content):
+    """Render a structured summary analysis into the PDF."""
+    if isinstance(content, str):
+        pdf.set_font("Helvetica", "", 10)
+        pdf.multi_cell(0, 5.5, _sanitize_latin1(content))
+        return
+
+    title = content.get("title")
+    intro = content.get("introduction") or content.get("summary") or content.get("text")
+    points = content.get("points", [])
+    conclusion = content.get("conclusion")
+
+    if title:
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.multi_cell(0, 6, _sanitize_latin1(title))
+        pdf.ln(3)
+
+    if intro:
+        pdf.set_font("Helvetica", "", 10)
+        pdf.multi_cell(0, 5.5, _sanitize_latin1(intro))
+        pdf.ln(3)
+
+    for point in points:
+        text = point if isinstance(point, str) else (point.get("text") or str(point))
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(6, 5.5, _sanitize_latin1("-"))
+        pdf.multi_cell(0, 5.5, _sanitize_latin1(text))
+        pdf.ln(1)
+
+    if conclusion:
+        pdf.ln(2)
+        pdf.set_font("Helvetica", "I", 10)
+        pdf.set_text_color(80, 80, 80)
+        pdf.multi_cell(0, 5.5, _sanitize_latin1(conclusion))
+        pdf.set_text_color(0, 0, 0)
+
+
+def _render_keypoints_pdf(pdf, content):
+    """Render structured keypoints analysis into the PDF."""
+    if isinstance(content, str):
+        pdf.set_font("Helvetica", "", 10)
+        pdf.multi_cell(0, 5.5, _sanitize_latin1(content))
+        return
+
+    keypoints = content.get("keypoints") or content.get("items") or (content if isinstance(content, list) else [])
+
+    for kp in keypoints:
+        if isinstance(kp, str):
+            pdf.set_font("Helvetica", "", 10)
+            pdf.cell(6, 5.5, _sanitize_latin1("-"))
+            pdf.multi_cell(0, 5.5, _sanitize_latin1(kp))
+            pdf.ln(1)
+            continue
+
+        theme = kp.get("theme", "")
+        importance = kp.get("importance", "")
+        points = kp.get("points", [])
+        quote = kp.get("verbatim_quote")
+
+        # Theme header
+        if theme:
+            label = theme
+            if importance:
+                imp_labels = {"critical": "Essentiel", "high": "Important", "medium": "Notable", "low": "Mineur"}
+                label += f"  ({imp_labels.get(importance, importance)})"
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.multi_cell(0, 6, _sanitize_latin1(label))
+            pdf.ln(1)
+
+        # Points
+        for pt in points:
+            text = pt if isinstance(pt, str) else (pt.get("text") or str(pt))
+            pdf.set_font("Helvetica", "", 10)
+            pdf.cell(6, 5.5, _sanitize_latin1("-"))
+            pdf.multi_cell(0, 5.5, _sanitize_latin1(text))
+            pdf.ln(0.5)
+
+        # Quote
+        if quote:
+            pdf.set_font("Helvetica", "I", 9)
+            pdf.set_text_color(100, 100, 100)
+            pdf.cell(6, 5, "")
+            pdf.multi_cell(0, 4.5, _sanitize_latin1(f'"{quote}"'))
+            pdf.set_text_color(0, 0, 0)
+
+        pdf.ln(3)
+
+
+def _render_generic_analysis_pdf(pdf, content):
+    """Fallback: render analysis content as readable text, not raw JSON."""
+    if isinstance(content, str):
+        pdf.set_font("Helvetica", "", 10)
+        pdf.multi_cell(0, 5.5, _sanitize_latin1(content))
+        return
+
+    if isinstance(content, dict):
+        # Try to extract text-like fields
+        text_fields = ["text", "content", "summary", "introduction", "conclusion", "description"]
+        for field in text_fields:
+            if field in content and isinstance(content[field], str):
+                pdf.set_font("Helvetica", "", 10)
+                pdf.multi_cell(0, 5.5, _sanitize_latin1(content[field]))
+                pdf.ln(2)
+
+        # Render list-like fields
+        list_fields = ["points", "items", "questions", "actions", "flashcards", "slides", "bullets"]
+        for field in list_fields:
+            if field in content and isinstance(content[field], list):
+                for item in content[field]:
+                    if isinstance(item, str):
+                        pdf.set_font("Helvetica", "", 10)
+                        pdf.cell(6, 5.5, _sanitize_latin1("-"))
+                        pdf.multi_cell(0, 5.5, _sanitize_latin1(item))
+                    elif isinstance(item, dict):
+                        # Try common sub-fields
+                        line = item.get("text") or item.get("question") or item.get("title") or item.get("term") or ""
+                        if line:
+                            pdf.set_font("Helvetica", "B", 10)
+                            pdf.cell(6, 5.5, _sanitize_latin1("-"))
+                            pdf.multi_cell(0, 5.5, _sanitize_latin1(str(line)))
+                        # Sub-detail
+                        detail = item.get("answer") or item.get("definition") or item.get("description") or ""
+                        if detail:
+                            pdf.set_font("Helvetica", "", 9)
+                            pdf.cell(10, 5, "")
+                            pdf.multi_cell(0, 5, _sanitize_latin1(str(detail)))
+                    pdf.ln(1)
+                pdf.ln(2)
+        return
+
+    # Absolute fallback
+    pdf.set_font("Helvetica", "", 9)
+    pdf.multi_cell(0, 5, _sanitize_latin1(json.dumps(content, indent=2, ensure_ascii=False)))
+
+
+_ANALYSIS_LABELS = {
+    "summary": "Resume",
+    "keypoints": "Points cles",
+    "actions": "Plan d'actions",
+    "quiz": "Quiz",
+    "flashcards": "Fiches de revision",
+    "mindmap": "Carte mentale",
+    "slides": "Diapositives",
+    "infographic": "Infographie",
+    "tables": "Tableaux",
+}
+
+
 def export_to_pdf(transcription, analyses, output_path: str):
     """Export transcription + analyses to PDF via fpdf2."""
     from fpdf import FPDF
@@ -31,24 +179,46 @@ def export_to_pdf(transcription, analyses, output_path: str):
     pdf.cell(0, 6, _sanitize_latin1(f"Langue : {lang}  |  Duree : {dur}"), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(6)
 
-    # Transcription text
+    # Transcription text — render paragraphs with spacing
     pdf.set_font("Helvetica", "B", 13)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 8, "Transcription", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(2)
     pdf.set_font("Helvetica", "", 10)
-    pdf.multi_cell(0, 5.5, _sanitize_latin1(transcription.text or ""))
+    paragraphs = (transcription.text or "").split("\n\n")
+    for i, para in enumerate(paragraphs):
+        para = para.strip()
+        if not para:
+            continue
+        pdf.multi_cell(0, 5.5, _sanitize_latin1(para))
+        if i < len(paragraphs) - 1:
+            pdf.ln(3)
     pdf.ln(6)
 
-    # Analyses
+    # Analyses — formatted by type
     for a in analyses:
         pdf.add_page()
-        pdf.set_font("Helvetica", "B", 13)
-        pdf.cell(0, 8, _sanitize_latin1(a.type.replace("_", " ").title()), new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(2)
-        pdf.set_font("Courier", "", 8)
-        content_str = json.dumps(a.content, indent=2, ensure_ascii=False)
-        pdf.multi_cell(0, 4, _sanitize_latin1(content_str))
+        label = _ANALYSIS_LABELS.get(a.type, a.type.replace("_", " ").title())
+        pdf.set_font("Helvetica", "B", 14)
+        pdf.set_text_color(60, 60, 140)
+        pdf.cell(0, 9, _sanitize_latin1(label), new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(0, 0, 0)
+        pdf.ln(3)
+
+        # Normalize content: handle JSON strings, double-encoded JSON, etc.
+        content = a.content
+        if isinstance(content, str):
+            try:
+                content = json.loads(content)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        if a.type == "summary":
+            _render_summary_pdf(pdf, content)
+        elif a.type == "keypoints":
+            _render_keypoints_pdf(pdf, content)
+        else:
+            _render_generic_analysis_pdf(pdf, content)
 
     pdf.output(output_path)
 

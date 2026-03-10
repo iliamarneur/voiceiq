@@ -355,9 +355,6 @@ class OneshotEstimate(BaseModel):
     includes: List[str]
 
 
-class AddMinutesRequest(BaseModel):
-    pack: str  # S, M, L
-
 
 class DictationSessionOut(BaseModel):
     id: str
@@ -370,6 +367,43 @@ class DictationSessionOut(BaseModel):
     transcription_id: Optional[str] = None
     created_at: Optional[datetime] = None
     model_config = {"from_attributes": True}
+
+
+# ── Auth Schemas ──────────────────────────────────────────
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    name: str = ""
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class AuthResponse(BaseModel):
+    token: str
+    refresh_token: str = ""
+    user: dict  # {id, email, name, role}
+
+
+class UserOut(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: str
+    created_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str
 
 
 class DictationStartRequest(BaseModel):

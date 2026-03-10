@@ -13,9 +13,26 @@ import asyncio
 import json
 import logging
 import os
+import time
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_remove(path: str, retries: int = 5, delay: float = 1.0):
+    """Remove a file with retries for Windows file locking issues."""
+    for attempt in range(retries):
+        try:
+            os.remove(path)
+            return
+        except PermissionError:
+            if attempt < retries - 1:
+                logger.debug(f"File locked, retry {attempt + 1}/{retries}: {path}")
+                time.sleep(delay)
+            else:
+                logger.warning(f"Could not delete locked file after {retries} attempts: {path}")
+        except FileNotFoundError:
+            return
 
 _config_cache = None
 
@@ -69,7 +86,16 @@ def resolve_stt_backend(mode_id: str, override: Optional[str] = None) -> str:
 
     modes = config.get("modes", {})
     mode_config = modes.get(mode_id, {})
-    return mode_config.get("stt_backend", "stt_open_source")
+    default_backend = mode_config.get("stt_backend", "stt_open_source")
+
+    # Check if the default backend's API key is available; fall back if not
+    backends = config.get("stt_backends", {})
+    backend_info = backends.get(default_backend, {})
+    env_key = backend_info.get("env_key")
+    if env_key and not os.environ.get(env_key):
+        return "stt_open_source"
+
+    return default_backend
 
 
 # ── Backend implementations ──────────────────────────────
@@ -142,7 +168,7 @@ def _compress_audio_for_api(file_path: str, max_bytes: int = 24 * 1024 * 1024) -
         # If still too big, retry with lower bitrate
         if compressed_size > max_bytes and target_bitrate > 16000:
             logger.warning(f"Still too large, retrying at 16kbps...")
-            os.remove(output_path)
+            _safe_remove(output_path)
             _transcode(16000)
             compressed_size = os.path.getsize(output_path)
             logger.info(f"Retry: {compressed_size/(1024*1024):.1f} MB (16kbps)")
@@ -178,7 +204,7 @@ def _stt_whisper_api(file_path: str, vad_params: dict = None, language: str = No
     finally:
         # Clean up compressed file
         if compressed and os.path.exists(actual_path):
-            os.remove(actual_path)
+            _safe_remove(actual_path)
 
     import html as _html
 

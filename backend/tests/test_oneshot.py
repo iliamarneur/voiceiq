@@ -15,6 +15,14 @@ class TestOneshotTiers:
         assert "Court" in tiers
         assert "Standard" in tiers
         assert "Long" in tiers
+        assert "XLong" in tiers
+        assert "XXLong" in tiers
+        assert "XXXLong" in tiers
+
+    def test_6_tiers_total(self):
+        from app.services.subscription_service import get_oneshot_tiers
+        tiers = get_oneshot_tiers()
+        assert len(tiers) == 6
 
     def test_each_tier_has_required_fields(self):
         from app.services.subscription_service import get_oneshot_tiers
@@ -28,14 +36,25 @@ class TestOneshotTiers:
     def test_tiers_have_increasing_duration(self):
         from app.services.subscription_service import get_oneshot_tiers
         tiers = get_oneshot_tiers()
-        durations = [tiers[k]["max_duration_minutes"] for k in ["Court", "Standard", "Long"]]
+        all_tiers = ["Court", "Standard", "Long", "XLong", "XXLong", "XXXLong"]
+        durations = [tiers[k]["max_duration_minutes"] for k in all_tiers]
         assert durations == sorted(durations), "Tiers should have increasing duration"
 
     def test_tiers_have_increasing_price(self):
         from app.services.subscription_service import get_oneshot_tiers
         tiers = get_oneshot_tiers()
-        prices = [tiers[k]["price_cents"] for k in ["Court", "Standard", "Long"]]
+        all_tiers = ["Court", "Standard", "Long", "XLong", "XXLong", "XXXLong"]
+        prices = [tiers[k]["price_cents"] for k in all_tiers]
         assert prices == sorted(prices), "Tiers should have increasing prices"
+
+    def test_tiers_have_increasing_features(self):
+        from app.services.subscription_service import get_oneshot_tiers
+        tiers = get_oneshot_tiers()
+        all_tiers = ["Court", "Standard", "Long", "XLong", "XXLong", "XXXLong"]
+        for i in range(len(all_tiers) - 1):
+            current = set(tiers[all_tiers[i]]["includes"])
+            next_tier = set(tiers[all_tiers[i + 1]]["includes"])
+            assert current.issubset(next_tier), f"{all_tiers[i]} features not subset of {all_tiers[i+1]}"
 
 
 class TestOneshotEstimate:
@@ -56,10 +75,16 @@ class TestOneshotEstimate:
         result = estimate_oneshot_tier(4800)  # 80 min
         assert result["tier"] == "Long"
 
-    def test_exceeding_audio_gets_warning(self):
+    def test_100min_audio_gets_xlong_tier(self):
         from app.services.subscription_service import estimate_oneshot_tier
         result = estimate_oneshot_tier(6000)  # 100 min
-        assert result["tier"] == "Long"
+        assert result["tier"] == "XLong"
+        assert "warning" not in result  # 100 min fits in XLong (120 max)
+
+    def test_exceeding_audio_gets_warning(self):
+        from app.services.subscription_service import estimate_oneshot_tier
+        result = estimate_oneshot_tier(11000)  # ~183 min > 180 max
+        assert result["tier"] == "XXXLong"
         assert "warning" in result
 
     def test_estimate_includes_features(self):

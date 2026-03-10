@@ -10,3 +10,7 @@ av
 stripe
 openai
 python-dotenv
+PyJWT>=2.8
+bcrypt>=4.0
+httpx
+passlib[bcrypt]

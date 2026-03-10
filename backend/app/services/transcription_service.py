@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import tempfile
+import time
 try:
     import torch
 except ImportError:
@@ -23,6 +24,22 @@ from app.services.stt_backends import resolve_stt_backend, transcribe_audio_via_
 
 logger = logging.getLogger(__name__)
 
+
+def _safe_remove(path: str, retries: int = 5, delay: float = 1.0):
+    """Remove a file with retries for Windows file locking issues."""
+    for attempt in range(retries):
+        try:
+            os.remove(path)
+            return
+        except PermissionError:
+            if attempt < retries - 1:
+                logger.debug(f"File locked, retry {attempt + 1}/{retries}: {path}")
+                time.sleep(delay)
+            else:
+                logger.warning(f"Could not delete locked file after {retries} attempts: {path}")
+        except FileNotFoundError:
+            return
+
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".ts", ".mts", ".m2ts"}
 
 _model = None
@@ -39,7 +56,7 @@ def get_whisper_model_name() -> str:
     """Return the current transcription model name."""
     if _current_transcription_model:
         return _current_transcription_model
-    return "large-v3" if torch.cuda.is_available() else "medium"
+    return "large-v3" if torch and torch.cuda.is_available() else "medium"
 
 
 def get_dictation_model_name() -> str:
@@ -134,7 +151,7 @@ def _extract_audio_from_video(video_path: str) -> str:
     except Exception as e:
         logger.warning(f"PyAV extraction failed ({e}), trying direct Whisper decode")
         if os.path.exists(output_path):
-            os.remove(output_path)
+            _safe_remove(output_path)
         return video_path  # faster-whisper may handle it directly
 
 
@@ -179,7 +196,7 @@ def _run_whisper(file_path: str, vad_params: dict = None, language: str = None):
 
     # Clean up extracted audio file
     if audio_path != file_path and os.path.exists(audio_path):
-        os.remove(audio_path)
+        _safe_remove(audio_path)
 
     return segments, full_text, info
 
@@ -243,6 +260,16 @@ async def transcribe_audio(
                 seg["text"] = apply_dictionary_corrections(seg["text"], dictionary_entries)
             logger.info(f"Applied {len(dictionary_entries)} dictionary corrections")
 
+        # Polish transcription text via LLM (formatting, punctuation, paragraphs)
+        try:
+            from app.services.llm_service import polish_transcription
+            polished = await polish_transcription(full_text, language=effective_language)
+            if polished and polished != full_text:
+                logger.info(f"Job {job_id}: text polished ({len(full_text)} → {len(polished)} chars)")
+                full_text = polished
+        except Exception as polish_err:
+            logger.warning(f"Job {job_id}: polish failed ({polish_err}), using raw text")
+
         # Detect audio type from transcription stats
         avg_seg_len = sum(s["end"] - s["start"] for s in segments) / max(len(segments), 1)
         detected_audio_type = detect_audio_type_heuristic(
@@ -296,7 +323,7 @@ async def transcribe_audio(
 
         # v7: Log usage and consume minutes
         processing_end = _time.time()
-        whisper_model_name = "large-v3" if torch.cuda.is_available() else "medium"
+        whisper_model_name = "large-v3" if torch and torch.cuda.is_available() else "medium"
         _usage_source_type = "oneshot" if oneshot_order_id else (getattr(job, "source_type", "file") or "file")
         try:
             await consume_minutes(
@@ -322,13 +349,78 @@ async def transcribe_audio(
             except Exception as link_err:
                 logger.warning(f"Failed to link oneshot order: {link_err}")
 
-        # Mark job as completed (analyses are generated on-demand by user)
+        # For one-shot: auto-generate analyses based on tier includes
+        if oneshot_order_id:
+            _tid = transcription.id
+            _oid = oneshot_order_id
+            async def _bg_oneshot_analyses():
+                from app.database import AsyncSessionLocal
+                from app.services.llm_service import regenerate_analysis
+                from app.services.subscription_service import get_oneshot_tiers
+                from app.models import OneshotOrder
+                # Mapping: tier feature name → analysis type (skip non-analysis features like transcription, export_*)
+                _FEATURE_TO_ANALYSIS = {
+                    "summary": "summary",
+                    "keypoints": "keypoints",
+                    "actions": "actions",
+                    "faq": "faq",
+                    "quiz": "quiz",
+                    "flashcards": "flashcards",
+                }
+                try:
+                    async with AsyncSessionLocal() as bg_db:
+                        # Look up the tier from the oneshot order
+                        order_result = await bg_db.execute(
+                            select(OneshotOrder).where(OneshotOrder.id == _oid)
+                        )
+                        order = order_result.scalar_one_or_none()
+                        if not order:
+                            logger.warning(f"One-shot order {_oid} not found, falling back to summary only")
+                            await regenerate_analysis(_tid, "summary", bg_db)
+                            return
+
+                        tiers = get_oneshot_tiers()
+                        tier_config = tiers.get(order.tier, {})
+                        includes = tier_config.get("includes", ["transcription", "summary"])
+
+                        # Build list of analysis types allowed by this tier
+                        analysis_types = [
+                            _FEATURE_TO_ANALYSIS[feat]
+                            for feat in includes
+                            if feat in _FEATURE_TO_ANALYSIS
+                        ]
+
+                        # Generate chapters separately (uses generate_chapters, not regenerate_analysis)
+                        if "chapters" in includes:
+                            try:
+                                from app.services.llm_service import generate_chapters
+                                await generate_chapters(_tid, bg_db)
+                                logger.info(f"One-shot: chapters generated for {_tid}")
+                            except Exception as e:
+                                logger.warning(f"One-shot chapters failed for {_tid}: {e}")
+
+                        if not analysis_types:
+                            logger.info(f"One-shot tier '{order.tier}' has no analysis features")
+                            return
+
+                        logger.info(f"One-shot: auto-generating {analysis_types} for {_tid} (tier={order.tier})")
+                        for analysis_type in analysis_types:
+                            try:
+                                await regenerate_analysis(_tid, analysis_type, bg_db)
+                            except Exception as e:
+                                logger.warning(f"One-shot analysis '{analysis_type}' failed for {_tid}: {e}")
+                        logger.info(f"One-shot: all analyses generated for {_tid}")
+                except Exception as analysis_err:
+                    logger.warning(f"One-shot auto-analysis failed: {analysis_err}")
+            asyncio.create_task(_bg_oneshot_analyses())
+
+        # Mark job as completed
         result = await db.execute(select(Job).where(Job.id == job_id))
         job = result.scalar_one_or_none()
         if job:
             job.status = "completed"
             await db.commit()
-        logger.info(f"Transcription complete for {transcription.id}, job {job_id} → completed (analyses on-demand)")
+        logger.info(f"Transcription complete for {transcription.id}, job {job_id} → completed")
 
     except Exception as e:
         logger.error(f"Transcription failed for job {job_id}: {e}", exc_info=True)

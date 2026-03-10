@@ -57,12 +57,14 @@ def get_alert_thresholds() -> dict:
 # ── Seed plans ──────────────────────────────────────────
 
 async def seed_plans(db: AsyncSession):
-    """Insert or update plans from config."""
-    for plan_data in get_seed_plans():
+    """Insert or update plans from config. Removes plans no longer in config."""
+    config_plans = get_seed_plans()
+    config_ids = {p["id"] for p in config_plans}
+
+    for plan_data in config_plans:
         result = await db.execute(select(Plan).where(Plan.id == plan_data["id"]))
         existing = result.scalar_one_or_none()
         if existing:
-            # Update existing plan with latest config values
             existing.name = plan_data["name"]
             existing.price_cents = plan_data["price_cents"]
             existing.minutes_included = plan_data["minutes_included"]
@@ -73,16 +75,27 @@ async def seed_plans(db: AsyncSession):
             existing.active = plan_data.get("active", 1)
             logger.info(f"Updated plan: {plan_data['id']}")
         else:
-            plan = Plan(**plan_data)
+            # Filter out config-only keys not present on the Plan model
+            model_keys = {c.name for c in Plan.__table__.columns}
+            filtered = {k: v for k, v in plan_data.items() if k in model_keys}
+            plan = Plan(**filtered)
             db.add(plan)
             logger.info(f"Seeded plan: {plan_data['id']}")
+
+    # Remove plans no longer in config
+    all_plans = await db.execute(select(Plan))
+    for plan in all_plans.scalars().all():
+        if plan.id not in config_ids:
+            await db.delete(plan)
+            logger.info(f"Removed plan: {plan.id}")
+
     await db.commit()
 
 
 # ── Subscription management ─────────────────────────────
 
-async def get_or_create_subscription(db: AsyncSession, user_id: str = "default") -> UserSubscription:
-    """Get the active subscription for a user, creating a free one if none exists."""
+async def get_subscription(db: AsyncSession, user_id: str = "default") -> UserSubscription | None:
+    """Get the active subscription for a user, or None if no subscription exists."""
     result = await db.execute(
         select(UserSubscription).where(
             UserSubscription.user_id == user_id,
@@ -98,13 +111,21 @@ async def get_or_create_subscription(db: AsyncSession, user_id: str = "default")
             sub.minutes_used = 0
             await db.commit()
             await db.refresh(sub)
-        return sub
+    return sub
 
-    # Create free subscription
+
+async def create_subscription(db: AsyncSession, plan_id: str, user_id: str = "default") -> UserSubscription:
+    """Create a new subscription for a user on a specific plan."""
+    # Verify plan exists
+    plan_result = await db.execute(select(Plan).where(Plan.id == plan_id))
+    plan = plan_result.scalar_one_or_none()
+    if not plan:
+        raise ValueError(f"Plan '{plan_id}' not found")
+
     now = datetime.utcnow()
     sub = UserSubscription(
         user_id=user_id,
-        plan_id="free",
+        plan_id=plan_id,
         status="active",
         current_period_start=now,
         current_period_end=now + timedelta(days=30),
@@ -114,12 +135,28 @@ async def get_or_create_subscription(db: AsyncSession, user_id: str = "default")
     db.add(sub)
     await db.commit()
     await db.refresh(sub)
+    logger.info(f"Created subscription for user {user_id} on plan {plan_id}")
     return sub
 
 
 async def get_subscription_info(db: AsyncSession, user_id: str = "default") -> dict:
-    """Get full subscription info with plan details."""
-    sub = await get_or_create_subscription(db, user_id)
+    """Get full subscription info with plan details. Returns None-like info if no subscription."""
+    sub = await get_subscription(db, user_id)
+    if not sub:
+        return {
+            "id": None,
+            "user_id": user_id,
+            "plan_id": None,
+            "plan_name": None,
+            "status": "none",
+            "current_period_start": None,
+            "current_period_end": None,
+            "minutes_used": 0,
+            "minutes_included": 0,
+            "minutes_remaining": 0,
+            "extra_minutes_balance": 0,
+            "created_at": None,
+        }
     plan_result = await db.execute(select(Plan).where(Plan.id == sub.plan_id))
     plan = plan_result.scalar_one_or_none()
     plan_name = plan.name if plan else sub.plan_id
@@ -150,7 +187,10 @@ async def change_plan(db: AsyncSession, plan_id: str, user_id: str = "default") 
     if not plan:
         raise ValueError(f"Plan '{plan_id}' not found")
 
-    sub = await get_or_create_subscription(db, user_id)
+    sub = await get_subscription(db, user_id)
+    if not sub:
+        # No existing subscription — create one
+        return await create_subscription(db, plan_id, user_id)
     sub.plan_id = plan_id
     now = datetime.utcnow()
     sub.current_period_start = now
@@ -166,7 +206,9 @@ async def change_plan(db: AsyncSession, plan_id: str, user_id: str = "default") 
 
 async def check_minutes_available(db: AsyncSession, user_id: str = "default") -> dict:
     """Check if user has minutes available. Returns availability info."""
-    sub = await get_or_create_subscription(db, user_id)
+    sub = await get_subscription(db, user_id)
+    if not sub:
+        return {"available": False, "plan_remaining": 0, "extra_remaining": 0, "total_available": 0}
     plan_result = await db.execute(select(Plan).where(Plan.id == sub.plan_id))
     plan = plan_result.scalar_one_or_none()
     minutes_included = plan.minutes_included if plan else 0
@@ -195,7 +237,9 @@ async def consume_minutes(
 ) -> UsageLog:
     """Consume minutes from subscription and log usage."""
     minutes_needed = max(1, math.ceil(audio_duration_seconds / 60))
-    sub = await get_or_create_subscription(db, user_id)
+    sub = await get_subscription(db, user_id)
+    if not sub:
+        raise ValueError("No active subscription. Please subscribe to a plan first.")
 
     plan_result = await db.execute(select(Plan).where(Plan.id == sub.plan_id))
     plan = plan_result.scalar_one_or_none()
@@ -264,7 +308,9 @@ async def add_extra_minutes(db: AsyncSession, pack: str, user_id: str = "default
         raise ValueError(f"Unknown pack '{pack}'. Available: {list(packs.keys())}")
 
     pack_info = packs[pack]
-    sub = await get_or_create_subscription(db, user_id)
+    sub = await get_subscription(db, user_id)
+    if not sub:
+        raise ValueError("No active subscription. Please subscribe to a plan first.")
     sub.extra_minutes_balance += pack_info["minutes"]
     await db.commit()
     await db.refresh(sub)
@@ -282,13 +328,16 @@ async def add_extra_minutes(db: AsyncSession, pack: str, user_id: str = "default
 
 async def get_subscription_alerts(db: AsyncSession, user_id: str = "default") -> dict:
     """Check quota usage and return alerts if thresholds are reached."""
-    sub = await get_or_create_subscription(db, user_id)
+    sub = await get_subscription(db, user_id)
+    if not sub:
+        return {"alerts": [{"level": "blocked", "message": "Aucun abonnement actif. Choisissez un plan pour commencer.", "percent": 0}],
+                "usage_percent": 0, "minutes_remaining": 0, "minutes_included": 0, "extra_minutes_balance": 0}
     plan_result = await db.execute(select(Plan).where(Plan.id == sub.plan_id))
     plan = plan_result.scalar_one_or_none()
     minutes_included = plan.minutes_included if plan else 0
 
     if minutes_included <= 0:
-        return {"alerts": [], "usage_percent": 0, "minutes_remaining": 0}
+        return {"alerts": [], "usage_percent": 0, "minutes_remaining": 0, "minutes_included": 0, "extra_minutes_balance": sub.extra_minutes_balance}
 
     usage_percent = round((sub.minutes_used / minutes_included) * 100, 1)
     minutes_remaining = max(0, minutes_included - sub.minutes_used)
@@ -331,8 +380,9 @@ def estimate_oneshot_tier(duration_seconds: float) -> dict:
     """Estimate which one-shot tier fits the audio duration."""
     tiers = get_oneshot_tiers()
     duration_minutes = math.ceil(duration_seconds / 60)
-    for tier_id in ["Court", "Standard", "Long"]:
-        tier = tiers[tier_id]
+    # Iterate tiers in order of max_duration (ascending)
+    sorted_tiers = sorted(tiers.items(), key=lambda x: x[1]["max_duration_minutes"])
+    for tier_id, tier in sorted_tiers:
         if duration_minutes <= tier["max_duration_minutes"]:
             return {
                 "tier": tier_id,
@@ -341,12 +391,13 @@ def estimate_oneshot_tier(duration_seconds: float) -> dict:
                 "includes": tier["includes"],
             }
     # Exceeds all tiers
+    last_id, last_tier = sorted_tiers[-1]
     return {
-        "tier": "Long",
-        "price_cents": tiers["Long"]["price_cents"],
-        "max_duration_minutes": tiers["Long"]["max_duration_minutes"],
-        "includes": tiers["Long"]["includes"],
-        "warning": "Audio exceeds 90 minutes, consider a subscription",
+        "tier": last_id,
+        "price_cents": last_tier["price_cents"],
+        "max_duration_minutes": last_tier["max_duration_minutes"],
+        "includes": last_tier["includes"],
+        "warning": f"Audio exceeds {last_tier['max_duration_minutes']} minutes, consider a subscription",
     }
 
 
@@ -392,7 +443,14 @@ async def link_oneshot_to_transcription(
 
 async def get_usage_summary(db: AsyncSession, user_id: str = "default") -> dict:
     """Get usage summary for the current billing period."""
-    sub = await get_or_create_subscription(db, user_id)
+    sub = await get_subscription(db, user_id)
+    if not sub:
+        return {
+            "plan_id": None, "plan_name": None, "minutes_included": 0,
+            "minutes_used": 0, "minutes_remaining": 0, "extra_minutes_balance": 0,
+            "total_transcriptions": 0, "total_audio_minutes": 0,
+            "by_source": {}, "by_profile": {},
+        }
     plan_result = await db.execute(select(Plan).where(Plan.id == sub.plan_id))
     plan = plan_result.scalar_one_or_none()
 

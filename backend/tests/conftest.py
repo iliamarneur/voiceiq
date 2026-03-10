@@ -1,4 +1,4 @@
-"""Shared fixtures for VoiceIQ tests."""
+"""Shared fixtures for ClearRecap tests."""
 import json
 import os
 import struct
@@ -63,8 +63,17 @@ async def test_client(tmp_path):
     upload_dir = str(tmp_path / "uploads")
     os.makedirs(upload_dir, exist_ok=True)
 
+    # Mock subscription to return a valid sub (avoids 403 on subscription check)
+    mock_sub = MagicMock()
+    mock_sub.plan_id = "free"
+    mock_sub.status = "active"
+
     with patch("app.main.UPLOAD_DIR", upload_dir), \
-         patch("app.services.profile_service._profiles_cache", {}):
+         patch("app.services.profile_service._profiles_cache", {}), \
+         patch("app.main.AUTH_ENABLED", False), \
+         patch("app.services.auth_service.AUTH_ENABLED", False), \
+         patch("app.main.get_user_subscription", new=AsyncMock(return_value=mock_sub)), \
+         patch("app.main.require_feature_check", new=AsyncMock(return_value=None)):
         # Force reload profiles from real JSON files
         from app.services.profile_service import reload_profiles
         reload_profiles()

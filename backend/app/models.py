@@ -17,6 +17,8 @@ class Job(Base):
     error_message = Column(Text, nullable=True)
     preset_id = Column(String, nullable=True)
     source_type = Column(String, nullable=False, default="file")  # file, recording, dictation
+    language_hint = Column(String, nullable=True)  # forced language code (fr, en, etc.)
+    user_id = Column(String, nullable=False, default="default")
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -174,7 +176,7 @@ class UserPreferences(Base):
 
 class Plan(Base):
     __tablename__ = "plans"
-    id = Column(String, primary_key=True)  # free, oneshot, basic, pro, team
+    id = Column(String, primary_key=True)  # basic, pro, team
     name = Column(String, nullable=False)
     price_cents = Column(Integer, nullable=False, default=0)
     minutes_included = Column(Integer, nullable=False, default=0)
@@ -209,7 +211,7 @@ class UsageLog(Base):
     job_id = Column(String, ForeignKey("jobs.id"), nullable=True)
     audio_duration_seconds = Column(Float, nullable=False, default=0.0)
     minutes_charged = Column(Integer, nullable=False, default=0)
-    minute_source = Column(String, nullable=False, default="plan")  # plan, extra, oneshot, free
+    minute_source = Column(String, nullable=False, default="plan")  # plan, extra, plan+extra, exceeded
     source_type = Column(String, nullable=False, default="file")  # file, recording, dictation
     profile_used = Column(String, nullable=True)
     whisper_model = Column(String, nullable=True)
@@ -222,12 +224,13 @@ class OneshotOrder(Base):
     __tablename__ = "oneshot_orders"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, nullable=False, default="default")
-    tier = Column(String, nullable=False)  # Court, Standard, Long
+    tier = Column(String, nullable=False)  # Court, Standard, Long, XLong, XXLong, XXXLong
     price_cents = Column(Integer, nullable=False)
     audio_duration_seconds = Column(Float, nullable=True)
     payment_status = Column(String, nullable=False, default="pending")  # pending, paid, failed
     stripe_session_id = Column(String, nullable=True)
     transcription_id = Column(String, nullable=True)
+    job_id = Column(String, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -256,6 +259,18 @@ class DictationSession(Base):
     transcription_id = Column(String, nullable=True)  # set when saved as Transcription
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+# ── v7.2 Models (Auth) ────────────────────────────────────
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    email = Column(String, nullable=False, unique=True, index=True)
+    password_hash = Column(String, nullable=False)
+    name = Column(String, nullable=False, default="")
+    role = Column(String, nullable=False, default="user")  # user, admin
+    created_at = Column(DateTime, server_default=func.now())
 
 
 # ── v7.1 Models (Simple mode / Anonymous sessions) ─────

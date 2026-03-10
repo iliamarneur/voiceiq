@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Upload, FileAudio, Loader2, CheckCircle, CreditCard, ArrowRight, Clock, Shield, Star, Briefcase, GraduationCap, Stethoscope, Scale, Layers } from 'lucide-react';
+import { Upload, FileAudio, Loader2, CheckCircle, CreditCard, ArrowRight, Clock, Shield, Star, Briefcase, GraduationCap, Stethoscope, Scale, Layers, Globe } from 'lucide-react';
 import axios from 'axios';
 import { OneshotTier } from '../types';
 import TranscriptionProgress from '../components/TranscriptionProgress';
@@ -9,13 +9,38 @@ import BackendSelector from '../components/BackendSelector';
 
 const FEATURE_LABELS: Record<string, string> = {
   transcription: 'Transcription complète',
-  summary: 'Résumé automatique',
+  summary: 'Résumé structuré',
   keypoints: 'Points clés',
+  chapters: 'Découpage en chapitres',
   actions: 'Plan d\'actions',
+  faq: 'FAQ générée',
   quiz: 'Quiz de révision',
   chat: 'Chat IA',
   flashcards: 'Flashcards',
+  export_md: 'Export Markdown',
+  export_pdf: 'Export PDF',
 };
+
+const AUTO_FEATURES = ['transcription', 'summary', 'keypoints', 'chapters'];
+
+const LANGUAGES = [
+  { code: '', label: 'Détection automatique' },
+  { code: 'fr', label: 'Français' },
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Español' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'it', label: 'Italiano' },
+  { code: 'pt', label: 'Português' },
+  { code: 'nl', label: 'Nederlands' },
+  { code: 'pl', label: 'Polski' },
+  { code: 'ru', label: 'Русский' },
+  { code: 'ja', label: '日本語' },
+  { code: 'zh', label: '中文' },
+  { code: 'ko', label: '한국어' },
+  { code: 'ar', label: 'العربية' },
+  { code: 'tr', label: 'Türkçe' },
+  { code: 'uk', label: 'Українська' },
+];
 
 const PROFILES = [
   { id: 'generic', label: 'Générique', icon: Layers, color: 'from-slate-500 to-slate-600' },
@@ -34,6 +59,7 @@ function OneshotPage() {
   const [processing, setProcessing] = useState(false);
   const [phase, setPhase] = useState<'idle' | 'estimating' | 'ready' | 'paying' | 'uploading' | 'transcribing' | 'done' | 'error'>('idle');
   const [error, setError] = useState('');
+  const [language, setLanguage] = useState('');
   const [sttBackend, setSttBackend] = useState<string | null>(null);
   const [llmBackend, setLlmBackend] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -73,14 +99,23 @@ function OneshotPage() {
     setProcessing(true);
     setPhase('paying');
     try {
+      // Upload file first — backend handles order + Stripe checkout
       setPhase('uploading');
       const formData = new FormData();
       formData.append('file', file);
       formData.append('tier', estimate.tier);
       formData.append('profile', selectedProfile);
+      if (language) formData.append('language', language);
       if (sttBackend) formData.append('stt_backend', sttBackend);
       if (llmBackend) formData.append('llm_backend', llmBackend);
       const uploadResp = await axios.post('/api/oneshot/upload', formData);
+
+      // If Stripe checkout URL returned, redirect to payment
+      if (uploadResp.data.checkout_url) {
+        window.location.href = uploadResp.data.checkout_url;
+        return;
+      }
+
       const jobId = uploadResp.data.id;
 
       setPhase('transcribing');
@@ -169,9 +204,15 @@ function OneshotPage() {
                 {(t.price_cents / 100).toFixed(0)} EUR
               </p>
               <div className="mt-3 space-y-1 text-left">
-                {t.includes.map(f => (
-                  <p key={f} className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                {t.includes.filter(f => AUTO_FEATURES.includes(f)).map(f => (
+                  <p key={f} className="text-xs text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1.5">
                     <CheckCircle className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                    {featureLabel(f)}
+                  </p>
+                ))}
+                {t.includes.filter(f => !AUTO_FEATURES.includes(f)).map(f => (
+                  <p key={f} className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <CheckCircle className="w-3 h-3 text-indigo-400 flex-shrink-0" />
                     {featureLabel(f)}
                   </p>
                 ))}
@@ -223,6 +264,23 @@ function OneshotPage() {
               id="oneshotFileInput" type="file" accept="audio/*,video/*,.mkv,.avi,.mov" className="hidden"
               onChange={(e) => { if (e.target.files?.[0]) handleFileSelected(e.target.files[0]); }}
             />
+          </div>
+
+          {/* Language selector */}
+          <div className="flex items-center gap-3">
+            <Globe className="w-4 h-4 text-slate-400" />
+            <div>
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Langue de l'audio</p>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-600 dark:text-slate-300 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none transition-colors"
+              >
+                {LANGUAGES.map(l => (
+                  <option key={l.code} value={l.code}>{l.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Profile selector */}
@@ -290,9 +348,17 @@ function OneshotPage() {
               <span className="font-bold text-xl text-indigo-600 dark:text-indigo-400">{(estimate.price_cents / 100).toFixed(0)} EUR</span>
             </div>
             <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
-              <p className="text-xs text-slate-500 mb-1">Inclus :</p>
+              <p className="text-xs text-slate-500 mb-1">Automatique :</p>
               <div className="flex flex-wrap gap-1">
-                {estimate.includes.map(f => (
+                {estimate.includes.filter(f => AUTO_FEATURES.includes(f)).map(f => (
+                  <span key={f} className="text-xs px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-medium">
+                    {featureLabel(f)}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 mt-2 mb-1">Également inclus :</p>
+              <div className="flex flex-wrap gap-1">
+                {estimate.includes.filter(f => !AUTO_FEATURES.includes(f)).map(f => (
                   <span key={f} className="text-xs px-2 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
                     {featureLabel(f)}
                   </span>
@@ -352,13 +418,13 @@ function OneshotPage() {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
             <p className="font-medium text-indigo-600 dark:text-indigo-400 mb-1">One-shot Standard</p>
-            <p className="text-slate-500">4 EUR pour 1 fichier</p>
-            <p className="text-xs text-slate-400 mt-1">= {(400 / 60).toFixed(2)} EUR/min</p>
+            <p className="text-slate-500">6 EUR pour 1 fichier (1h max)</p>
+            <p className="text-xs text-slate-400 mt-1">= {(600 / 60).toFixed(2)} EUR/min</p>
           </div>
           <div className="p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
             <p className="font-medium text-emerald-600 dark:text-emerald-400 mb-1">Abonnement Basic</p>
-            <p className="text-slate-500">19 EUR/mois pour 300 min</p>
-            <p className="text-xs text-slate-400 mt-1">= 0.063 EUR/min — 7x moins cher</p>
+            <p className="text-slate-500">19 EUR/mois pour 500 min</p>
+            <p className="text-xs text-slate-400 mt-1">= 0.038 EUR/min — jusqu'à 3x moins cher</p>
           </div>
         </div>
         <div className="mt-3 text-center">

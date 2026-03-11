@@ -6,6 +6,12 @@
       "provider": "faster_whisper",
       "description": "faster-whisper en local, GPU si disponible"
     },
+    "stt_elevenlabs": {
+      "name": "ElevenLabs Scribe v2",
+      "provider": "elevenlabs",
+      "description": "API ElevenLabs Scribe v2 — haute précision, 90+ langues (requiert ELEVENLABS_API_KEY)",
+      "env_key": "ELEVENLABS_API_KEY"
+    },
     "stt_whisper_api": {
       "name": "OpenAI Whisper API",
       "provider": "openai_whisper",
@@ -46,17 +52,17 @@
   },
   "modes": {
     "file_upload": {
-      "stt_backend": "stt_whisper_api",
+      "stt_backend": "stt_elevenlabs",
       "llm_backend": "llm_openai",
       "stt_model_hint": "large-v3"
     },
     "recording": {
-      "stt_backend": "stt_whisper_api",
+      "stt_backend": "stt_elevenlabs",
       "llm_backend": "llm_openai",
       "stt_model_hint": "large-v3"
     },
     "live_dictation": {
-      "stt_backend": "stt_whisper_api",
+      "stt_backend": "stt_elevenlabs",
       "llm_backend": "llm_openai",
       "stt_model_hint": "small"
     }

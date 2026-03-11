@@ -274,6 +274,81 @@ def _stt_whisper_api(file_path: str, vad_params: dict = None, language: str = No
     return segments, full_text, info
 
 
+def _stt_elevenlabs_api(file_path: str, vad_params: dict = None, language: str = None, model_hint: str = None):
+    """ElevenLabs Scribe v2 API transcription."""
+    import httpx
+
+    api_key = os.environ["ELEVENLABS_API_KEY"]
+
+    # Compress if file exceeds 50MB (ElevenLabs limit is higher but let's be safe)
+    actual_path = _compress_audio_for_api(file_path, max_bytes=50 * 1024 * 1024)
+    compressed = actual_path != file_path
+
+    # Map language codes: ElevenLabs uses ISO-639-3 (3-letter) or ISO-639-1
+    lang_map = {"fr": "fra", "en": "eng", "es": "spa", "de": "deu", "it": "ita", "pt": "por", "nl": "nld", "ja": "jpn", "zh": "cmn", "ko": "kor", "ar": "ara", "ru": "rus"}
+    el_lang = lang_map.get(language, language) if language else None
+
+    try:
+        with open(actual_path, "rb") as audio_file:
+            data = {"model_id": "scribe_v2"}
+            if el_lang:
+                data["language_code"] = el_lang
+            data["timestamps_granularity"] = "word"
+
+            logger.info(f"ElevenLabs STT: model=scribe_v2, lang={el_lang or 'auto'}")
+            resp = httpx.post(
+                "https://api.elevenlabs.io/v1/speech-to-text",
+                headers={"xi-api-key": api_key},
+                files={"file": (os.path.basename(actual_path), audio_file, "audio/mpeg")},
+                data=data,
+                timeout=600.0,
+            )
+            resp.raise_for_status()
+            result = resp.json()
+    finally:
+        if compressed and os.path.exists(actual_path):
+            _safe_remove(actual_path)
+
+    # Parse response — ElevenLabs returns {text, words: [{text, start, end, type, speaker_id}], language_code}
+    full_text = result.get("text", "")
+    words = result.get("words", [])
+    detected_lang = result.get("language_code", language or "unknown")
+
+    # Build segments from words (group into ~30s segments)
+    segments = []
+    if words:
+        seg_words = []
+        seg_start = words[0].get("start", 0.0)
+        for w in words:
+            if w.get("type") == "spacing":
+                continue
+            seg_words.append(w.get("text", ""))
+            seg_end = w.get("end", seg_start)
+            # Create a new segment every ~30 seconds or at sentence boundaries
+            if seg_end - seg_start >= 30.0 or (w.get("text", "").rstrip().endswith((".", "!", "?")) and seg_end - seg_start >= 5.0):
+                segments.append({
+                    "start": round(seg_start, 2),
+                    "end": round(seg_end, 2),
+                    "text": " ".join(seg_words).strip(),
+                })
+                seg_words = []
+                seg_start = seg_end
+        # Remaining words
+        if seg_words:
+            segments.append({
+                "start": round(seg_start, 2),
+                "end": round(words[-1].get("end", seg_start), 2),
+                "text": " ".join(seg_words).strip(),
+            })
+    elif full_text.strip():
+        segments = [{"start": 0.0, "end": 0.0, "text": full_text.strip()}]
+
+    duration = words[-1].get("end", 0.0) if words else 0.0
+    info = _Info(lang=detected_lang, dur=duration)
+
+    return segments, full_text, info
+
+
 def _stt_deepgram_api(file_path: str, vad_params: dict = None, language: str = None, model_hint: str = None):
     """Deepgram API — stub."""
     raise NotImplementedError(
@@ -293,6 +368,7 @@ def _stt_google_api(file_path: str, vad_params: dict = None, language: str = Non
 _STT_DISPATCH = {
     "stt_open_source": _stt_open_source,
     "stt_whisper_api": _stt_whisper_api,
+    "stt_elevenlabs": _stt_elevenlabs_api,
     "stt_deepgram_api": _stt_deepgram_api,
     "stt_google_api": _stt_google_api,
 }

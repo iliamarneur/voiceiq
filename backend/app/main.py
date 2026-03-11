@@ -748,6 +748,8 @@ async def get_audio(id: str, db: AsyncSession = Depends(get_db)):
 @app.post("/api/transcriptions/{id}/format")
 async def format_transcription(id: str, db: AsyncSession = Depends(get_db)):
     """Run LLM to produce a beautifully formatted version of the transcript."""
+    from app.services.llm_service import _call_llm_text_async
+
     result = await db.execute(select(Transcription).where(Transcription.id == id))
     transcription = result.scalar_one_or_none()
     if not transcription:
@@ -757,11 +759,9 @@ async def format_transcription(id: str, db: AsyncSession = Depends(get_db)):
     if not raw_text.strip():
         raise HTTPException(status_code=400, detail="No text to format")
 
-    backend_id = resolve_llm_backend("file_upload")
-
-    prompt = (
-        "Tu es un expert en mise en page de textes. On te donne la transcription brute d'un audio. "
-        "Ton travail :\n"
+    system_prompt = (
+        "Tu es un expert en mise en page de textes transcrits. "
+        "On te donne la transcription d'un audio. Ton travail :\n\n"
         "1. Ne change RIEN au contenu. Ne reformule pas, ne resume pas, ne supprime rien.\n"
         "2. Corrige UNIQUEMENT les grosses fautes d'orthographe ou de grammaire evidentes (erreurs de transcription).\n"
         "3. Cree une belle mise en page en Markdown adaptee au type de contenu :\n"
@@ -772,19 +772,25 @@ async def format_transcription(id: str, db: AsyncSession = Depends(get_db)):
         "4. Ajoute des sauts de ligne et paragraphes pour la lisibilite.\n"
         "5. Utilise des titres Markdown (## ###) pour structurer.\n"
         "6. Si tu identifies des locuteurs, mets-les en **gras**.\n\n"
-        "IMPORTANT: Retourne UNIQUEMENT le texte formate en Markdown, sans aucun JSON, sans ```markdown```, "
-        "sans explication. Juste le texte mis en page."
+        "IMPORTANT: Retourne UNIQUEMENT le texte formate en Markdown, sans aucun JSON, "
+        "sans bloc ```markdown```, sans explication. Juste le texte mis en page."
     )
 
-    llm_result = await analyze_transcript_via_backend(prompt, raw_text, backend_id)
+    # max_tokens adapté : la sortie est au moins aussi longue que l'entrée
+    # ~4 chars per token en moyenne, avec marge x1.5
+    estimated_tokens = max(8192, int(len(raw_text) / 3))
+    max_tokens = min(estimated_tokens, 16384)
 
-    # The LLM may return a dict with "content" key or the text directly
-    if isinstance(llm_result, dict):
-        formatted = llm_result.get("content", llm_result.get("text", json.dumps(llm_result, ensure_ascii=False)))
-    else:
-        formatted = str(llm_result)
-
-    return {"formatted_text": formatted}
+    try:
+        formatted = await _call_llm_text_async(system_prompt, raw_text, max_tokens=max_tokens)
+        if formatted.startswith("Error:"):
+            raise HTTPException(status_code=502, detail=f"LLM error: {formatted}")
+        return {"formatted_text": formatted}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Format transcription failed: {e}", exc_info=True)
+        raise HTTPException(status_code=502, detail=f"Mise en page echouee: {str(e)[:200]}")
 
 
 # ── Export ─────────────────────────────────────────────────
@@ -1524,12 +1530,7 @@ async def estimate_oneshot(body: dict):
     duration = body.get("duration_seconds", 0)
     if not duration or duration <= 0:
         raise HTTPException(status_code=400, detail="Missing or invalid 'duration_seconds'")
-    if duration > 10800:  # 180 minutes (XXXLong tier max)
-        raise HTTPException(
-            status_code=400,
-            detail="La durée maximale pour un one-shot est de 3 heures. "
-                   "Pour des fichiers plus longs, souscrivez un abonnement.",
-        )
+    # No hard limit — estimate_oneshot_tier returns the highest tier with a warning if exceeded
     return estimate_oneshot_tier(duration)
 
 
@@ -1813,8 +1814,41 @@ async def oneshot_result(job_id: str, db: AsyncSession = Depends(get_db)):
 
 @app.post("/api/oneshot/result/{job_id}/ensure-analyses")
 async def oneshot_ensure_analyses(job_id: str, db: AsyncSession = Depends(get_db)):
-    """Trigger analysis generation for a oneshot job (no auth).
-    Respects tier-based filtering: only generates analyses included in the tier."""
+    """Ensure auto-analyses (summary + keypoints) exist. Generates them in background if missing."""
+    result = await db.execute(select(Job).where(Job.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job or job.source_type != "oneshot" or not job.transcription_id:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    tid = job.transcription_id
+    auto_types = ["summary", "keypoints"]
+
+    existing = await db.execute(select(Analysis).where(Analysis.transcription_id == tid))
+    existing_types = {a.type for a in existing.scalars().all()}
+    missing = [t for t in auto_types if t not in existing_types]
+
+    if not missing:
+        return {"status": "ready", "missing": []}
+
+    async def _bg_generate():
+        async with AsyncSessionLocal() as bg_db:
+            for analysis_type in missing:
+                try:
+                    await regenerate_analysis(tid, analysis_type, bg_db)
+                except Exception as e:
+                    logger.warning(f"oneshot ensure-analyses: failed {analysis_type} for {tid}: {e}")
+    asyncio.create_task(_bg_generate())
+    return {"status": "generating", "missing": missing}
+
+
+@app.post("/api/oneshot/result/{job_id}/generate/{analysis_type}")
+async def oneshot_generate_analysis(job_id: str, analysis_type: str, db: AsyncSession = Depends(get_db)):
+    """On-demand: generate a single analysis for a oneshot job (no auth).
+    User clicks 'Generate' on the UI to trigger this."""
+    allowed = {"chapters", "actions", "faq", "quiz", "flashcards"}
+    if analysis_type not in allowed:
+        raise HTTPException(status_code=400, detail=f"Type '{analysis_type}' not available on-demand")
+
     result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if not job or job.source_type != "oneshot" or not job.transcription_id:
@@ -1822,69 +1856,37 @@ async def oneshot_ensure_analyses(job_id: str, db: AsyncSession = Depends(get_db
 
     tid = job.transcription_id
 
-    # Mapping: tier feature name -> analysis type (skip non-analysis features)
-    _FEATURE_TO_ANALYSIS = {
-        "summary": "summary",
-        "keypoints": "keypoints",
-        "actions": "actions",
-        "faq": "faq",
-        "quiz": "quiz",
-        "flashcards": "flashcards",
-    }
-
-    # Look up the oneshot order to determine the tier
-    t_result = await db.execute(
-        select(Transcription).where(Transcription.id == tid)
+    # Check if already exists
+    existing = await db.execute(
+        select(Analysis).where(Analysis.transcription_id == tid, Analysis.type == analysis_type)
     )
-    transcription = t_result.scalar_one_or_none()
-    allowed_types = ["summary"]  # fallback
-    need_chapters = False
-    if transcription and transcription.oneshot_order_id:
-        order_result = await db.execute(
-            select(OneshotOrder).where(OneshotOrder.id == transcription.oneshot_order_id)
-        )
-        order = order_result.scalar_one_or_none()
-        if order:
-            tiers = get_oneshot_tiers()
-            tier_config = tiers.get(order.tier, {})
-            includes = tier_config.get("includes", ["transcription", "summary"])
-            allowed_types = [
-                _FEATURE_TO_ANALYSIS[feat]
-                for feat in includes
-                if feat in _FEATURE_TO_ANALYSIS
-            ]
-            need_chapters = "chapters" in includes
+    if existing.scalar_one_or_none():
+        return {"status": "ready", "type": analysis_type}
 
-    existing = await db.execute(select(Analysis).where(Analysis.transcription_id == tid))
-    existing_types = {a.type for a in existing.scalars().all()}
-    missing = [t for t in allowed_types if t not in existing_types]
-
-    # Check if chapters already exist
-    chapters_missing = False
-    if need_chapters:
+    # Chapters use a different function
+    if analysis_type == "chapters":
         from app.models import Chapter
         ch_result = await db.execute(select(Chapter).where(Chapter.transcription_id == tid))
-        if not ch_result.scalars().first():
-            chapters_missing = True
+        if ch_result.scalars().first():
+            return {"status": "ready", "type": "chapters"}
 
-    if not missing and not chapters_missing:
-        return {"status": "ready", "missing": []}
+        async def _bg_chapters():
+            async with AsyncSessionLocal() as bg_db:
+                try:
+                    await generate_chapters(tid, bg_db)
+                except Exception as e:
+                    logger.warning(f"oneshot on-demand chapters failed for {tid}: {e}")
+        asyncio.create_task(_bg_chapters())
+        return {"status": "generating", "type": "chapters"}
 
     async def _bg_generate():
         async with AsyncSessionLocal() as bg_db:
-            if chapters_missing:
-                try:
-                    from app.services.llm_service import generate_chapters
-                    await generate_chapters(tid, bg_db)
-                except Exception as e:
-                    logger.warning(f"oneshot ensure-analyses: failed chapters for {tid}: {e}")
-            for analysis_type in missing:
-                try:
-                    await regenerate_analysis(tid, analysis_type, bg_db)
-                except Exception as e:
-                    logger.warning(f"oneshot ensure-analyses: failed {analysis_type} for {tid}: {e}")
+            try:
+                await regenerate_analysis(tid, analysis_type, bg_db)
+            except Exception as e:
+                logger.warning(f"oneshot on-demand {analysis_type} failed for {tid}: {e}")
     asyncio.create_task(_bg_generate())
-    return {"status": "generating", "missing": missing + (["chapters"] if chapters_missing else [])}
+    return {"status": "generating", "type": analysis_type}
 
 
 @app.get("/api/oneshot/result/{job_id}/export/{format}")
@@ -2578,3 +2580,24 @@ async def admin_users(request: Request, limit: int = 20, db: AsyncSession = Depe
 async def health_check():
     """Health check endpoint."""
     return {"status": "ok", "version": "7.2"}
+
+
+# ── SPA Static Files ────────────────────────────────────
+# Serve the built frontend from ../frontend/dist
+# Must be LAST — catch-all for SPA client-side routing.
+
+_frontend_dist = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
+if os.path.isdir(_frontend_dist):
+    _frontend_index = os.path.join(_frontend_dist, "index.html")
+
+    # Serve /assets/* (JS, CSS, images)
+    app.mount("/assets", StaticFiles(directory=os.path.join(_frontend_dist, "assets")), name="frontend-assets")
+
+    @app.get("/{full_path:path}")
+    async def spa_fallback(full_path: str):
+        """Serve index.html for all non-API routes (SPA client-side routing)."""
+        # If a real file exists in dist, serve it
+        file_path = os.path.join(_frontend_dist, full_path)
+        if full_path and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(_frontend_index)

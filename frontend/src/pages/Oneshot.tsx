@@ -15,9 +15,9 @@ const FEATURE_LABELS: Record<string, string> = {
   actions: 'Plan d\'actions',
   faq: 'FAQ générée',
   quiz: 'Quiz de révision',
-  chat: 'Chat IA',
-  flashcards: 'Flashcards',
-  export_md: 'Export Markdown',
+  chat: 'Discussion IA',
+  flashcards: 'Fiches de révision',
+  export_md: 'Export texte formaté',
   export_pdf: 'Export PDF',
 };
 
@@ -44,10 +44,10 @@ const LANGUAGES = [
 
 const PROFILES = [
   { id: 'generic', label: 'Générique', icon: Layers, color: 'from-slate-500 to-slate-600' },
-  { id: 'business', label: 'Business', icon: Briefcase, color: 'from-blue-500 to-blue-600' },
+  { id: 'business', label: 'Entreprise', icon: Briefcase, color: 'from-blue-500 to-blue-600' },
   { id: 'education', label: 'Éducation', icon: GraduationCap, color: 'from-emerald-500 to-emerald-600' },
   { id: 'medical', label: 'Médical', icon: Stethoscope, color: 'from-rose-500 to-rose-600' },
-  { id: 'legal', label: 'Légal', icon: Scale, color: 'from-amber-500 to-amber-600' },
+  { id: 'legal', label: 'Juridique', icon: Scale, color: 'from-amber-500 to-amber-600' },
 ];
 
 function OneshotPage() {
@@ -84,7 +84,10 @@ function OneshotPage() {
     setError('');
     setPhase('estimating');
     try {
-      const estimatedSeconds = Math.max(60, Math.ceil((f.size / (1024 * 1024)) * 60));
+      const sizeMB = f.size / (1024 * 1024);
+      const isCompressed = /\.(mp3|m4a|aac|ogg|opus|wma)$/i.test(f.name);
+      const minutesPerMB = isCompressed ? 2 : 0.5;
+      const estimatedSeconds = Math.max(60, Math.ceil(sizeMB * minutesPerMB * 60));
       const resp = await axios.post('/api/oneshot/estimate', { duration_seconds: estimatedSeconds });
       setEstimate(resp.data);
       setPhase('ready');
@@ -170,7 +173,7 @@ function OneshotPage() {
     >
       {/* Hero */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold">Transcription à la demande</h1>
+        <h1 className="text-3xl font-bold">Transcription à la carte</h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">
           Choisissez votre formule, déposez votre fichier, recevez votre transcription.
         </p>
@@ -204,15 +207,9 @@ function OneshotPage() {
                 {(t.price_cents / 100).toFixed(0)} EUR
               </p>
               <div className="mt-3 space-y-1 text-left">
-                {t.includes.filter(f => AUTO_FEATURES.includes(f)).map(f => (
+                {t.includes.map(f => (
                   <p key={f} className="text-xs text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1.5">
                     <CheckCircle className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-                    {featureLabel(f)}
-                  </p>
-                ))}
-                {t.includes.filter(f => !AUTO_FEATURES.includes(f)).map(f => (
-                  <p key={f} className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                    <CheckCircle className="w-3 h-3 text-indigo-400 flex-shrink-0" />
                     {featureLabel(f)}
                   </p>
                 ))}
@@ -348,18 +345,10 @@ function OneshotPage() {
               <span className="font-bold text-xl text-indigo-600 dark:text-indigo-400">{(estimate.price_cents / 100).toFixed(0)} EUR</span>
             </div>
             <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
-              <p className="text-xs text-slate-500 mb-1">Automatique :</p>
+              <p className="text-xs text-slate-500 mb-1">Tout est inclus :</p>
               <div className="flex flex-wrap gap-1">
-                {estimate.includes.filter(f => AUTO_FEATURES.includes(f)).map(f => (
+                {estimate.includes.map(f => (
                   <span key={f} className="text-xs px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-medium">
-                    {featureLabel(f)}
-                  </span>
-                ))}
-              </div>
-              <p className="text-xs text-slate-500 mt-2 mb-1">Également inclus :</p>
-              <div className="flex flex-wrap gap-1">
-                {estimate.includes.filter(f => !AUTO_FEATURES.includes(f)).map(f => (
-                  <span key={f} className="text-xs px-2 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
                     {featureLabel(f)}
                   </span>
                 ))}
@@ -414,10 +403,10 @@ function OneshotPage() {
 
       {/* One-shot vs subscription comparison */}
       <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-6 border border-slate-200 dark:border-slate-700">
-        <h3 className="font-semibold text-sm text-slate-600 dark:text-slate-300 mb-3">One-shot vs abonnement</h3>
+        <h3 className="font-semibold text-sm text-slate-600 dark:text-slate-300 mb-3">À la demande vs abonnement</h3>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-            <p className="font-medium text-indigo-600 dark:text-indigo-400 mb-1">One-shot Standard</p>
+            <p className="font-medium text-indigo-600 dark:text-indigo-400 mb-1">À la demande (Standard)</p>
             <p className="text-slate-500">6 EUR pour 1 fichier (1h max)</p>
             <p className="text-xs text-slate-400 mt-1">= {(600 / 60).toFixed(2)} EUR/min</p>
           </div>

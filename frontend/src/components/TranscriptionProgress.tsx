@@ -10,11 +10,11 @@ interface TranscriptionProgressProps {
 }
 
 const PROFILE_LABELS: Record<string, string> = {
-  generic: 'Generique',
-  business: 'Business',
-  education: 'Education',
-  medical: 'Medical',
-  legal: 'Legal',
+  generic: 'Générique',
+  business: 'Entreprise',
+  education: 'Éducation',
+  medical: 'Médical',
+  legal: 'Juridique',
 };
 
 const STEPS = [

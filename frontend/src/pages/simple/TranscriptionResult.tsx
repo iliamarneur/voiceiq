@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Download, Copy, CheckCircle, Loader2, Sparkles, List, Quote, BookOpen, HelpCircle, Zap, Brain, MessageSquare } from 'lucide-react';
+import { FileText, Download, Copy, CheckCircle, Loader2, Sparkles, List, Quote, BookOpen, HelpCircle, Zap, Brain, MessageSquare, Play, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import UpsellBanner from '../../components/simple/UpsellBanner';
 
@@ -23,12 +23,10 @@ interface AnalysisData {
 function extractSummaryText(content: any): { title?: string; intro?: string; points?: string[]; conclusion?: string } {
   if (typeof content === 'string') return { intro: content };
   if (!content) return {};
-  // Handle structured summary: { title, introduction, points, conclusion }
   const title = content.title || undefined;
   const intro = content.introduction || content.summary || content.text || undefined;
   const points = Array.isArray(content.points) ? content.points.map((p: any) => typeof p === 'string' ? p : p.text || String(p)) : undefined;
   const conclusion = content.conclusion || undefined;
-  // If nothing matched, try to stringify
   if (!intro && !points && !conclusion) {
     return { intro: typeof content === 'object' ? undefined : String(content) };
   }
@@ -38,7 +36,6 @@ function extractSummaryText(content: any): { title?: string; intro?: string; poi
 function extractKeypoints(content: any): { theme: string; importance?: string; points: string[]; quote?: string }[] {
   if (typeof content === 'string') return [{ theme: '', points: [content] }];
   if (!content) return [];
-  // Handle { keypoints: [...] }
   const kps = content.keypoints || content.items || (Array.isArray(content) ? content : null);
   if (!kps || !Array.isArray(kps)) return [];
   return kps.map((kp: any) => {
@@ -56,48 +53,48 @@ function extractKeypoints(content: any): { theme: string; importance?: string; p
 const ANALYSIS_STEPS: Record<string, string> = {
   summary: 'Résumé',
   keypoints: 'Points clés',
-  chapters: 'Chapitres',
-  actions: 'Plan d\'actions',
-  faq: 'FAQ',
-  quiz: 'Quiz',
-  flashcards: 'Flashcards',
 };
 
-const EXPECTED_ANALYSES = ['summary', 'keypoints', 'chapters', 'actions', 'faq', 'quiz', 'flashcards'];
+const AUTO_ANALYSES = ['summary', 'keypoints'];
 
-/* ── Analysis loading bar ── */
+/* ── On-demand analysis definitions ── */
+const ON_DEMAND_ANALYSES = [
+  { type: 'chapters', label: 'Chapitres', desc: 'Découpage temporel en sections thématiques', icon: BookOpen, gradient: 'from-teal-500 to-emerald-600' },
+  { type: 'actions', label: "Plan d'actions", desc: 'Actions, décisions et questions ouvertes', icon: Zap, gradient: 'from-rose-500 to-pink-600' },
+  { type: 'faq', label: 'FAQ', desc: 'Questions fréquentes et réponses détaillées', icon: MessageSquare, gradient: 'from-blue-500 to-cyan-600' },
+  { type: 'quiz', label: 'Quiz de révision', desc: 'QCM pour tester vos connaissances', icon: Brain, gradient: 'from-purple-500 to-fuchsia-600' },
+  { type: 'flashcards', label: 'Fiches de révision', desc: 'Fiches question/réponse pour réviser', icon: Sparkles, gradient: 'from-yellow-500 to-orange-600' },
+];
+
+/* ── Auto-analysis loading bar ── */
 
 function AnalysisLoadingBar({ completedTypes }: { completedTypes: string[] }) {
-  const total = EXPECTED_ANALYSES.length;
-  const done = completedTypes.filter(t => EXPECTED_ANALYSES.includes(t)).length;
+  const total = AUTO_ANALYSES.length;
+  const done = completedTypes.filter(t => AUTO_ANALYSES.includes(t)).length;
   const realProgress = Math.round((done / total) * 100);
 
-  // Smooth animated progress that never goes backwards
   const [displayProgress, setDisplayProgress] = useState(0);
 
   useEffect(() => {
-    // Jump to real progress, then slowly creep toward next milestone
     const target = Math.max(realProgress, displayProgress);
     if (target > displayProgress) {
       setDisplayProgress(target);
     }
   }, [realProgress]);
 
-  // Slow creep between milestones
   useEffect(() => {
     const nextMilestone = Math.ceil((done + 1) / total * 100);
     const interval = setInterval(() => {
       setDisplayProgress(prev => {
         const cap = Math.min(nextMilestone - 2, 98);
-        if (prev < cap) return prev + 0.15;
+        if (prev < cap) return prev + 0.3;
         return prev;
       });
     }, 200);
     return () => clearInterval(interval);
   }, [done, total]);
 
-  // Find what's currently being generated
-  const nextStep = EXPECTED_ANALYSES.find(t => !completedTypes.includes(t));
+  const nextStep = AUTO_ANALYSES.find(t => !completedTypes.includes(t));
   const currentLabel = nextStep ? ANALYSIS_STEPS[nextStep] || nextStep : 'Finalisation...';
 
   return (
@@ -125,9 +122,8 @@ function AnalysisLoadingBar({ completedTypes }: { completedTypes: string[] }) {
         <span className="text-xs font-medium text-indigo-500">{done}/{total}</span>
       </div>
 
-      {/* Step indicators */}
       <div className="flex flex-wrap gap-1.5 mb-4">
-        {EXPECTED_ANALYSES.map(t => {
+        {AUTO_ANALYSES.map(t => {
           const isDone = completedTypes.includes(t);
           return (
             <span
@@ -147,7 +143,6 @@ function AnalysisLoadingBar({ completedTypes }: { completedTypes: string[] }) {
         })}
       </div>
 
-      {/* Progress bar */}
       <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
         <motion.div
           className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500"
@@ -182,6 +177,261 @@ function ImportanceBadge({ level }: { level?: string }) {
   );
 }
 
+/* ── On-demand analysis panel ── */
+function OnDemandPanel({
+  jobId,
+  definition,
+  analysis,
+  onGenerated,
+}: {
+  jobId: string;
+  definition: typeof ON_DEMAND_ANALYSES[0];
+  analysis: AnalysisData | undefined;
+  onGenerated: () => void;
+}) {
+  const [generating, setGenerating] = useState(false);
+  const [polling, setPolling] = useState(false);
+  const Icon = definition.icon;
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      await axios.post(`/api/oneshot/result/${jobId}/generate/${definition.type}`);
+      // Poll until analysis appears
+      setPolling(true);
+      let attempts = 0;
+      const poll = async () => {
+        attempts++;
+        try {
+          const resp = await axios.get(`/api/oneshot/result/${jobId}`);
+          const found = (resp.data.analyses || []).find((a: any) => a.type === definition.type);
+          if (found || attempts > 30) {
+            setGenerating(false);
+            setPolling(false);
+            onGenerated();
+            return;
+          }
+        } catch {}
+        setTimeout(poll, 2000);
+      };
+      setTimeout(poll, 2000);
+    } catch {
+      setGenerating(false);
+      setPolling(false);
+    }
+  };
+
+  // If already generated, render the content
+  if (analysis) {
+    return <AnalysisContent definition={definition} analysis={analysis} />;
+  }
+
+  // Not generated yet — show placeholder with Generate button
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${definition.gradient} flex items-center justify-center opacity-60`}>
+            <Icon className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-600">{definition.label}</h3>
+            <p className="text-xs text-slate-400">{definition.desc}</p>
+          </div>
+        </div>
+        <button
+          onClick={handleGenerate}
+          disabled={generating}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-600 shadow-sm"
+        >
+          {generating ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Génération...
+            </>
+          ) : (
+            <>
+              <Play className="w-4 h-4" />
+              Générer
+            </>
+          )}
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ── Rendered analysis content ── */
+function AnalysisContent({ definition, analysis }: { definition: typeof ON_DEMAND_ANALYSES[0]; analysis: AnalysisData }) {
+  const Icon = definition.icon;
+  const content = analysis.content;
+
+  // Chapters
+  if (definition.type === 'chapters') {
+    const chapters = content?.chapters || content || [];
+    if (!Array.isArray(chapters) || chapters.length === 0) return null;
+    return (
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${definition.gradient} flex items-center justify-center`}>
+            <Icon className="w-4 h-4 text-white" />
+          </div>
+          <h3 className="font-semibold text-slate-800">{definition.label}</h3>
+        </div>
+        <div className="space-y-3">
+          {chapters.map((ch: any, i: number) => (
+            <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50">
+              <span className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold flex-shrink-0">{i + 1}</span>
+              <div>
+                <p className="text-sm font-medium text-slate-700">{ch.title}</p>
+                {ch.summary && <p className="text-xs text-slate-500 mt-0.5">{ch.summary}</p>}
+                {ch.start_time != null && (
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    {Math.floor(ch.start_time / 60)}:{String(Math.floor(ch.start_time % 60)).padStart(2, '0')}
+                    {ch.end_time != null && ` — ${Math.floor(ch.end_time / 60)}:${String(Math.floor(ch.end_time % 60)).padStart(2, '0')}`}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Actions
+  if (definition.type === 'actions') {
+    return (
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${definition.gradient} flex items-center justify-center`}>
+            <Icon className="w-4 h-4 text-white" />
+          </div>
+          <h3 className="font-semibold text-slate-800">{definition.label}</h3>
+        </div>
+        {content?.actions?.length > 0 && (
+          <div className="mb-3">
+            <p className="text-xs font-medium text-slate-400 mb-2">Actions</p>
+            {content.actions.map((a: string, i: number) => (
+              <div key={i} className="flex items-start gap-2 text-sm text-slate-600 mb-1.5">
+                <CheckCircle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0 mt-0.5" />
+                <span>{a}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {content?.decisions?.length > 0 && (
+          <div className="mb-3">
+            <p className="text-xs font-medium text-slate-400 mb-2">Décisions</p>
+            {content.decisions.map((d: string, i: number) => (
+              <div key={i} className="flex items-start gap-2 text-sm text-slate-600 mb-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0 mt-1.5" />
+                <span>{d}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {content?.questions?.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-slate-400 mb-2">Questions ouvertes</p>
+            {content.questions.map((q: string, i: number) => (
+              <div key={i} className="flex items-start gap-2 text-sm text-slate-600 mb-1.5">
+                <HelpCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <span>{q}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+    );
+  }
+
+  // FAQ
+  if (definition.type === 'faq') {
+    const faqItems = content?.faq || [];
+    if (!Array.isArray(faqItems) || faqItems.length === 0) return null;
+    return (
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${definition.gradient} flex items-center justify-center`}>
+            <Icon className="w-4 h-4 text-white" />
+          </div>
+          <h3 className="font-semibold text-slate-800">{definition.label}</h3>
+        </div>
+        <div className="space-y-4">
+          {faqItems.map((item: any, i: number) => (
+            <div key={i} className="border-l-2 border-blue-200 pl-4">
+              <p className="text-sm font-medium text-slate-700">{item.question}</p>
+              <p className="text-sm text-slate-500 mt-1">{item.answer}</p>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Quiz
+  if (definition.type === 'quiz') {
+    const questions = content?.questions || [];
+    if (!Array.isArray(questions) || questions.length === 0) return null;
+    return (
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${definition.gradient} flex items-center justify-center`}>
+            <Icon className="w-4 h-4 text-white" />
+          </div>
+          <h3 className="font-semibold text-slate-800">{definition.label}</h3>
+        </div>
+        <div className="space-y-5">
+          {questions.map((q: any, i: number) => (
+            <div key={i}>
+              <p className="text-sm font-medium text-slate-700 mb-2">{i + 1}. {q.question}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {(q.choices || []).map((c: string, j: number) => (
+                  <div key={j} className="text-xs px-3 py-2 rounded-lg bg-slate-50 text-slate-600 border border-slate-100">
+                    {String.fromCharCode(65 + j)}. {c}
+                  </div>
+                ))}
+              </div>
+              {q.explanation && <p className="text-xs text-slate-400 mt-1.5 italic">Réponse {q.answer} — {q.explanation}</p>}
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Flashcards
+  if (definition.type === 'flashcards') {
+    const cards = content?.cards || [];
+    if (!Array.isArray(cards) || cards.length === 0) return null;
+    return (
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${definition.gradient} flex items-center justify-center`}>
+            <Icon className="w-4 h-4 text-white" />
+          </div>
+          <h3 className="font-semibold text-slate-800">{definition.label}</h3>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {cards.map((card: any, i: number) => (
+            <div key={i} className="p-3 rounded-xl bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-100">
+              <p className="text-xs font-semibold text-slate-700 mb-1">Q: {card.question}</p>
+              <p className="text-xs text-slate-500">R: {card.answer}</p>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    );
+  }
+
+  return null;
+}
+
 /* ── Main component ── */
 
 function TranscriptionResult() {
@@ -189,11 +439,17 @@ function TranscriptionResult() {
   const [data, setData] = useState<TranscriptionData | null>(null);
   const [analyses, setAnalyses] = useState<AnalysisData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [analysesLoading, setAnalysesLoading] = useState(true);
+  const [autoLoading, setAutoLoading] = useState(true);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [exportError, setExportError] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [transcriptView, setTranscriptView] = useState<'raw' | 'formatted'>('raw');
+  const [formattedText, setFormattedText] = useState('');
+  const [formattingLoading, setFormattingLoading] = useState(false);
+  const [formatError, setFormatError] = useState('');
 
+  // Fetch data — polls only until auto-analyses (summary + keypoints) are ready
   useEffect(() => {
     if (!id) return;
     let attempts = 0;
@@ -216,36 +472,55 @@ function TranscriptionResult() {
 
         const analysisTypes = (analysisItems || []).map((a: AnalysisData) => a.type);
 
-        // Stop polling when all expected analyses are ready
-        const allReady = EXPECTED_ANALYSES.every(t => analysisTypes.includes(t));
-        if (allReady) {
-          setAnalysesLoading(false);
+        // Stop polling when auto-analyses are ready (summary + keypoints)
+        const autoReady = AUTO_ANALYSES.every(t => analysisTypes.includes(t));
+        if (autoReady) {
+          setAutoLoading(false);
           return;
         }
 
         attempts++;
-        if (attempts < 40 && !cancelled) {
-          setTimeout(fetchAll, 3000);
+        if (attempts < 30 && !cancelled) {
+          setTimeout(fetchAll, 2500);
         } else {
-          setAnalysesLoading(false);
+          setAutoLoading(false);
         }
       } catch {
         setError('Impossible de charger la transcription.');
         setLoading(false);
-        setAnalysesLoading(false);
+        setAutoLoading(false);
       }
     };
 
     fetchAll();
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, refreshKey]);
+
+  // Auto-trigger mise en page when transcription loads
+  useEffect(() => {
+    if (data?.text && data.id && !formattedText && !formattingLoading) {
+      handleFormat(data.id);
+    }
+  }, [data?.id]);
+
+  const handleFormat = async (transcriptionId: string) => {
+    setFormattingLoading(true);
+    setFormatError('');
+    try {
+      const res = await axios.post(`/api/transcriptions/${transcriptionId}/format`);
+      setFormattedText(res.data.formatted_text || '');
+      setTranscriptView('formatted');
+    } catch (e: any) {
+      setFormatError(e.response?.data?.detail || 'Erreur lors de la mise en page.');
+    }
+    setFormattingLoading(false);
+  };
 
   const handleCopy = () => {
-    if (data?.text) {
-      navigator.clipboard.writeText(data.text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    const textToCopy = transcriptView === 'formatted' && formattedText ? formattedText : data?.text || '';
+    navigator.clipboard.writeText(textToCopy);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleExport = async (format: string) => {
@@ -268,14 +543,17 @@ function TranscriptionResult() {
     }
   };
 
+  const handleRefresh = () => {
+    // Refresh analyses after on-demand generation
+    if (!id) return;
+    axios.get(`/api/oneshot/result/${id}`).then(resp => {
+      setAnalyses(resp.data.analyses || []);
+    }).catch(() => {});
+  };
+
   // Extract structured data
   const summaryAnalysis = analyses.find(a => a.type === 'summary');
   const keypointsAnalysis = analyses.find(a => a.type === 'keypoints');
-  const actionsAnalysis = analyses.find(a => a.type === 'actions');
-  const chaptersAnalysis = analyses.find(a => a.type === 'chapters');
-  const faqAnalysis = analyses.find(a => a.type === 'faq');
-  const quizAnalysis = analyses.find(a => a.type === 'quiz');
-  const flashcardsAnalysis = analyses.find(a => a.type === 'flashcards');
   const summaryData = summaryAnalysis ? extractSummaryText(summaryAnalysis.content) : null;
   const keypointsData = keypointsAnalysis ? extractKeypoints(keypointsAnalysis.content) : null;
 
@@ -341,22 +619,85 @@ function TranscriptionResult() {
           <h2 className="font-semibold text-slate-700 flex items-center gap-2">
             <FileText className="w-4 h-4 text-slate-400" /> Transcription complète
           </h2>
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-          >
-            {copied ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-            {copied ? 'Copié' : 'Copier'}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-slate-100">
+              <button
+                onClick={() => setTranscriptView('formatted')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+                  transcriptView === 'formatted'
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <Sparkles className="w-3 h-3" /> Mise en page
+              </button>
+              <button
+                onClick={() => setTranscriptView('raw')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  transcriptView === 'raw'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Texte brut
+              </button>
+            </div>
+            {formattedText && transcriptView === 'formatted' && (
+              <button
+                onClick={() => data && handleFormat(data.id)}
+                disabled={formattingLoading}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 transition-colors"
+                title="Régénérer la mise en page"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${formattingLoading ? 'animate-spin' : ''}`} />
+              </button>
+            )}
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+            >
+              {copied ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? 'Copié' : 'Copier'}
+            </button>
+          </div>
         </div>
-        <div className="max-h-80 overflow-y-auto text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-          {data.text}
-        </div>
+
+        {transcriptView === 'formatted' ? (
+          formattingLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+              <p className="text-sm text-slate-400">Mise en page en cours...</p>
+            </div>
+          ) : formatError ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-red-500 mb-3">{formatError}</p>
+              <button
+                onClick={() => data && handleFormat(data.id)}
+                className="text-xs text-indigo-600 hover:text-indigo-500 font-medium"
+              >
+                Réessayer
+              </button>
+            </div>
+          ) : formattedText ? (
+            <div className="prose prose-slate prose-sm max-w-none">
+              <FormattedMarkdown text={formattedText} />
+            </div>
+          ) : (
+            <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
+              {data.text}
+            </div>
+          )
+        ) : (
+          <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
+            {data.text}
+          </div>
+        )}
       </motion.div>
 
-      {/* Loading bar OR all results */}
+      {/* Auto-analyses loading bar OR results */}
       <AnimatePresence mode="wait">
-        {analysesLoading ? (
+        {autoLoading ? (
           <motion.div
             key="analyses-loading"
             exit={{ opacity: 0, y: -10 }}
@@ -471,146 +812,19 @@ function TranscriptionResult() {
               </div>
             )}
 
-      {/* Chapters */}
-      {chaptersAnalysis?.content && (
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center">
-              <BookOpen className="w-4 h-4 text-white" />
-            </div>
-            <h3 className="font-semibold text-slate-800">Chapitres</h3>
-          </div>
-          <div className="space-y-3">
-            {(chaptersAnalysis.content.chapters || chaptersAnalysis.content || []).map((ch: any, i: number) => (
-              <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50">
-                <span className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold flex-shrink-0">{i + 1}</span>
-                <div>
-                  <p className="text-sm font-medium text-slate-700">{ch.title}</p>
-                  {ch.summary && <p className="text-xs text-slate-500 mt-0.5">{ch.summary}</p>}
-                  {ch.start_time != null && (
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      {Math.floor(ch.start_time / 60)}:{String(Math.floor(ch.start_time % 60)).padStart(2, '0')}
-                      {ch.end_time != null && ` — ${Math.floor(ch.end_time / 60)}:${String(Math.floor(ch.end_time % 60)).padStart(2, '0')}`}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Actions */}
-      {actionsAnalysis?.content && (
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
-            <h3 className="font-semibold text-slate-800">Plan d'actions</h3>
-          </div>
-          {actionsAnalysis.content.actions?.length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs font-medium text-slate-400 mb-2">Actions</p>
-              {actionsAnalysis.content.actions.map((a: string, i: number) => (
-                <div key={i} className="flex items-start gap-2 text-sm text-slate-600 mb-1.5">
-                  <CheckCircle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0 mt-0.5" />
-                  <span>{a}</span>
-                </div>
+            {/* On-demand analyses — panels with Generate buttons */}
+            <div className="space-y-4">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Analyses complémentaires</p>
+              {ON_DEMAND_ANALYSES.map(def => (
+                <OnDemandPanel
+                  key={def.type}
+                  jobId={id!}
+                  definition={def}
+                  analysis={analyses.find(a => a.type === def.type)}
+                  onGenerated={handleRefresh}
+                />
               ))}
             </div>
-          )}
-          {actionsAnalysis.content.decisions?.length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs font-medium text-slate-400 mb-2">Décisions</p>
-              {actionsAnalysis.content.decisions.map((d: string, i: number) => (
-                <div key={i} className="flex items-start gap-2 text-sm text-slate-600 mb-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0 mt-1.5" />
-                  <span>{d}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {actionsAnalysis.content.questions?.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-slate-400 mb-2">Questions ouvertes</p>
-              {actionsAnalysis.content.questions.map((q: string, i: number) => (
-                <div key={i} className="flex items-start gap-2 text-sm text-slate-600 mb-1.5">
-                  <HelpCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
-                  <span>{q}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </motion.div>
-      )}
-
-      {/* FAQ */}
-      {faqAnalysis?.content?.faq?.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
-              <MessageSquare className="w-4 h-4 text-white" />
-            </div>
-            <h3 className="font-semibold text-slate-800">FAQ</h3>
-          </div>
-          <div className="space-y-4">
-            {faqAnalysis.content.faq.map((item: any, i: number) => (
-              <div key={i} className="border-l-2 border-blue-200 pl-4">
-                <p className="text-sm font-medium text-slate-700">{item.question}</p>
-                <p className="text-sm text-slate-500 mt-1">{item.answer}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Quiz */}
-      {quizAnalysis?.content?.questions?.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-fuchsia-600 flex items-center justify-center">
-              <Brain className="w-4 h-4 text-white" />
-            </div>
-            <h3 className="font-semibold text-slate-800">Quiz de révision</h3>
-          </div>
-          <div className="space-y-5">
-            {quizAnalysis.content.questions.map((q: any, i: number) => (
-              <div key={i}>
-                <p className="text-sm font-medium text-slate-700 mb-2">{i + 1}. {q.question}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {(q.choices || []).map((c: string, j: number) => (
-                    <div key={j} className="text-xs px-3 py-2 rounded-lg bg-slate-50 text-slate-600 border border-slate-100">
-                      {String.fromCharCode(65 + j)}. {c}
-                    </div>
-                  ))}
-                </div>
-                {q.explanation && <p className="text-xs text-slate-400 mt-1.5 italic">Réponse {q.answer} — {q.explanation}</p>}
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Flashcards */}
-      {flashcardsAnalysis?.content?.cards?.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <h3 className="font-semibold text-slate-800">Flashcards</h3>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {flashcardsAnalysis.content.cards.map((card: any, i: number) => (
-              <div key={i} className="p-3 rounded-xl bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-100">
-                <p className="text-xs font-semibold text-slate-700 mb-1">Q: {card.question}</p>
-                <p className="text-xs text-slate-500">R: {card.answer}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
 
           </motion.div>
         )}
@@ -642,6 +856,46 @@ function TranscriptionResult() {
       <UpsellBanner />
     </motion.div>
   );
+}
+
+/* ── Simple Markdown Renderer ── */
+function FormattedMarkdown({ text }: { text: string }) {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let key = 0;
+
+  for (const line of lines) {
+    if (line.startsWith('### ')) {
+      elements.push(<h3 key={key++} className="text-base font-semibold text-slate-800 mt-4 mb-2">{line.slice(4)}</h3>);
+    } else if (line.startsWith('## ')) {
+      elements.push(<h2 key={key++} className="text-lg font-bold text-slate-800 mt-5 mb-2 pb-1 border-b border-slate-200">{line.slice(3)}</h2>);
+    } else if (line.startsWith('# ')) {
+      elements.push(<h1 key={key++} className="text-xl font-bold text-slate-900 mt-4 mb-3">{line.slice(2)}</h1>);
+    } else if (line.startsWith('- ') || line.startsWith('* ')) {
+      elements.push(
+        <div key={key++} className="flex gap-2 ml-2 my-0.5">
+          <span className="text-indigo-400 mt-1">•</span>
+          <span className="text-sm text-slate-600">{renderInline(line.slice(2))}</span>
+        </div>
+      );
+    } else if (line.trim() === '') {
+      elements.push(<div key={key++} className="h-2" />);
+    } else {
+      elements.push(<p key={key++} className="text-sm text-slate-600 leading-relaxed my-1">{renderInline(line)}</p>);
+    }
+  }
+
+  return <>{elements}</>;
+}
+
+function renderInline(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="font-semibold text-slate-800">{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
 }
 
 export default TranscriptionResult;

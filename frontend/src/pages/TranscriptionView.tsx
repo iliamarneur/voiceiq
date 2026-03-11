@@ -8,10 +8,10 @@ import {
   Play, Pause, BookMarked, Languages, Volume2, Trash2, Copy, Check,
   HeartPulse, Landmark, Shield, AlertTriangle, Calendar, Pill,
   Eye, Users, ClipboardList, Target, Dumbbell,
-  Lightbulb, Star, Sparkles, PenLine, Zap
+  Lightbulb, Sparkles, PenLine, Zap
 } from 'lucide-react';
 import axios from 'axios';
-import { Transcription, Analysis, AnalysisType, Chapter, ChatMessage, GlossaryTerm, Profile, ProfileAnalysis, KeyMoment, ConfidenceInfo } from '../types';
+import { Transcription, Analysis, AnalysisType, Chapter, ChatMessage, GlossaryTerm, Profile, ProfileAnalysis, ConfidenceInfo } from '../types';
 
 const ANALYSIS_ICONS: Record<string, any> = {
   summary: FileText, keypoints: ListChecks, actions: CheckSquare,
@@ -29,15 +29,15 @@ const ANALYSIS_ICONS: Record<string, any> = {
 };
 
 const FALLBACK_TABS: { type: string; label: string; icon: any }[] = [
-  { type: 'summary', label: 'Summary', icon: FileText },
-  { type: 'keypoints', label: 'Key Points', icon: ListChecks },
+  { type: 'summary', label: 'Résumé', icon: FileText },
+  { type: 'keypoints', label: 'Points clés', icon: ListChecks },
   { type: 'actions', label: 'Actions', icon: CheckSquare },
-  { type: 'flashcards', label: 'Flashcards', icon: BookOpen },
+  { type: 'flashcards', label: 'Fiches de révision', icon: BookOpen },
   { type: 'quiz', label: 'Quiz', icon: HelpCircle },
-  { type: 'mindmap', label: 'Mind Map', icon: Network },
-  { type: 'slides', label: 'Slides', icon: Presentation },
-  { type: 'infographic', label: 'Infographic', icon: BarChart3 },
-  { type: 'tables', label: 'Tables', icon: Table2 },
+  { type: 'mindmap', label: 'Carte mentale', icon: Network },
+  { type: 'slides', label: 'Diapositives', icon: Presentation },
+  { type: 'infographic', label: 'Infographie', icon: BarChart3 },
+  { type: 'tables', label: 'Tableaux', icon: Table2 },
 ];
 
 type TabType = string;
@@ -83,11 +83,8 @@ function TranscriptionView() {
   const [formattedText, setFormattedText] = useState<string>('');
   const [formattingLoading, setFormattingLoading] = useState(false);
 
-  // v5.x: Confidence & Key Moments
+  // v5.x: Confidence
   const [confidenceInfo, setConfidenceInfo] = useState<ConfidenceInfo | null>(null);
-  const [keyMoments, setKeyMoments] = useState<KeyMoment[]>([]);
-  const [keyMomentsLoading, setKeyMomentsLoading] = useState(false);
-  const [keyMomentsFetched, setKeyMomentsFetched] = useState(false);
 
   useEffect(() => {
     if (id) fetchData();
@@ -156,13 +153,13 @@ function TranscriptionView() {
       const res = await axios.post(`/api/transcriptions/${id}/chat`, { message: msg });
       setChatMessages(prev => [...prev, { id: Date.now() + 1, transcription_id: id!, role: 'assistant', content: res.data.response, created_at: null }]);
     } catch {
-      setChatMessages(prev => [...prev, { id: Date.now() + 1, transcription_id: id!, role: 'assistant', content: 'Error communicating with AI.', created_at: null }]);
+      setChatMessages(prev => [...prev, { id: Date.now() + 1, transcription_id: id!, role: 'assistant', content: 'Erreur de communication avec l\'IA.', created_at: null }]);
     }
     setChatLoading(false);
   };
 
   const clearChat = async () => {
-    if (!confirm('Clear all chat history?')) return;
+    if (!confirm('Effacer tout l\'historique de discussion ?')) return;
     try {
       await axios.delete(`/api/transcriptions/${id}/chat/history`);
       setChatMessages([]);
@@ -220,34 +217,18 @@ function TranscriptionView() {
     setTranslating(false);
   };
 
-  // v5.x: Key moments
-  const [keyMomentsError, setKeyMomentsError] = useState('');
-  const fetchKeyMoments = async (force = false) => {
-    if (!force && keyMomentsFetched) return;
-    setKeyMomentsLoading(true);
-    setKeyMomentsError('');
-    try {
-      const res = await axios.get(`/api/transcriptions/${id}/key-moments`);
-      setKeyMoments(res.data || []);
-      setKeyMomentsFetched(true);
-      if (!res.data || res.data.length === 0) {
-        setKeyMomentsError('Le LLM n\'a pas pu extraire de moments cles. Reessayez.');
-      }
-    } catch (e: any) {
-      console.error(e);
-      setKeyMomentsError(e?.response?.data?.detail || 'Erreur lors de la generation');
-    }
-    setKeyMomentsLoading(false);
-  };
+  const [formatError, setFormatError] = useState('');
 
   const handleFormat = async () => {
     setFormattingLoading(true);
     setFormattedText('');
+    setFormatError('');
     try {
       const res = await axios.post(`/api/transcriptions/${id}/format`);
       setFormattedText(res.data.formatted_text || '');
     } catch (e: any) {
       console.error(e);
+      setFormatError(e.response?.data?.detail || 'Erreur lors de la mise en page. Réessayez.');
     }
     setFormattingLoading(false);
   };
@@ -280,8 +261,8 @@ function TranscriptionView() {
   if (!transcription) {
     return (
       <div className="p-8 text-center">
-        <p className="text-slate-500">Transcription not found</p>
-        <button onClick={() => navigate('/')} className="mt-4 text-indigo-600">Back to Dashboard</button>
+        <p className="text-slate-500">Transcription introuvable</p>
+        <button onClick={() => navigate('/')} className="mt-4 text-indigo-600">Retour au tableau de bord</button>
       </div>
     );
   }
@@ -312,6 +293,7 @@ function TranscriptionView() {
                 <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{formatTime(transcription.duration)}</span>
               )}
               <span>{transcription.segments?.length || 0} segments</span>
+
               {transcription.profile && transcription.profile !== 'generic' && (
                 <span className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
                   {profileData?.name || transcription.profile}
@@ -319,23 +301,15 @@ function TranscriptionView() {
               )}
               {transcription.oneshot_order_id && (
                 <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-medium">
-                  One-shot
+                  À la demande
                 </span>
               )}
             </div>
-            {/* Processing info badges */}
-            {transcription.processing_info && (
-              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-                  STT: {transcription.processing_info.stt_model}
-                  <span className="text-blue-400 dark:text-blue-500 font-normal">({transcription.processing_info.stt_backend.replace('stt_', '')})</span>
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
-                  LLM: {transcription.processing_info.llm_model}
-                  <span className="text-purple-400 dark:text-purple-500 font-normal">({transcription.processing_info.llm_backend.replace('llm_', '')})</span>
-                </span>
+            {/* Processing time */}
+            {transcription.processing_info?.processing_seconds && (
+              <div className="flex items-center gap-2 mt-1.5">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
-                  {transcription.processing_info.processing_seconds}s de traitement
+                  Traité en {transcription.processing_info.processing_seconds}s
                 </span>
               </div>
             )}
@@ -399,10 +373,9 @@ function TranscriptionView() {
           {/* Tabs */}
           <div className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-x-auto scrollbar-thin">
             <div className="flex px-6 gap-1 min-w-max">
-              <TabButton active={activeTab === 'transcript'} onClick={() => setActiveTab('transcript')} icon={FileText} label="Transcript" />
+              <TabButton active={activeTab === 'transcript'} onClick={() => setActiveTab('transcript')} icon={FileText} label="Transcription" />
               <TabButton active={activeTab === 'mise_en_page'} onClick={() => setActiveTab('mise_en_page')} icon={Sparkles} label="Mise en page" badge={!!formattedText} />
-              <TabButton active={activeTab === 'chapters'} onClick={() => { setActiveTab('chapters'); fetchChapters(); }} icon={BookMarked} label="Chapters" />
-              <TabButton active={activeTab === 'key_moments'} onClick={() => { setActiveTab('key_moments'); fetchKeyMoments(); }} icon={Star} label="Key Moments" badge={keyMoments.length > 0} />
+              <TabButton active={activeTab === 'chapters'} onClick={() => { setActiveTab('chapters'); fetchChapters(); }} icon={BookMarked} label="Chapitres" />
               {analysisTabs.map(({ type, label, icon }) => (
                 <TabButton
                   key={type}
@@ -413,8 +386,8 @@ function TranscriptionView() {
                   badge={analyses.some(a => a.type === type)}
                 />
               ))}
-              <TabButton active={activeTab === 'glossary'} onClick={() => { setActiveTab('glossary'); fetchGlossary(); }} icon={BookOpen} label="Glossary" />
-              <TabButton active={activeTab === 'translation'} onClick={() => setActiveTab('translation')} icon={Languages} label="Translate" />
+              <TabButton active={activeTab === 'glossary'} onClick={() => { setActiveTab('glossary'); fetchGlossary(); }} icon={BookOpen} label="Glossaire" />
+              <TabButton active={activeTab === 'translation'} onClick={() => setActiveTab('translation')} icon={Languages} label="Traduire" />
             </div>
           </div>
 
@@ -429,9 +402,8 @@ function TranscriptionView() {
                   loading={formattingLoading}
                   onGenerate={handleFormat}
                   transcription={transcription}
+                  error={formatError}
                 />
-              ) : activeTab === 'key_moments' ? (
-                <KeyMomentsPanel moments={keyMoments} loading={keyMomentsLoading} onSeek={seekTo} onGenerate={() => fetchKeyMoments(true)} error={keyMomentsError} />
               ) : activeTab === 'chapters' ? (
                 <ChaptersPanel chapters={chapters} loading={chaptersLoading} onSeek={seekTo} />
               ) : activeTab === 'glossary' ? (
@@ -456,26 +428,26 @@ function TranscriptionView() {
                   <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center mx-auto mb-4">
                     <Zap className="w-8 h-8 text-indigo-400" />
                   </div>
-                  <p className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-1">Analyse non generee</p>
+                  <p className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-1">Analyse non générée</p>
                   {gateError ? (
                     <>
                       <p className="text-sm text-red-500 mb-4">{gateError}</p>
-                      <a href="/plans" className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-2">
+                      <a href="/app/plans" className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-2">
                         Voir les plans
                       </a>
                     </>
                   ) : (
                     <>
-                      <p className="text-sm text-slate-400 mb-6">Cliquez pour lancer la generation avec votre backend LLM actif</p>
+                      <p className="text-sm text-slate-400 mb-6">Cliquez pour lancer la génération de cette analyse</p>
                       <button
                         onClick={() => handleRegenerate(activeTab as AnalysisType)}
                         disabled={regenerating}
                         className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-2"
                       >
                         {regenerating ? (
-                          <><RefreshCw className="w-4 h-4 animate-spin" /> Generation en cours...</>
+                          <><RefreshCw className="w-4 h-4 animate-spin" /> Génération en cours...</>
                         ) : (
-                          <><Zap className="w-4 h-4" /> Generer maintenant</>
+                          <><Zap className="w-4 h-4" /> Générer maintenant</>
                         )}
                       </button>
                     </>
@@ -495,10 +467,10 @@ function TranscriptionView() {
             className="border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col"
           >
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-              <h3 className="font-semibold">Chat with transcript</h3>
+              <h3 className="font-semibold">Discussion</h3>
               <div className="flex items-center gap-1">
                 {chatMessages.length > 0 && (
-                  <button onClick={clearChat} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500" title="Clear history">
+                  <button onClick={clearChat} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500" title="Effacer l'historique">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -511,8 +483,8 @@ function TranscriptionView() {
               {chatMessages.length === 0 && (
                 <div className="text-center mt-8">
                   <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                  <p className="text-sm text-slate-400">Ask questions about this transcript</p>
-                  <p className="text-xs text-slate-400 mt-1">Chat history is saved between sessions</p>
+                  <p className="text-sm text-slate-400">Posez vos questions sur cette transcription</p>
+                  <p className="text-xs text-slate-400 mt-1">L'historique est conservé entre les sessions</p>
                 </div>
               )}
               {chatMessages.map((msg, i) => (
@@ -540,7 +512,7 @@ function TranscriptionView() {
                 <input
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Ask something..."
+                  placeholder="Posez votre question..."
                   className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 <button type="submit" disabled={chatLoading} className="p-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50">
@@ -737,8 +709,8 @@ function TranscriptPanel({ transcription, currentTime, onSeek, confidenceScores 
 
 // ── Mise en page Panel ───────────────────────────────────
 
-function MiseEnPagePanel({ formattedText, loading, onGenerate, transcription }: {
-  formattedText: string; loading: boolean; onGenerate: () => void; transcription: Transcription;
+function MiseEnPagePanel({ formattedText, loading, onGenerate, transcription, error }: {
+  formattedText: string; loading: boolean; onGenerate: () => void; transcription: Transcription; error?: string;
 }) {
   const [copied, setCopied] = React.useState(false);
 
@@ -786,14 +758,19 @@ function MiseEnPagePanel({ formattedText, loading, onGenerate, transcription }: 
         </div>
         <p className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">Mise en page intelligente</p>
         <p className="text-sm text-slate-400 mb-6 max-w-md mx-auto">
-          Le LLM va analyser votre transcription et creer une mise en page structuree adaptee au type de contenu (reunion, cours, interview...) sans modifier le fond du texte.
+          Le LLM va analyser votre transcription et créer une mise en page structurée adaptée au type de contenu (réunion, cours, interview...) sans modifier le fond du texte.
         </p>
+        {error && (
+          <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm max-w-md mx-auto">
+            {error}
+          </div>
+        )}
         <button
           onClick={onGenerate}
           className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:scale-105 transition-all inline-flex items-center gap-2"
         >
           <Sparkles className="w-4 h-4" />
-          Generer la mise en page
+          {error ? 'Réessayer' : 'Générer la mise en page'}
         </button>
       </div>
     );
@@ -873,72 +850,6 @@ function renderInline(text: string): React.ReactNode {
     }
     return part;
   });
-}
-
-// ── Key Moments Panel (v5.x) ─────────────────────────────
-
-function KeyMomentsPanel({ moments, loading, onSeek, onGenerate, error }: {
-  moments: KeyMoment[]; loading: boolean; onSeek: (t: number) => void; onGenerate: () => void; error?: string;
-}) {
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 text-amber-500 animate-spin mr-3" />
-        <span className="text-slate-500">Extraction des moments cles (cela peut prendre 1-2 min)...</span>
-      </div>
-    );
-  }
-
-  if (!moments.length) {
-    return (
-      <div className="text-center py-20 text-slate-500">
-        <Star className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-        {error && (
-          <p className="mb-3 text-sm text-red-500">{error}</p>
-        )}
-        <p className="mb-4">{error ? 'Vous pouvez reessayer la generation' : 'Extraire les 5 moments cles de la transcription'}</p>
-        <button
-          onClick={onGenerate}
-          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium shadow-lg shadow-amber-500/25 hover:shadow-xl hover:scale-105 transition-all"
-        >
-          <Sparkles className="w-4 h-4 inline mr-2 -mt-0.5" />
-          Generer les moments cles
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-6">
-        <Sparkles className="w-5 h-5 text-amber-500" />
-        <h2 className="text-lg font-bold">5 moments a ne pas manquer</h2>
-      </div>
-      {moments.map((m, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.1 }}
-          onClick={() => onSeek(m.start)}
-          className="group flex gap-4 p-5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 hover:border-amber-400 dark:hover:border-amber-600 cursor-pointer transition-all"
-        >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
-            {i + 1}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{m.text}</p>
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">{m.reason}</p>
-            <div className="flex items-center gap-2 mt-2 text-xs text-slate-400">
-              <Clock className="w-3 h-3" />
-              <span>{formatSegTime(m.start)}</span>
-            </div>
-          </div>
-          <Play className="w-4 h-4 text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
-        </motion.div>
-      ))}
-    </div>
-  );
 }
 
 // ── Chapters Panel ────────────────────────────────────────

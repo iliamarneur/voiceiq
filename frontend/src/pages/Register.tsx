@@ -115,7 +115,7 @@ export default function Register() {
 
           {/* Benefits */}
           <div className="mt-6 space-y-2">
-            {['Abonnements dès 19 EUR/mois (500 min)', 'One-shot disponible dès 3 EUR sans abonnement', 'Données 100% locales, conforme RGPD'].map(b => (
+            {['Abonnements dès 19 EUR/mois (500 min)', 'À la demande dès 3 EUR sans abonnement', 'Données 100% locales, conforme RGPD'].map(b => (
               <div key={b} className="flex items-center gap-2 text-xs text-slate-500">
                 <Check className="w-3.5 h-3.5 text-emerald-500" />
                 {b}
@@ -132,7 +132,7 @@ export default function Register() {
         </div>
 
         <p className="text-center text-xs text-slate-400 mt-6">
-          <Link to="/" className="hover:text-slate-600">Essayer sans compte (one-shot)</Link>
+          <Link to="/" className="hover:text-slate-600">Essayer sans compte (à la demande)</Link>
         </p>
       </div>
     </div>

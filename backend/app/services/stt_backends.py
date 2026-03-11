@@ -179,11 +179,34 @@ def _compress_audio_for_api(file_path: str, max_bytes: int = 24 * 1024 * 1024) -
         return file_path
 
 
+def _resolve_whisper_model(model_hint: str = None) -> str:
+    """Pick the best OpenAI transcription model based on context.
+
+    - Dictation (small/base/tiny hint): gpt-4o-mini-transcribe (fastest, cheapest)
+    - File upload / recording: whisper-1 (supports verbose_json + segment timestamps)
+    """
+    fast_hints = {"small", "base", "tiny"}
+    if model_hint and model_hint in fast_hints:
+        return "gpt-4o-mini-transcribe"
+    return "whisper-1"
+
+
+# Models that support verbose_json + timestamp_granularities
+_VERBOSE_JSON_MODELS = {"whisper-1"}
+
+
+class _Info:
+    def __init__(self, lang, dur):
+        self.language = lang
+        self.duration = dur
+
+
 def _stt_whisper_api(file_path: str, vad_params: dict = None, language: str = None, model_hint: str = None):
     """OpenAI Whisper API transcription."""
     from openai import OpenAI
 
     client = OpenAI(api_key=os.environ["OPENAI_STT_API_KEY"])
+    model = _resolve_whisper_model(model_hint)
 
     # Compress if file exceeds OpenAI's 25MB limit
     actual_path = _compress_audio_for_api(file_path)
@@ -191,15 +214,26 @@ def _stt_whisper_api(file_path: str, vad_params: dict = None, language: str = No
 
     try:
         with open(actual_path, "rb") as audio_file:
-            kwargs = {
-                "model": "whisper-1",
-                "file": audio_file,
-                "response_format": "verbose_json",
-                "timestamp_granularities": ["segment"],
-            }
+            # gpt-4o-*-transcribe models only support "json" or "text"
+            # whisper-1 supports "verbose_json" with segment timestamps
+            if model in _VERBOSE_JSON_MODELS:
+                kwargs = {
+                    "model": model,
+                    "file": audio_file,
+                    "response_format": "verbose_json",
+                    "timestamp_granularities": ["segment"],
+                }
+            else:
+                kwargs = {
+                    "model": model,
+                    "file": audio_file,
+                    "response_format": "json",
+                }
+
             if language:
                 kwargs["language"] = language
 
+            logger.info(f"OpenAI STT: model={model}, lang={language or 'auto'}, hint={model_hint}")
             result = client.audio.transcriptions.create(**kwargs)
     finally:
         # Clean up compressed file
@@ -210,11 +244,12 @@ def _stt_whisper_api(file_path: str, vad_params: dict = None, language: str = No
 
     segments = []
     full_text_parts = []
+
+    # Parse segments if available (whisper-1 verbose_json)
     for seg in getattr(result, "segments", []) or []:
-        # OpenAI returns objects with attributes, not dicts
-        s_start = seg.start if hasattr(seg, "start") else seg["start"]
-        s_end = seg.end if hasattr(seg, "end") else seg["end"]
-        s_text = seg.text if hasattr(seg, "text") else seg["text"]
+        s_start = seg.start if hasattr(seg, "start") else seg.get("start", 0)
+        s_end = seg.end if hasattr(seg, "end") else seg.get("end", 0)
+        s_text = seg.text if hasattr(seg, "text") else seg.get("text", "")
         s_text = _html.unescape(s_text.strip())
         segments.append({
             "start": round(s_start, 2),
@@ -226,10 +261,10 @@ def _stt_whisper_api(file_path: str, vad_params: dict = None, language: str = No
     raw_text = result.text if hasattr(result, "text") else " ".join(full_text_parts)
     full_text = _html.unescape(raw_text)
 
-    class _Info:
-        def __init__(self, lang, dur):
-            self.language = lang
-            self.duration = dur
+    # For gpt-4o models without segments, create a single segment from full text
+    if not segments and full_text.strip():
+        dur = getattr(result, "duration", 0.0) or 0.0
+        segments = [{"start": 0.0, "end": round(dur, 2), "text": full_text.strip()}]
 
     info = _Info(
         lang=getattr(result, "language", language or "unknown"),

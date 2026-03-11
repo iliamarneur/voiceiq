@@ -7,7 +7,7 @@ import { DictationSession } from '../types';
 
 type DictateState = 'idle' | 'recording' | 'paused' | 'stopped' | 'saving';
 
-const CHUNK_INTERVAL_MS = 2000; // send chunk every 2 seconds for faster feedback
+const CHUNK_INTERVAL_MS = 1000; // send chunk every 1 second for near-realtime feedback
 
 function DictatePage() {
   const navigate = useNavigate();
@@ -61,6 +61,11 @@ function DictatePage() {
     }
     setChunkLoading(false);
     sendingRef.current = false;
+
+    // Pipeline: if new chunks accumulated while we were sending, send immediately
+    if (chunksRef.current.length > 0 && sessionIdRef.current) {
+      sendCurrentChunk();
+    }
   }, []);
 
   const startDictation = async () => {
@@ -80,7 +85,7 @@ function DictatePage() {
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
-      recorder.start(500); // collect data every 500ms
+      recorder.start(250); // collect data every 250ms for low latency
       mediaRecorderRef.current = recorder;
 
       setState('recording');

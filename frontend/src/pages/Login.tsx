@@ -110,7 +110,7 @@ export default function Login() {
         </div>
 
         <p className="text-center text-xs text-slate-400 mt-6">
-          <Link to="/" className="hover:text-slate-600">Essayer sans compte (one-shot)</Link>
+          <Link to="/" className="hover:text-slate-600">Essayer sans compte (à la demande)</Link>
         </p>
       </div>
     </div>

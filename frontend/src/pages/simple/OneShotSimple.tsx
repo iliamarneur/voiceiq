@@ -13,8 +13,8 @@ const FEATURE_LABELS: Record<string, string> = {
   actions: 'Plan d\'actions',
   faq: 'FAQ générée',
   quiz: 'Quiz de révision',
-  flashcards: 'Flashcards',
-  export_md: 'Export Markdown',
+  flashcards: 'Fiches de révision',
+  export_md: 'Export texte formaté',
   export_pdf: 'Export PDF',
 };
 
@@ -56,19 +56,27 @@ function OneShotSimple() {
   const [language, setLanguage] = useState('');
   const navigate = useNavigate();
 
-  const estimatedMinutes = file ? Math.max(1, Math.ceil(file.size / (1024 * 1024))) : 0;
+  const estimatedMinutes = file ? (() => {
+    const sizeMB = file.size / (1024 * 1024);
+    const isCompressed = /\.(mp3|m4a|aac|ogg|opus|wma)$/i.test(file.name);
+    return Math.max(1, Math.ceil(sizeMB * (isCompressed ? 2 : 0.5)));
+  })() : 0;
 
   const handleFileSelected = async (f: File) => {
     setFile(f);
     setError('');
     setPhase('estimating');
     try {
-      const estimatedSeconds = Math.max(60, Math.ceil((f.size / (1024 * 1024)) * 60));
+      // Estimate: ~1 MB/min for WAV, ~8 MB/min for high-quality MP3, ~2 MB/min for standard MP3
+      const sizeMB = f.size / (1024 * 1024);
+      const isCompressed = /\.(mp3|m4a|aac|ogg|opus|wma)$/i.test(f.name);
+      const minutesPerMB = isCompressed ? 2 : 0.5; // compressed: ~2 min/MB, raw: ~0.5 min/MB
+      const estimatedSeconds = Math.max(60, Math.ceil(sizeMB * minutesPerMB * 60));
       const resp = await axios.post('/api/oneshot/estimate', { duration_seconds: estimatedSeconds });
       setEstimate(resp.data);
       setPhase('ready');
-    } catch {
-      setError('Impossible d\'estimer le prix. Vérifiez votre fichier.');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Impossible d\'estimer le prix. Vérifiez votre fichier.');
       setPhase('error');
     }
   };
@@ -230,24 +238,13 @@ function OneShotSimple() {
           </div>
 
           <div className="space-y-2 mb-6">
-            <p className="text-xs font-medium text-slate-400 mb-1">Généré automatiquement :</p>
-            {estimate.includes.filter(f => AUTO_FEATURES.includes(f)).map(f => (
+            <p className="text-xs font-medium text-slate-400 mb-1">Tout est inclus :</p>
+            {estimate.includes.map(f => (
               <div key={f} className="flex items-center gap-2 text-sm text-slate-700 font-medium">
                 <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                 {FEATURE_LABELS[f] || f}
               </div>
             ))}
-            {estimate.includes.filter(f => !AUTO_FEATURES.includes(f)).length > 0 && (
-              <>
-                <p className="text-xs font-medium text-slate-400 mt-3 mb-1">Également inclus :</p>
-                {estimate.includes.filter(f => !AUTO_FEATURES.includes(f)).map(f => (
-                  <div key={f} className="flex items-center gap-2 text-sm text-slate-600">
-                    <CheckCircle className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-                    {FEATURE_LABELS[f] || f}
-                  </div>
-                ))}
-              </>
-            )}
           </div>
 
           {estimate.warning && (

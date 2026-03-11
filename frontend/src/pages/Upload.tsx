@@ -104,7 +104,7 @@ function UploadPage() {
         pollBatchJobs(res.data.jobs);
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Upload failed');
+      setError(err.response?.data?.detail || 'Échec de l\'envoi');
       setPhase('error');
       setUploading(false);
     }
@@ -192,8 +192,8 @@ function UploadPage() {
   };
 
   const formatSize = (bytes: number) => {
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} Ko`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
   };
 
   return (
@@ -202,8 +202,8 @@ function UploadPage() {
       className="p-6 lg:p-8 max-w-2xl mx-auto"
     >
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Upload Audio</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">Transform your audio into actionable knowledge</p>
+        <h1 className="text-3xl font-bold">Envoyer un fichier</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-1">Transformez votre audio en texte et analyses exploitables</p>
       </div>
 
       {/* Drop Zone */}
@@ -229,7 +229,7 @@ function UploadPage() {
               <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                 {files.length > 1 ? <Files className="w-8 h-8 text-white" /> : <FileAudio className="w-8 h-8 text-white" />}
               </div>
-              <p className="text-lg font-semibold">{files.length} file{files.length > 1 ? 's' : ''} selected</p>
+              <p className="text-lg font-semibold">{files.length} fichier{files.length > 1 ? 's' : ''} sélectionné{files.length > 1 ? 's' : ''}</p>
               <p className="text-sm text-slate-500 mt-1">{formatSize(files.reduce((s, f) => s + f.size, 0))} total</p>
             </motion.div>
           ) : (
@@ -237,8 +237,8 @@ function UploadPage() {
               <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
                 <Upload className="w-8 h-8 text-slate-400" />
               </div>
-              <p className="text-lg font-medium">Drop your audio files here</p>
-              <p className="text-sm text-slate-500 mt-2">or click to browse (multiple files supported)</p>
+              <p className="text-lg font-medium">Glissez vos fichiers audio ici</p>
+              <p className="text-sm text-slate-500 mt-2">ou cliquez pour parcourir (plusieurs fichiers acceptés)</p>
               <p className="text-xs text-slate-400 mt-4">Audio : MP3, WAV, M4A, FLAC, OGG, AAC, OPUS</p>
               <p className="text-xs text-slate-400 mt-1">Video : MP4, MKV, AVI, MOV, WMV, WEBM</p>
               <p className="text-xs text-slate-400 mt-1">Taille max : 2 Go</p>
@@ -310,7 +310,7 @@ function UploadPage() {
                   onClick={() => retryJob(j.id)}
                   className="flex items-center gap-1 text-xs text-amber-600 hover:underline"
                 >
-                  <RotateCcw className="w-3 h-3" /> Retry
+                  <RotateCcw className="w-3 h-3" /> Réessayer
                 </button>
               )}
             </div>
@@ -333,7 +333,7 @@ function UploadPage() {
       {/* Profile Selector */}
       {profiles.length > 0 && !uploading && (
         <div className="mt-6">
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Pipeline d'analyse</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Profil d'analyse</label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {profiles.map((p) => {
               const Icon = PROFILE_ICONS[p.icon] || Sparkles;
@@ -396,7 +396,7 @@ function UploadPage() {
           {presets.length > 0 && (
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                <Settings2 className="w-3.5 h-3.5 inline mr-1" />Preset audio
+                <Settings2 className="w-3.5 h-3.5 inline mr-1" />Configuration audio
               </label>
               <select
                 value={selectedPreset || ''}
@@ -410,7 +410,7 @@ function UploadPage() {
                 }}
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
               >
-                <option value="">Aucun preset</option>
+                <option value="">Aucune configuration</option>
                 {presets.map(p => (
                   <option key={p.id} value={p.id}>{p.name}{p.audio_type ? ` (${p.audio_type})` : ''}</option>
                 ))}
@@ -429,7 +429,7 @@ function UploadPage() {
             onChange={(e) => setSelectedLanguage(e.target.value)}
             className="w-full sm:w-64 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
           >
-            <option value="">Auto-detection</option>
+            <option value="">Détection automatique</option>
             <option value="fr">Francais</option>
             <option value="en">English</option>
             <option value="es">Espanol</option>
@@ -474,7 +474,7 @@ function UploadPage() {
         >
           <span className="flex items-center justify-center gap-2">
             <Mic2 className="w-5 h-5" />
-            {files.length > 1 ? `Transcribe ${files.length} Files` : 'Transcribe & Analyze'}
+            {files.length > 1 ? `Transcrire ${files.length} fichiers` : 'Transcrire et analyser'}
           </span>
         </motion.button>
       )}
@@ -482,7 +482,7 @@ function UploadPage() {
       {phase === 'done' && batchJobs.length > 1 && (
         <div className="mt-4 text-center">
           <button onClick={() => navigate('/')} className="text-indigo-600 hover:underline text-sm font-medium">
-            Go to Dashboard
+            Voir le tableau de bord
           </button>
         </div>
       )}

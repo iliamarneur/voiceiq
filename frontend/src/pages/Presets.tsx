@@ -5,7 +5,7 @@ import axios from 'axios';
 import { AudioPreset, Profile, UserDictionary } from '../types';
 
 const AUDIO_TYPES = [
-  { value: '', label: 'Auto-detect' },
+  { value: '', label: 'Détection automatique' },
   { value: 'meeting', label: 'Reunion' },
   { value: 'meeting_noisy', label: 'Reunion bruyante' },
   { value: 'podcast', label: 'Podcast' },
@@ -95,14 +95,14 @@ function PresetsPage() {
     >
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Presets Audio</h1>
+          <h1 className="text-3xl font-bold">Configurations audio</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Pre-configurez vos parametres audio pour chaque type d'enregistrement
+            Pré-configurez vos paramètres audio pour chaque type d'enregistrement
           </p>
         </div>
         {!isEditing && (
           <button onClick={startCreate} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">
-            <Plus className="w-4 h-4" /> Nouveau preset
+            <Plus className="w-4 h-4" /> Nouvelle configuration
           </button>
         )}
       </div>
@@ -110,7 +110,7 @@ function PresetsPage() {
       {/* Create/Edit Form */}
       {isEditing && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-          <h3 className="font-semibold mb-4">{editing ? 'Modifier le preset' : 'Nouveau preset'}</h3>
+          <h3 className="font-semibold mb-4">{editing ? 'Modifier la configuration' : 'Nouvelle configuration'}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Nom</label>
@@ -121,7 +121,7 @@ function PresetsPage() {
               <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Optionnel" className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Profil metier</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Profil métier</label>
               <select value={form.profile_id} onChange={e => setForm({ ...form, profile_id: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
                 {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
@@ -133,7 +133,7 @@ function PresetsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Sensibilite VAD</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Sensibilité détection voix</label>
               <select value={form.vad_sensitivity} onChange={e => setForm({ ...form, vad_sensitivity: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
                 {VAD_LEVELS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
               </select>
@@ -143,7 +143,7 @@ function PresetsPage() {
               <input type="number" value={form.min_silence_ms} onChange={e => setForm({ ...form, min_silence_ms: parseInt(e.target.value) || 500 })} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-slate-500 mb-1">Dictionnaire associe</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Dictionnaire associé</label>
               <select value={form.dictionary_id || ''} onChange={e => setForm({ ...form, dictionary_id: e.target.value || null })} className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
                 <option value="">Aucun dictionnaire</option>
                 {dictionaries.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -186,7 +186,7 @@ function PresetsPage() {
                     </span>
                   )}
                   <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-500">
-                    VAD: {preset.vad_sensitivity}
+                    Voix : {preset.vad_sensitivity === 'low' ? 'basse' : preset.vad_sensitivity === 'high' ? 'haute' : 'moyenne'}
                   </span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-500">
                     {preset.min_silence_ms}ms
@@ -209,8 +209,8 @@ function PresetsPage() {
       {presets.length === 0 && !creating && (
         <div className="text-center py-16">
           <Settings2 className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-          <p className="text-slate-500 dark:text-slate-400">Aucun preset audio</p>
-          <p className="text-xs text-slate-400 mt-1">Creez un preset pour pre-configurer vos parametres d'upload</p>
+          <p className="text-slate-500 dark:text-slate-400">Aucune configuration audio</p>
+          <p className="text-xs text-slate-400 mt-1">Créez une configuration pour pré-régler vos paramètres d'envoi</p>
         </div>
       )}
     </motion.div>

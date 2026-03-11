@@ -34,7 +34,7 @@ function Dashboard() {
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('Delete this transcription and all analyses?')) return;
+    if (!confirm('Supprimer cette transcription et toutes ses analyses ?')) return;
     await axios.delete(`/api/transcriptions/${id}`);
     fetchAll();
   };
@@ -53,8 +53,8 @@ function Dashboard() {
 
   const statCards = stats ? [
     { icon: FileAudio, label: 'Transcriptions', value: stats.total, color: 'from-indigo-500 to-blue-500' },
-    { icon: Clock, label: 'Total Duration', value: formatDuration(stats.total_duration), color: 'from-purple-500 to-pink-500' },
-    { icon: Languages, label: 'Languages', value: Object.keys(stats.languages).length, color: 'from-emerald-500 to-teal-500' },
+    { icon: Clock, label: 'Durée totale', value: formatDuration(stats.total_duration), color: 'from-purple-500 to-pink-500' },
+    { icon: Languages, label: 'Langues', value: Object.keys(stats.languages).length, color: 'from-emerald-500 to-teal-500' },
     { icon: BarChart3, label: 'Analyses', value: stats.total_analyses || 0, color: 'from-amber-500 to-orange-500' },
   ] : [];
 
@@ -66,15 +66,15 @@ function Dashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Your audio intelligence hub</p>
+          <h1 className="text-3xl font-bold">Tableau de bord</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Vos transcriptions et analyses</p>
         </div>
         <Link
           to="/upload"
           className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all hover:-translate-y-0.5"
         >
           <Upload className="w-4 h-4" />
-          New Upload
+          Nouveau fichier
         </Link>
       </div>
 
@@ -107,7 +107,7 @@ function Dashboard() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search transcriptions..."
+            placeholder="Rechercher une transcription..."
             className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
           />
         </div>
@@ -128,10 +128,10 @@ function Dashboard() {
           <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
             <FileAudio className="w-10 h-10 text-slate-300 dark:text-slate-600" />
           </div>
-          <h3 className="text-xl font-semibold mb-2">No transcriptions yet</h3>
-          <p className="text-slate-500 mb-6">Upload your first audio file to get started</p>
+          <h3 className="text-xl font-semibold mb-2">Aucune transcription</h3>
+          <p className="text-slate-500 mb-6">Déposez votre premier fichier audio pour commencer</p>
           <Link to="/upload" className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors">
-            <Upload className="w-4 h-4" /> Upload Audio
+            <Upload className="w-4 h-4" /> Déposer un fichier
           </Link>
         </motion.div>
       ) : (
@@ -158,7 +158,7 @@ function Dashboard() {
               <div className="flex items-center gap-3 flex-shrink-0">
                 {t.profile && t.profile !== 'generic' && (
                   <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
-                    {t.profile === 'education' ? 'Education' : t.profile === 'business' ? 'Business' : t.profile}
+                    {t.profile === 'education' ? 'Éducation' : t.profile === 'business' ? 'Entreprise' : t.profile === 'medical' ? 'Médical' : t.profile === 'legal' ? 'Juridique' : t.profile}
                   </span>
                 )}
                 {t.language && (

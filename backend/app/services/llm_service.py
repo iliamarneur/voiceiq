@@ -4,7 +4,6 @@ import logging
 import os
 import re
 import time
-import ollama as ollama_client
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Transcription, Analysis, Chapter, TranslationCache, ChatMessage
@@ -17,11 +16,39 @@ logger = logging.getLogger(__name__)
 LLM_TIMEOUT = int(os.environ.get("LLM_TIMEOUT_SECONDS", "300"))  # 5 min default
 LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "1"))
 
-_OLLAMA_HOST_ENV = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
-OLLAMA_HOST = _OLLAMA_HOST_ENV.replace("0.0.0.0", "127.0.0.1")
-if not OLLAMA_HOST.startswith("http"):
-    OLLAMA_HOST = f"http://{OLLAMA_HOST}"
-_ollama = ollama_client.Client(host=OLLAMA_HOST)
+# ── LLM backend selection ──
+# Use OpenAI if OPENAI_LLM_API_KEY is set, otherwise fallback to Ollama
+_OPENAI_LLM_KEY = os.environ.get("OPENAI_LLM_API_KEY", "")
+_USE_OPENAI = bool(_OPENAI_LLM_KEY)
+_openai_client = None
+_ollama = None
+
+if _USE_OPENAI:
+    logger.info("LLM backend: OpenAI API")
+else:
+    logger.info("LLM backend: Ollama (local)")
+    try:
+        import ollama as ollama_client
+        _OLLAMA_HOST_ENV = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
+        OLLAMA_HOST = _OLLAMA_HOST_ENV.replace("0.0.0.0", "127.0.0.1")
+        if not OLLAMA_HOST.startswith("http"):
+            OLLAMA_HOST = f"http://{OLLAMA_HOST}"
+        _ollama = ollama_client.Client(host=OLLAMA_HOST)
+    except ImportError:
+        logger.warning("ollama package not installed and no OpenAI key — LLM calls will fail")
+
+
+def _get_openai_client():
+    global _openai_client
+    if _openai_client is None:
+        from openai import OpenAI
+        _openai_client = OpenAI(api_key=_OPENAI_LLM_KEY)
+    return _openai_client
+
+
+def _get_openai_model() -> str:
+    from app.services.llm_backends import get_openai_model
+    return get_openai_model()
 
 ANALYSIS_TYPES = [
     "summary", "keypoints", "actions", "flashcards",
@@ -29,12 +56,78 @@ ANALYSIS_TYPES = [
 ]
 
 PROMPTS = {
-    "summary": "Produce a structured summary of this transcript with: title, introduction, main points, and conclusion. Return valid JSON: {\"title\": \"...\", \"introduction\": \"...\", \"points\": [\"...\"], \"conclusion\": \"...\"}",
-    "keypoints": "Extract the key points from this transcript as thematic bullet points. Return valid JSON: {\"keypoints\": [{\"theme\": \"...\", \"points\": [\"...\"]}]}",
-    "actions": "Extract action items, decisions taken, and open questions from this transcript. Return valid JSON: {\"actions\": [\"...\"], \"decisions\": [\"...\"], \"questions\": [\"...\"]}",
-    "flashcards": "Create revision flashcards (question/answer pairs) from this transcript. Return valid JSON: {\"cards\": [{\"question\": \"...\", \"answer\": \"...\"}]}",
-    "quiz": "Create a multiple-choice quiz (4-5 questions) from this transcript. Each choice must be a full text answer, not just a letter. Return valid JSON: {\"questions\": [{\"question\": \"What is...?\", \"choices\": [\"The actual answer text A\", \"The actual answer text B\", \"The actual answer text C\", \"The actual answer text D\"], \"answer\": \"A\", \"explanation\": \"Because...\"}]}",
-    "faq": "Generate a FAQ (Frequently Asked Questions) from this transcript. Create 5-8 relevant questions and detailed answers based on the content. Return valid JSON: {\"faq\": [{\"question\": \"...\", \"answer\": \"...\"}]}",
+    "summary": (
+        "Tu es un analyste expert. Produis un resume structure et fidele de cette transcription.\n\n"
+        "Regles :\n"
+        "- Un titre court et descriptif qui capture le sujet principal\n"
+        "- Une introduction de 2-3 phrases qui pose le contexte (qui parle, de quoi, dans quel cadre)\n"
+        "- Les points principaux : chaque point doit etre une phrase complete et autonome, pas un mot-cle\n"
+        "- Une conclusion qui synthetise la direction ou les prochaines etapes evoquees\n"
+        "- Reste fidele au contenu : ne rajoute rien qui n'est pas dit dans la transcription\n"
+        "- Adapte la langue du resume a la langue de la transcription\n\n"
+        "Return valid JSON: {\"title\": \"...\", \"introduction\": \"...\", \"points\": [\"...\"], \"conclusion\": \"...\"}"
+    ),
+    "keypoints": (
+        "Tu es un analyste expert. Extrais les points cles de cette transcription, organises par theme.\n\n"
+        "Regles :\n"
+        "- Regroupe les informations par theme logique (pas par ordre chronologique)\n"
+        "- Chaque theme a un intitule court et clair\n"
+        "- Chaque point sous un theme est une phrase complete et autonome\n"
+        "- Classe chaque theme par importance : critical (decision majeure ou information capitale), "
+        "high (point important), medium (information utile), low (detail secondaire)\n"
+        "- Si un passage cle est cite mot pour mot, ajoute-le en verbatim_quote\n"
+        "- Ne rajoute rien qui n'est pas dit. Reste factuel.\n"
+        "- Adapte la langue a celle de la transcription\n\n"
+        "Return valid JSON: {\"keypoints\": [{\"theme\": \"...\", \"importance\": \"high\", \"points\": [\"...\"], \"verbatim_quote\": \"...\"}]}"
+    ),
+    "actions": (
+        "Tu es un assistant de reunion expert. Analyse cette transcription pour en extraire :\n\n"
+        "1. ACTIONS : Chaque tache ou engagement mentionne, meme implicitement. "
+        "Formule chaque action de maniere actionnable (verbe a l'infinitif + objet + contexte si pertinent). "
+        "Exemples : 'Envoyer le rapport au client avant vendredi', 'Planifier une reunion de suivi avec l'equipe technique'.\n\n"
+        "2. DECISIONS : Chaque choix ou conclusion acte pendant la discussion. "
+        "Formule clairement ce qui a ete decide et par qui si mentionne.\n\n"
+        "3. QUESTIONS OUVERTES : Les sujets restes en suspens, les interrogations non resolues, "
+        "les points necessitant un suivi ou une clarification.\n\n"
+        "Regles : Reste fidele au contenu. Ne rajoute pas d'actions inventees. "
+        "Si aucune action/decision/question n'est identifiable, retourne une liste vide pour cette categorie.\n\n"
+        "Return valid JSON: {\"actions\": [\"...\"], \"decisions\": [\"...\"], \"questions\": [\"...\"]}"
+    ),
+    "flashcards": (
+        "Tu es un pedagogiste expert. Cree des fiches de revision (flashcards) a partir de cette transcription.\n\n"
+        "Regles :\n"
+        "- Chaque fiche a une question precise et une reponse concise mais complete\n"
+        "- Les questions doivent tester la comprehension, pas la memorisation mot a mot\n"
+        "- Couvre les concepts cles, les definitions, les faits importants et les relations de cause a effet\n"
+        "- Varie les types de questions : 'Qu'est-ce que...', 'Pourquoi...', 'Quelle est la difference entre...', "
+        "'Dans quel contexte...', 'Quel est l'impact de...'\n"
+        "- Cree entre 8 et 15 fiches selon la richesse du contenu\n"
+        "- Adapte la langue a celle de la transcription\n\n"
+        "Return valid JSON: {\"cards\": [{\"question\": \"...\", \"answer\": \"...\"}]}"
+    ),
+    "quiz": (
+        "Tu es un pedagogiste expert. Cree un quiz a choix multiples a partir de cette transcription.\n\n"
+        "Regles :\n"
+        "- 5 a 8 questions, de difficulte croissante\n"
+        "- 4 choix par question, un seul correct. Les mauvaises reponses doivent etre plausibles, pas absurdes.\n"
+        "- Chaque choix est une phrase complete (pas juste un mot ou une lettre)\n"
+        "- L'explication justifie pourquoi la bonne reponse est correcte, en citant le contexte de la transcription\n"
+        "- Couvre differents aspects du contenu, pas seulement les premiers paragraphes\n"
+        "- answer est la lettre (A, B, C ou D) correspondant au bon choix\n"
+        "- Adapte la langue a celle de la transcription\n\n"
+        "Return valid JSON: {\"questions\": [{\"question\": \"...\", \"choices\": [\"Choix A complet\", \"Choix B complet\", \"Choix C complet\", \"Choix D complet\"], \"answer\": \"A\", \"explanation\": \"...\"}]}"
+    ),
+    "faq": (
+        "Tu es un expert en communication. Genere une FAQ (Foire Aux Questions) a partir de cette transcription.\n\n"
+        "Regles :\n"
+        "- 5 a 8 questions que quelqu'un poserait naturellement apres avoir ecoute ce contenu\n"
+        "- Les questions doivent couvrir : les clarifications, les approfondissements, les implications pratiques\n"
+        "- Chaque reponse est detaillee (3-5 phrases), basee uniquement sur le contenu de la transcription\n"
+        "- Si la transcription ne permet pas de repondre completement, indique-le honnement\n"
+        "- Formule les questions du point de vue de l'auditeur, pas de l'intervenant\n"
+        "- Adapte la langue a celle de la transcription\n\n"
+        "Return valid JSON: {\"faq\": [{\"question\": \"...\", \"answer\": \"...\"}]}"
+    ),
     "mindmap": "Create a hierarchical mindmap of this transcript in Markmap-compatible markdown. Return valid JSON: {\"markdown\": \"# Topic\\n## Subtopic\\n- Point\"}",
     "slides": "Create a slide presentation from this transcript. Return valid JSON: {\"slides\": [{\"title\": \"...\", \"bullets\": [\"...\"]}]}",
     "infographic": "Extract data points for a Vega-Lite chart from this transcript. Return valid JSON: {\"description\": \"...\", \"spec\": {}}",
@@ -95,16 +188,25 @@ def list_ollama_models() -> list[dict]:
         return []
 
 
-async def _call_ollama_async(prompt: str, transcript_text: str) -> dict:
-    """Run _call_ollama in a thread pool to avoid blocking the event loop."""
+async def _call_llm_json_async(prompt: str, transcript_text: str) -> dict:
+    """Call LLM (OpenAI or Ollama) for JSON analysis. Runs in thread pool."""
     loop = asyncio.get_event_loop()
+    if _USE_OPENAI:
+        return await loop.run_in_executor(None, _call_openai_json, prompt, transcript_text)
     return await loop.run_in_executor(None, _call_ollama, prompt, transcript_text)
 
 
-async def _call_ollama_text_async(system_prompt: str, user_prompt: str) -> str:
-    """Run _call_ollama_text in a thread pool to avoid blocking the event loop."""
+async def _call_llm_text_async(system_prompt: str, user_prompt: str, max_tokens: int = None) -> str:
+    """Call LLM (OpenAI or Ollama) for text response. Runs in thread pool."""
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _call_ollama_text, system_prompt, user_prompt)
+    if _USE_OPENAI:
+        return await loop.run_in_executor(None, _call_openai_text, system_prompt, user_prompt, max_tokens)
+    return await loop.run_in_executor(None, _call_ollama_text, system_prompt, user_prompt, max_tokens)
+
+
+# Keep old names as aliases for backward compatibility
+_call_ollama_async = _call_llm_json_async
+_call_ollama_text_async = _call_llm_text_async
 
 
 def _fix_json(text: str) -> str:
@@ -146,8 +248,84 @@ def _parse_json_response(text: str) -> dict | None:
     return None
 
 
-MAX_TRANSCRIPT_CHARS = int(os.environ.get("LLM_MAX_TRANSCRIPT_CHARS", "4000"))
-MAX_RESPONSE_TOKENS = int(os.environ.get("LLM_MAX_RESPONSE_TOKENS", "1024"))
+MAX_TRANSCRIPT_CHARS = int(os.environ.get("LLM_MAX_TRANSCRIPT_CHARS", "12000"))
+MAX_RESPONSE_TOKENS = int(os.environ.get("LLM_MAX_RESPONSE_TOKENS", "4096"))
+
+
+# ── OpenAI implementations ───────────────────────────────
+
+
+def _call_openai_json(prompt: str, transcript_text: str) -> dict:
+    """Call OpenAI API and parse JSON from response. Retries on failure."""
+    client = _get_openai_client()
+    model = _get_openai_model()
+    last_error = None
+    for attempt in range(1 + LLM_MAX_RETRIES):
+        t0 = time.time()
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": "You are an analysis assistant. Always respond with valid JSON only, no extra text. Ensure all strings are properly escaped."},
+                    {"role": "user", "content": f"{prompt}\n\nTranscript:\n{transcript_text[:MAX_TRANSCRIPT_CHARS]}"},
+                ],
+                temperature=0.3,
+                max_tokens=MAX_RESPONSE_TOKENS,
+            )
+            elapsed = time.time() - t0
+            text = response.choices[0].message.content or ""
+            logger.info(f"OpenAI JSON call OK ({elapsed:.1f}s, {len(text)} chars, model={model})")
+
+            parsed = _parse_json_response(text)
+            if parsed is not None:
+                return parsed
+
+            if attempt < LLM_MAX_RETRIES:
+                logger.warning(f"JSON parse failed, retrying ({attempt + 1}/{LLM_MAX_RETRIES})...")
+                continue
+            logger.warning(f"Could not parse JSON from OpenAI response, returning raw text")
+            return {"raw": text}
+        except Exception as e:
+            elapsed = time.time() - t0
+            last_error = e
+            logger.error(f"OpenAI JSON call failed ({elapsed:.1f}s, attempt {attempt + 1}): {e}")
+            if attempt < LLM_MAX_RETRIES:
+                continue
+
+    return {"error": str(last_error)}
+
+
+def _call_openai_text(system_prompt: str, user_prompt: str, max_tokens: int = None) -> str:
+    """Call OpenAI API and return raw text response. Retries on failure."""
+    client = _get_openai_client()
+    model = _get_openai_model()
+    last_error = None
+    for attempt in range(1 + LLM_MAX_RETRIES):
+        t0 = time.time()
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.3,
+                max_tokens=max_tokens or MAX_RESPONSE_TOKENS,
+            )
+            elapsed = time.time() - t0
+            text = response.choices[0].message.content or ""
+            logger.info(f"OpenAI text call OK ({elapsed:.1f}s, {len(text)} chars, model={model})")
+            return text
+        except Exception as e:
+            elapsed = time.time() - t0
+            last_error = e
+            logger.error(f"OpenAI text call failed ({elapsed:.1f}s, attempt {attempt + 1}): {e}")
+            if attempt < LLM_MAX_RETRIES:
+                continue
+    return f"Error: {str(last_error)}"
+
+
+# ── Ollama implementations (fallback) ────────────────────
 
 
 def _call_ollama(prompt: str, transcript_text: str) -> dict:
@@ -187,9 +365,12 @@ def _call_ollama(prompt: str, transcript_text: str) -> dict:
     return {"error": str(last_error)}
 
 
-def _call_ollama_text(system_prompt: str, user_prompt: str) -> str:
+def _call_ollama_text(system_prompt: str, user_prompt: str, num_predict: int = None) -> str:
     """Call Ollama and return raw text response. Retries on failure."""
     last_error = None
+    options = {}
+    if num_predict:
+        options["num_predict"] = num_predict
     for attempt in range(1 + LLM_MAX_RETRIES):
         t0 = time.time()
         try:
@@ -199,6 +380,7 @@ def _call_ollama_text(system_prompt: str, user_prompt: str) -> str:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
+                options=options if options else None,
             )
             elapsed = time.time() - t0
             text = response["message"]["content"]
@@ -363,8 +545,18 @@ async def chat_with_transcript(transcription_id: str, message: str, db: AsyncSes
     # Get response (non-blocking)
     def _chat_sync():
         try:
-            response = _ollama.chat(model=OLLAMA_MODEL, messages=messages)
-            return response["message"]["content"]
+            if _USE_OPENAI:
+                client = _get_openai_client()
+                response = client.chat.completions.create(
+                    model=_get_openai_model(),
+                    messages=messages,
+                    temperature=0.4,
+                    max_tokens=2048,
+                )
+                return response.choices[0].message.content or ""
+            else:
+                response = _ollama.chat(model=OLLAMA_MODEL, messages=messages)
+                return response["message"]["content"]
         except Exception as e:
             return f"Error: {str(e)}"
 
@@ -379,57 +571,133 @@ async def chat_with_transcript(transcription_id: str, message: str, db: AsyncSes
     return answer
 
 
-async def polish_transcription(raw_text: str, language: str = "fr") -> str:
+async def polish_transcription(raw_text: str, language: str = "fr", dictionary_entries: list = None) -> str:
     """Polish raw transcription text: fix formatting, punctuation, paragraphs.
 
-    Rules:
-    - Fix obvious punctuation and capitalization errors
-    - Add paragraph breaks at natural topic changes
-    - Fix clearly misspelled proper nouns ONLY if obvious from context
-    - Do NOT guess unknown names — keep them as-is
-    - Do NOT add, remove, or rephrase any content
-    - Keep the same language as the original
-    - Return clean, beautifully formatted text ready for PDF export
+    Handles long transcriptions by chunking (~3000 chars per chunk) to stay
+    within the LLM context window. Each chunk gets generous num_predict to
+    avoid output truncation.
     """
+    if not raw_text or len(raw_text.strip()) < 50:
+        return raw_text
+
     lang_name = {
         "fr": "français", "en": "English", "es": "español", "de": "Deutsch",
         "it": "italiano", "pt": "português", "nl": "Nederlands",
+        "pl": "polski", "ru": "русский", "ja": "日本語", "zh": "中文",
+        "ko": "한국어", "ar": "العربية", "tr": "Türkçe", "uk": "українська",
     }.get(language, language or "la langue d'origine")
 
     system_prompt = (
-        "Tu es un correcteur professionnel spécialisé dans la mise en forme de transcriptions audio. "
-        "Tu ne modifies JAMAIS le sens ni le contenu. Tu ne devines JAMAIS les noms propres inconnus. "
-        f"Tu travailles en {lang_name}."
+        f"You are an Expert Text Corrector and Editor specialized in audio transcription cleanup. "
+        f"Your mission: surgical precision without distorting the speaker's tone or style. "
+        f"You work in {lang_name}. You MUST respond in the SAME language as the transcript."
     )
 
-    user_prompt = (
-        "Voici une transcription brute générée par reconnaissance vocale. "
-        "Mets-la en page proprement en suivant ces règles strictes :\n\n"
-        "1. PONCTUATION : Corrige la ponctuation (majuscules en début de phrase, points, virgules)\n"
-        "2. PARAGRAPHES : Découpe en paragraphes logiques quand le sujet change\n"
-        "3. NOMS PROPRES : Corrige UNIQUEMENT les noms clairement identifiables dans le contexte "
-        "(ex: 'micro soft' → 'Microsoft', 'chat gpt' → 'ChatGPT'). "
-        "Ne devine JAMAIS un nom incertain — laisse-le tel quel.\n"
-        "4. RÉPÉTITIONS : Supprime les hésitations évidentes ('euh', 'hum', 'ben', 'you know', 'like') "
-        "et les répétitions involontaires\n"
-        "5. NE JAMAIS : ajouter du contenu, reformuler, résumer, supprimer des informations, "
-        "changer la langue, ajouter des titres ou des commentaires\n"
-        "6. FORMAT : Retourne UNIQUEMENT le texte reformaté, sans aucun commentaire ni explication\n\n"
-        f"--- TRANSCRIPTION BRUTE ---\n{raw_text}"
+    # Build dictionary/glossary section if available
+    glossary_section = ""
+    if dictionary_entries:
+        terms = ", ".join(
+            f"{e['term']} -> {e['replacement']}" if e.get('replacement') else e['term']
+            for e in dictionary_entries
+        )
+        glossary_section = (
+            f"\nPriority glossary — automatically correct phonetic errors using this list: {terms}\n"
+        )
+    else:
+        glossary_section = (
+            "\nNo glossary provided: identify and unify proper nouns and technical terms on your own.\n"
+        )
+
+    base_instructions = (
+        "Correction rules:\n\n"
+        "SPELLING & GRAMMAR: Fix obvious mistakes, agreements and conjugations, without rephrasing.\n\n"
+        "PARAGRAPH LAYOUT — THIS IS CRITICAL FOR READABILITY:\n"
+        "- You MUST insert blank lines (two newlines) to separate paragraphs\n"
+        "- Create a new paragraph every 3-5 sentences, or whenever the topic shifts\n"
+        "- If there are multiple speakers, ALWAYS start a new paragraph for each speaker turn\n"
+        "- The output must be airy and pleasant to read, NOT a single wall of text\n"
+        "- Add proper punctuation: periods, commas, question marks, capitalize sentence starts\n\n"
+        "CLEANUP — THIS IS CRITICAL:\n"
+        "- Remove ALL filler words and hesitations: 'euh', 'hum', 'ben', 'uh', 'um', 'like', 'you know', 'I mean', 'so yeah', 'right'\n"
+        "- Remove ALL backchanneling and listener feedback when repeated or meaningless: "
+        "'Yeah. Yeah. Yeah.', 'Mm. Mm.', 'OK. OK.', 'Right. Right.', 'Uh-huh.' — "
+        "Keep ONLY ONE instance if it carries meaning (e.g. an actual agreement), remove the rest entirely\n"
+        "- Remove stuttering and involuntary repetitions: 'the the', 'I I I', 'we we'\n"
+        "- Remove meaningless interjections at the start of sentences when they add nothing\n"
+        "- Preserve natural character: keep intentional repetitions for emphasis\n\n"
+        f"{glossary_section}\n"
+        "UNCERTAIN WORDS: If a word or passage is doubtful or incomplete, write [word?] "
+        "(or [word-?] if partially audible) instead of guessing.\n\n"
+        "STYLE PROTECTION:\n"
+        "- DO NOT rephrase: Keep the speaker's phrasing, register (casual, professional, technical) "
+        "and any jokes or metaphors.\n"
+        "- DO NOT summarize: Every idea or piece of information must remain.\n"
+        "- PRESERVE the oral rhythm: Don't make the text academic. Punctuation should follow the speaker's flow.\n\n"
+        "STRUCTURE:\n"
+        "- If multiple speakers are present, show their names or roles in bold before each speaker turn, "
+        "and start a new paragraph (blank line) for each turn.\n"
+        "- Use em dashes for dialogue, if applicable.\n\n"
+        "OUTPUT FORMAT:\n"
+        "- Return ONLY the corrected text, no explanations, annotations or comments.\n"
+        "- No text outside the correction should appear.\n"
+        "- The text MUST contain paragraph breaks (blank lines between paragraphs).\n\n"
     )
 
-    result = await _call_ollama_text_async(system_prompt, user_prompt)
+    # Chunk long texts (~3000 chars per chunk, split on sentence boundaries)
+    CHUNK_SIZE = 3000
+    if len(raw_text) <= CHUNK_SIZE:
+        chunks = [raw_text]
+    else:
+        chunks = []
+        remaining = raw_text
+        while remaining:
+            if len(remaining) <= CHUNK_SIZE:
+                chunks.append(remaining)
+                break
+            # Find a sentence boundary near CHUNK_SIZE
+            cut = CHUNK_SIZE
+            for sep in ['. ', '? ', '! ', '\n', ', ']:
+                idx = remaining.rfind(sep, CHUNK_SIZE // 2, CHUNK_SIZE + 200)
+                if idx > 0:
+                    cut = idx + len(sep)
+                    break
+            chunks.append(remaining[:cut])
+            remaining = remaining[cut:]
+        logger.info(f"Polish: splitting {len(raw_text)} chars into {len(chunks)} chunks")
 
-    # Sanity check: if result is much shorter or contains "Error:", keep original
-    if len(result) < len(raw_text) * 0.5 or result.startswith("Error:"):
-        logger.warning("Polish result too short or error, keeping original text")
+    polished_parts = []
+    for i, chunk in enumerate(chunks):
+        chunk_label = f"(partie {i+1}/{len(chunks)}) " if len(chunks) > 1 else ""
+        user_prompt = (
+            f"{base_instructions}"
+            f"--- TRANSCRIPTION BRUTE {chunk_label}---\n{chunk}"
+        )
+        # num_predict: allow output roughly 1.5x input token count (chars/3 ≈ tokens)
+        estimated_tokens = max(2048, int(len(chunk) / 2))
+        result = await _call_ollama_text_async(system_prompt, user_prompt, num_predict=estimated_tokens)
+
+        if result.startswith("Error:"):
+            logger.warning(f"Polish chunk {i+1} error: {result}, using raw chunk")
+            polished_parts.append(chunk)
+        elif len(result) < len(chunk) * 0.3:
+            logger.warning(f"Polish chunk {i+1} too short ({len(result)} vs {len(chunk)}), using raw chunk")
+            polished_parts.append(chunk)
+        else:
+            polished_parts.append(result.strip())
+
+    polished = "\n\n".join(polished_parts)
+
+    # Final sanity check
+    if len(polished) < len(raw_text) * 0.3:
+        logger.warning(f"Polish result too short overall ({len(polished)} vs {len(raw_text)}), keeping original")
         return raw_text
 
-    return result.strip()
+    return polished
 
 
 async def generate_chapters(transcription_id: str, db: AsyncSession) -> list:
-    """Generate chapters from transcript segments."""
+    """Generate chapters from the polished transcript text + segment timestamps."""
     result = await db.execute(select(Transcription).where(Transcription.id == transcription_id))
     transcription = result.scalar_one_or_none()
     if not transcription:
@@ -441,17 +709,35 @@ async def generate_chapters(transcription_id: str, db: AsyncSession) -> list:
     if chapters:
         return chapters
 
-    # Generate via LLM
-    segments_text = ""
-    for seg in (transcription.segments or []):
-        segments_text += f"[{seg['start']:.1f}s - {seg['end']:.1f}s] {seg['text']}\n"
+    # Build input: use polished text with timestamp markers from segments
+    # This ensures chapters are based on the cleaned text, not raw STT output
+    segments = transcription.segments or []
+    if segments:
+        # Combine timestamps with segment text for temporal context
+        segments_text = ""
+        for seg in segments:
+            segments_text += f"[{seg['start']:.1f}s - {seg['end']:.1f}s] {seg['text']}\n"
+        # Use polished text as primary + segments for timestamps
+        input_text = (
+            f"=== POLISHED TRANSCRIPT ===\n{transcription.text[:6000]}\n\n"
+            f"=== TIMESTAMPED SEGMENTS (for time references) ===\n{segments_text[:4000]}"
+        )
+    else:
+        input_text = transcription.text[:8000]
 
     prompt = (
-        "Analyze this timestamped transcript and divide it into logical chapters/sections. "
-        "Each chapter should have a title, start_time, end_time (in seconds), and a brief summary. "
+        "Analyze this transcript and divide it into logical chapters/sections based on topic changes.\n\n"
+        "Rules:\n"
+        "- Use the POLISHED TRANSCRIPT for content quality (titles, summaries)\n"
+        "- Use the TIMESTAMPED SEGMENTS to determine start_time and end_time of each chapter\n"
+        "- Each chapter needs: a clear descriptive title, start_time, end_time (in seconds), and a 1-2 sentence summary\n"
+        "- Create 3-8 chapters depending on content length and topic variety\n"
+        "- Titles should be concise and informative, not generic\n"
+        "- Summaries should capture the key point of that section\n"
+        "- Adapt language to match the transcript language\n\n"
         "Return valid JSON: {\"chapters\": [{\"title\": \"...\", \"start_time\": 0.0, \"end_time\": 30.0, \"summary\": \"...\"}]}"
     )
-    content = await _call_ollama_async(prompt, segments_text[:8000])
+    content = await _call_ollama_async(prompt, input_text)
 
     chapter_data = content.get("chapters", [])
     result_chapters = []

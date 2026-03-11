@@ -4,9 +4,16 @@ import { Plus, Trash2, Edit3, Save, X, FileText } from 'lucide-react';
 import axios from 'axios';
 import { Template } from '../types';
 
-const ANALYSIS_TYPES = [
-  'summary', 'keypoints', 'actions', 'flashcards',
-  'quiz', 'mindmap', 'slides', 'infographic', 'tables'
+const ANALYSIS_TYPES: { value: string; label: string }[] = [
+  { value: 'summary', label: 'Résumé' },
+  { value: 'keypoints', label: 'Points clés' },
+  { value: 'actions', label: 'Plan d\'actions' },
+  { value: 'flashcards', label: 'Fiches de révision' },
+  { value: 'quiz', label: 'Quiz' },
+  { value: 'mindmap', label: 'Carte mentale' },
+  { value: 'slides', label: 'Diapositives' },
+  { value: 'infographic', label: 'Infographie' },
+  { value: 'tables', label: 'Tableaux' },
 ];
 
 function TemplatesPage() {
@@ -48,7 +55,7 @@ function TemplatesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this template?')) return;
+    if (!confirm('Supprimer ce modèle ?')) return;
     await axios.delete(`/api/templates/${id}`);
     fetchTemplates();
   };
@@ -60,14 +67,14 @@ function TemplatesPage() {
     >
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Instruction Templates</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Save and reuse custom analysis prompts</p>
+          <h1 className="text-3xl font-bold">Modèles d'instructions</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Sauvegardez et réutilisez vos consignes d'analyse personnalisées</p>
         </div>
         <button
           onClick={() => { setShowForm(true); setEditing(null); setForm({ name: '', type: 'summary', instructions: '' }); }}
           className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-indigo-500/25 hover:shadow-xl transition-all"
         >
-          <Plus className="w-4 h-4" /> New Template
+          <Plus className="w-4 h-4" /> Nouveau modèle
         </button>
       </div>
 
@@ -78,40 +85,40 @@ function TemplatesPage() {
           className="mb-8 p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm"
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">{editing ? 'Edit Template' : 'New Template'}</h3>
+            <h3 className="font-semibold">{editing ? 'Modifier le modèle' : 'Nouveau modèle'}</h3>
             <button onClick={() => { setShowForm(false); setEditing(null); }} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
               <X className="w-4 h-4" />
             </button>
           </div>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
+              <label className="block text-sm font-medium mb-1">Nom</label>
               <input
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g., Detailed Meeting Notes"
+                placeholder="Ex : Notes de réunion détaillées"
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Analysis Type</label>
+              <label className="block text-sm font-medium mb-1">Type d'analyse</label>
               <select
                 value={form.type}
                 onChange={e => setForm({ ...form, type: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
               >
                 {ANALYSIS_TYPES.map(t => (
-                  <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                  <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Custom Instructions</label>
+              <label className="block text-sm font-medium mb-1">Instructions personnalisées</label>
               <textarea
                 value={form.instructions}
                 onChange={e => setForm({ ...form, instructions: e.target.value })}
                 rows={4}
-                placeholder="e.g., Focus on action items and deadlines. Use bullet points. Include responsible persons."
+                placeholder="Ex : Se concentrer sur les actions et les échéances. Utiliser des puces. Inclure les responsables."
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none"
               />
             </div>
@@ -120,7 +127,7 @@ function TemplatesPage() {
               disabled={!form.name || !form.instructions}
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors disabled:opacity-40"
             >
-              <Save className="w-4 h-4" /> {editing ? 'Update' : 'Save'} Template
+              <Save className="w-4 h-4" /> {editing ? 'Mettre à jour' : 'Enregistrer'}
             </button>
           </div>
         </motion.div>
@@ -138,8 +145,8 @@ function TemplatesPage() {
           <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
             <FileText className="w-10 h-10 text-slate-300 dark:text-slate-600" />
           </div>
-          <h3 className="text-xl font-semibold mb-2">No templates yet</h3>
-          <p className="text-slate-500 mb-4">Create reusable instruction templates for your analyses</p>
+          <h3 className="text-xl font-semibold mb-2">Aucun modèle</h3>
+          <p className="text-slate-500 mb-4">Créez des modèles d'instructions réutilisables pour vos analyses</p>
         </div>
       ) : (
         <div className="space-y-3">

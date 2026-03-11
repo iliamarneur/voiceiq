@@ -35,6 +35,7 @@ function QuotaAlertBanner() {
   if (visible.length === 0) return null;
 
   const minutesRemaining = alertsData?.minutes_remaining ?? 0;
+  const noSubscription = (alertsData?.minutes_included ?? 0) === 0 && minutesRemaining === 0;
 
   return (
     <div className="fixed bottom-4 right-4 z-50 space-y-2 max-w-sm">
@@ -59,31 +60,30 @@ function QuotaAlertBanner() {
             )}
             <div className="flex-1">
               <p className="text-sm font-medium">
-                {alert.level === 'blocked'
+                {alert.message || (alert.level === 'blocked'
                   ? 'Quota épuisé. Vos transcriptions sont en pause.'
                   : alert.level === 'critical'
                   ? `Plus que ${minutesRemaining} minutes. Rechargez pour continuer.`
-                  : `${minutesRemaining} minutes restantes sur votre forfait.`
-                }
+                  : `${minutesRemaining} minutes restantes sur votre forfait.`)}
               </p>
               <div className="mt-2 flex gap-2">
                 {alert.level === 'warning' ? (
                   <Link
-                    to="/plans"
+                    to="/app/plans"
                     className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 transition-colors"
                   >
                     <ShoppingCart className="w-3 h-3" /> Ajouter des minutes
                   </Link>
                 ) : (
                   <Link
-                    to="/plans"
+                    to="/app/plans"
                     className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 transition-colors font-semibold"
                   >
-                    <ShoppingCart className="w-3 h-3" /> Recharger maintenant
+                    <ShoppingCart className="w-3 h-3" /> {noSubscription ? 'Choisir un plan' : 'Recharger maintenant'}
                   </Link>
                 )}
                 <Link
-                  to="/plans"
+                  to="/app/plans"
                   className="inline-flex items-center gap-1 text-xs px-3 py-1.5 text-white/60 hover:text-white/80 transition-colors"
                 >
                   Voir les plans

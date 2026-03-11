@@ -71,7 +71,7 @@ function MinutesEstimate({ files }: MinutesEstimateProps) {
             <span>Il manque {estimatedMinutes - totalAvailable} minutes pour traiter ce fichier.</span>
           </div>
           <Link
-            to="/plans"
+            to="/app/plans"
             className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors font-medium whitespace-nowrap"
           >
             <ShoppingCart className="w-3 h-3" /> Ajouter des minutes

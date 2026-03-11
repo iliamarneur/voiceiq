@@ -10,10 +10,10 @@ interface PlanFeatures {
 }
 
 const DEFAULT: PlanFeatures = {
-  plan_id: 'free',
-  features: ['transcription', 'summary', 'keypoints'],
-  max_dictionaries: 3,
-  max_workspaces: 1,
+  plan_id: '',
+  features: [],
+  max_dictionaries: 0,
+  max_workspaces: 0,
 };
 
 export function usePlanFeatures() {

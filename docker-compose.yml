@@ -9,6 +9,7 @@ services:
       - OLLAMA_HOST=http://host.docker.internal:11434
       - OLLAMA_MODEL=llama3.2:latest
     volumes:
+      - clearrecap-data:/app/data
       - clearrecap-uploads:/app/uploads
       - clearrecap-exports:/app/exports
     ports:
@@ -28,5 +29,6 @@ services:
       - backend
 
 volumes:
+  clearrecap-data:
   clearrecap-uploads:
   clearrecap-exports:

@@ -56,7 +56,7 @@ status: "published"
 
 # ClearRecap vs HappyScribe : Comparatif Complet 2026
 
-Un avocat parisien m'a posé cette question en décembre dernier, lors d'un café : « Je paie 290 euros par mois chez HappyScribe. C'est bien, ça marche. Mais mon associée est convaincue qu'on envoie nos consultations clients sur des serveurs aux Pays-Bas. Elle a raison ? »
+La question se pose de plus en plus dans les cabinets : « On paie pour un service de transcription cloud, ça fonctionne, mais où vont réellement nos données ? » La réponse dépend entièrement de l'architecture du service utilisé.
 
 Oui. Elle avait raison.
 

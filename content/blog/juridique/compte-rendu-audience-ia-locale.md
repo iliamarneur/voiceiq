@@ -155,7 +155,7 @@ Le profil juridique de ClearRecap est sorti en bêta en septembre 2025. Voici ce
 
 **Surprise positive :** le gain de temps sur les notes de réunion client (pas uniquement les audiences) a été le premier bénéfice perçu. Un rendez-vous client d'une heure génère un mémo structuré en 90 secondes. Plusieurs avocats ont spontanément élargi leur usage au-delà des audiences.
 
-**Difficulté récurrente :** le vocabulaire métier varie énormément selon la spécialité. Un avocat en droit social n'utilise pas les mêmes termes qu'un pénaliste ou un fiscaliste. Le dictionnaire généraliste juridique couvre 80 % des besoins, mais les 20 % restants nécessitent un enrichissement par spécialité. Nous avons créé des sous-profils (droit social, pénal, commercial, immobilier) pour affiner la correction.
+**Difficulté récurrente :** le vocabulaire métier varie énormément selon la spécialité. Un avocat en droit social n'utilise pas les mêmes termes qu'un pénaliste ou un fiscaliste. Le dictionnaire généraliste juridique couvre 80 % des besoins, mais les 20 % restants nécessitent un enrichissement par spécialité. ClearRecap permet de créer des sous-profils (droit social, pénal, commercial, immobilier) pour affiner la correction.
 
 **Demande inattendue :** plusieurs cabinets ont demandé une fonction de comparaison entre le CR d'audience et les écritures déposées. L'objectif : vérifier que tous les arguments des conclusions ont bien été développés oralement, et identifier les points adverses non anticipés dans les écritures. Cette fonctionnalité est en développement — elle repose sur un matching sémantique entre deux documents, ce qui est un usage naturel du LLM.
 

@@ -56,7 +56,7 @@ status: "published"
 
 # Transcription Juridique : Confidentialité et Secret Professionnel
 
-Un avocat pénaliste m'a posé cette question lors d'un salon professionnel en novembre dernier : "Est-ce que je risque la radiation si j'utilise un outil de transcription cloud pour dicter mes conclusions ?" La réponse courte : potentiellement oui. La réponse longue, c'est cet article.
+La question revient souvent chez les avocats : « Est-ce que je risque une sanction disciplinaire si j'utilise un outil de transcription cloud pour dicter mes conclusions ? » La réponse courte : potentiellement oui. La réponse longue, c'est cet article.
 
 Le secret professionnel de l'avocat n'est pas une option. Ce n'est pas une bonne pratique. C'est un devoir absolu, d'ordre public, sanctionné pénalement. Et les outils numériques que nous utilisons chaque jour le mettent à rude épreuve — souvent sans que les avocats en aient pleinement conscience.
 

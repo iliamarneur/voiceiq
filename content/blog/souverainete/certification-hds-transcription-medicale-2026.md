@@ -163,7 +163,7 @@ Le praticien installe un logiciel de transcription sur son poste de travail ou s
 
 ### Comment nous avons validé cette approche
 
-Quand j'ai présenté cette architecture à un avocat spécialisé en droit de la santé numérique début 2025, sa première réaction a été le scepticisme. "Vous jouez sur les mots." Non. Nous jouons sur l'architecture.
+Une objection fréquente face à cette architecture : « Vous jouez sur les mots. » Non. C'est une question d'architecture. Si aucune donnée de santé ne quitte l'infrastructure du client, l'hébergeur n'a pas accès aux données — et la certification HDS ne s'applique pas au même périmètre.
 
 La distinction est technique et juridique. Dans un modèle SaaS, les données quittent le contrôle du professionnel de santé pour être traitées par un tiers. Dans un modèle local, le logiciel est un outil — comme un stéthoscope ou un tensiomètre. L'outil est chez le médecin. Les données restent chez le médecin.
 

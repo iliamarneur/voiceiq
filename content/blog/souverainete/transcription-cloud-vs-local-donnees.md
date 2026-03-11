@@ -154,7 +154,7 @@ Avec un traitement local, la surface d'attaque se réduit drastiquement. Pas de 
 
 ### Le calcul de risque que font les DSI malins
 
-J'ai eu cette conversation avec un DSI d'un groupe industriel. Il m'a dit : "Je sais que le cloud est pratique. Mais quand je fais l'analyse de risques pour mon RSSI, un outil local c'est une ligne dans le registre. Un outil cloud, c'est douze lignes avec autant de mesures compensatoires."
+L'argument revient souvent chez les DSI : un outil local, c'est une ligne dans le registre des traitements. Un outil cloud, c'est douze lignes avec autant de mesures compensatoires. En termes de charge de conformité, le local simplifie considérablement l'analyse de risques.
 
 Ce n'est pas une question de technophobie. C'est un calcul rationnel. Le coût de conformité d'un outil cloud — contrat de sous-traitance, AIPD, vérification des sous-traitants, audit annuel, gestion des incidents — dépasse souvent le coût de l'outil lui-même. Un outil local qui tourne sur les postes existants a un coût de conformité marginal.
 

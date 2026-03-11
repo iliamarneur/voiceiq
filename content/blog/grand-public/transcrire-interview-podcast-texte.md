@@ -197,7 +197,7 @@ Une fois le texte en main, les possibilités sont larges :
 - **Sous-titres** : si vous publiez l'interview en vidéo, le texte horodaté sert de base pour [générer des sous-titres](/blog/transcrire-video-youtube-sous-titres)
 - **Base documentaire** : constituez un fonds d'archives consultable par mot-clé
 
-Un journaliste m'a raconté avoir retrouvé, six mois après, une citation précise dans une interview ancienne grâce à une simple recherche dans le texte. En audio, il aurait dû réécouter l'intégralité de l'enregistrement.
+Un avantage souvent sous-estimé : retrouver une citation précise dans une interview ancienne grâce à une simple recherche dans le texte. En audio, il faudrait réécouter l'intégralité de l'enregistrement.
 
 ## Pour résumer
 

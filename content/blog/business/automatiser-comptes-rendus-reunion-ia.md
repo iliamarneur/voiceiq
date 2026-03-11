@@ -58,17 +58,15 @@ status: "published"
 
 37 % du temps passé en réunion est considéré comme improductif par les cadres français. Ce chiffre vient du baromètre Wisembly/IFOP 2024. Mais il y a pire que la réunion elle-même : c'est ce qui vient après. Rédiger le compte rendu.
 
-Je vais vous raconter comment j'ai perdu un client potentiel à cause d'un CR de réunion. En 2024, avant ClearRecap, je sortais d'un appel commercial de 45 minutes avec un prospect prometteur. J'ai noté trois points clés sur un post-it. Le lendemain, quand j'ai voulu envoyer le récapitulatif, impossible de me souvenir du quatrième engagement que j'avais pris. J'ai envoyé un CR incomplet. Le prospect a choisi un concurrent "plus organisé". Ce jour-là, j'ai décidé que plus jamais une information ne se perdrait entre la fin d'une réunion et la rédaction du CR.
-
-C'est de cette frustration qu'est née la fonctionnalité de compte rendu réunion IA de ClearRecap. Pas d'une étude de marché. D'un post-it insuffisant.
+Le scénario est classique : une réunion de 45 minutes, trois points notés sur un post-it, et le lendemain, impossible de retrouver le quatrième engagement pris. Le CR part incomplet, et le prospect choisit un concurrent « plus organisé ». C'est exactement le type de situation que la fonctionnalité de compte rendu automatique de ClearRecap est conçue pour éliminer : capturer 100 % de ce qui se dit, sans dépendre de la mémoire humaine.
 
 ## Pourquoi les outils existants ne résolvent pas le problème
 
-Avant de construire notre propre solution, j'ai testé tout ce qui existait. Otter.ai, Fireflies, Tactiq, Krisp, les fonctions natives de Teams et Meet. Le constat est sans appel sur trois points.
+Les solutions existantes — Otter.ai, Fireflies, Tactiq, Krisp, les fonctions natives de Teams et Meet — posent trois problèmes récurrents.
 
 ### Le problème de la confidentialité
 
-Toutes ces solutions cloud envoient l'audio de vos réunions sur des serveurs distants. Quand votre comité de direction discute d'un plan social, d'une acquisition confidentielle ou des résultats trimestriels non publiés, ces informations transitent par des serveurs que vous ne contrôlez pas. Un DSI m'a confié : "J'ai interdit Otter.ai après avoir découvert que trois managers l'utilisaient pendant les réunions du board. L'audio de notre stratégie 2025 était sur des serveurs californiens."
+Toutes ces solutions cloud envoient l'audio de vos réunions sur des serveurs distants. Quand votre comité de direction discute d'un plan social, d'une acquisition confidentielle ou des résultats trimestriels non publiés, ces informations transitent par des serveurs que vous ne contrôlez pas. C'est un risque réel : l'audio d'un comité de direction discutant d'une acquisition ou de résultats non publiés peut se retrouver sur des serveurs soumis au CLOUD Act, sans que l'entreprise en ait conscience.
 
 Pour approfondir les risques juridiques, notre [guide sur la transcription cloud vs locale](/blog/transcription-cloud-vs-local-donnees) détaille exactement où vont vos données avec chaque type de solution.
 
@@ -88,11 +86,11 @@ Notre approche est un pipeline en trois étapes, entièrement local. Rien ne sor
 
 ClearRecap capture l'audio système (sortie casque ou haut-parleur) et/ou le micro. Pour une réunion en présentiel, un micro de conférence USB suffit. Pour une visio Teams/Zoom/Meet, ClearRecap intercepte le flux audio directement — pas besoin de "bot" qui rejoint la réunion et met mal à l'aise les participants.
 
-La transcription utilise Whisper v3-large en local. Sur notre machine de dev (RTX 5090), une réunion d'une heure est transcrite en moins de 2 minutes. Sur un laptop avec RTX 4060 (8 Go VRAM), comptez 5 minutes. Pendant ce temps, vous prenez votre café.
+La transcription utilise Whisper v3-large en local. Sur une machine équipée d'une RTX 5090, une réunion d'une heure est transcrite en moins de 2 minutes. Sur un laptop avec RTX 4060 (8 Go VRAM), comptez 5 minutes. Pendant ce temps, vous prenez votre café.
 
 La diarization (identification des locuteurs) tourne en parallèle via pyannote.audio. Sur une réunion à 6 participants, le taux d'attribution correcte est de 87 % en conditions réelles (micro de conférence Jabra Speak 510 au centre de la table). Il monte à 93 % si chaque participant a son propre micro (casque ou micro-cravate).
 
-Un point important que nous avons appris pendant le développement : la qualité du CR final dépend à 70 % de la qualité audio d'entrée. Pas du modèle IA. Pas du prompt. Du micro. Un bon micro de conférence à 150 euros améliore plus la qualité du CR qu'un GPU deux fois plus puissant.
+Un point important : la qualité du CR final dépend en grande partie de la qualité audio d'entrée. Pas du modèle IA. Pas du prompt. Du micro. Un bon micro de conférence à 150 euros améliore plus la qualité du CR qu'un GPU deux fois plus puissant.
 
 ![Configuration type pour une réunion : micro Jabra, laptop avec ClearRecap, participants](https://clearrecap.com/blog/images/setup-reunion-clearrecap.png)
 *Setup recommandé pour capturer une réunion en présentiel avec ClearRecap*
@@ -105,7 +103,7 @@ Une fois la transcription brute obtenue, un LLM local (Mistral 8B, quantifié Q5
 
 **Les actions assignées.** "Pierre, tu t'en charges pour vendredi" produit une action avec un responsable (Pierre), une description (le sujet en cours de discussion), et une échéance (vendredi). Quand l'assignation est implicite ("il faudrait que quelqu'un regarde ça"), le modèle le signale comme action non assignée.
 
-**Les points de désaccord.** C'est une fonctionnalité que j'ai ajoutée après avoir réalisé que les CR classiques les gommaient. Quand deux participants s'opposent sur un point, le CR doit le refléter. "Marc propose d'augmenter le budget, Sophie estime que c'est prématuré, la décision est reportée." Un CR qui lisse les désaccords est un CR dangereux.
+**Les points de désaccord.** Les CR classiques ont tendance à les gommer. Quand deux participants s'opposent sur un point, le CR doit le refléter. « Marc propose d'augmenter le budget, Sophie estime que c'est prématuré, la décision est reportée. » Un CR qui lisse les désaccords est un CR dangereux.
 
 **Les questions restées ouvertes.** "On reviendra là-dessus la prochaine fois" ou "il faut qu'on vérifie ce chiffre" génèrent une entrée dans la section "Questions ouvertes". Ce sont les points qui, sans suivi, disparaissent entre deux réunions.
 
@@ -165,7 +163,7 @@ Hypothèse basse : 15 minutes par CR, 6 réunions = 90 minutes par semaine de r�
 
 ClearRecap automatise ce processus. Le temps résiduel — lancer la capture, relire le CR, corriger les éventuelles erreurs — tombe à 5 minutes par réunion. Gain : 60 heures par manager et par an. Soit 3 900 euros par an par personne.
 
-Le prix de ClearRecap ? Consultez notre [page tarifs](/pricing). Je vous laisse faire le calcul du retour sur investissement. Il se compte en semaines, pas en mois.
+Le prix de ClearRecap ? Consultez la [page tarifs](/pricing). Le retour sur investissement se compte en semaines, pas en mois.
 
 ### Et si on comparait avec Otter.ai ou Fireflies ?
 
@@ -179,7 +177,7 @@ Au-delà du CR classique, l'automatisation ouvre des usages auxquels on ne pense
 
 Le vrai problème des réunions, ce n'est pas de prendre des décisions. C'est de s'assurer qu'elles sont exécutées. ClearRecap exporte les actions en JSON. Un script de 20 lignes en Python peut comparer les actions de la réunion N avec celles de la réunion N-1 et identifier : les actions terminées, les actions en retard, les actions qui ont disparu (décidées mais jamais suivies).
 
-Nous utilisons ce mécanisme en interne chez ClearRecap. Chaque lundi matin, avant notre standup, un script génère un rapport des actions de la semaine précédente. "3 actions terminées, 1 en retard (migration base de données — responsable : Ilia — deadline dépassée de 2 jours), 1 sans mise à jour." C'est un changement radical dans notre rigueur de suivi.
+Ce mécanisme peut être automatisé : chaque lundi matin, un script génère un rapport des actions de la semaine précédente. « 3 actions terminées, 1 en retard (migration base de données — deadline dépassée de 2 jours), 1 sans mise à jour. » Un suivi automatique qui change radicalement la rigueur d'exécution.
 
 ### L'onboarding accéléré
 
@@ -217,7 +215,7 @@ La capture audio système fonctionne sous Windows (WASAPI loopback) et macOS (Bl
 
 ## Ce qui arrive dans les prochaines versions
 
-Deux fonctionnalités sur notre feuille de route qui répondent directement aux retours de nos tests.
+Deux fonctionnalités prévues sur la feuille de route.
 
 La première : la détection de langue en temps réel. Pour les réunions bilingues français-anglais (très courantes dans les entreprises internationales basées en France), Whisper peut déjà transcrire les deux langues. Mais le CR final mélange les langues de manière peu lisible. Nous travaillons sur une séparation propre : les passages en anglais transcrits en anglais, avec une traduction française en regard.
 

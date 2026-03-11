@@ -58,7 +58,7 @@ status: "published"
 
 **472 000 euros.** C'est l'amende moyenne infligée par la CNIL en 2025 pour traitement non conforme de données personnelles. Parmi les dossiers sanctionnés, trois concernaient directement des fichiers audio contenant des données de santé, envoyés vers des serveurs américains sans base légale valide. Le responsable de traitement dans chaque cas ? Pas le prestataire cloud. L'entreprise utilisatrice.
 
-Quand on me demande pourquoi j'ai décidé de bâtir ClearRecap autour du traitement 100 % local, je raconte souvent cette histoire. Un DPO d'un groupe hospitalier m'a contacté en panique fin 2024 : son service utilisait un outil de transcription "gratuit" en ligne depuis huit mois. Personne n'avait lu les CGU. Les fichiers audio des consultations partaient sur des serveurs à San José. Le DPO venait de recevoir une plainte d'un patient.
+Le traitement 100 % local n'est pas un choix anodin. Le scénario suivant est courant : un service hospitalier utilise un outil de transcription « gratuit » en ligne pendant des mois sans que personne ne lise les CGU. Les fichiers audio des consultations partent sur des serveurs à l'étranger. Le jour où un patient dépose une plainte ou que le DPO audite les flux de données, c'est la panique.
 
 ![Illustration : parcours d'un fichier audio entre un poste utilisateur et un serveur cloud distant, avec les points de vulnérabilité RGPD](https://clearrecap.com/blog/images/transcription-audio-rgpd-parcours-donnees.png)
 *Parcours type d'un fichier audio envoyé vers un service cloud de transcription*

@@ -240,7 +240,7 @@ Otter.ai est un excellent produit pour le marché nord-américain anglophone. Sa
 
 Vos réunions contiennent des informations confidentielles (stratégie, RH, juridique, médical, finance). Vous travaillez en français ou en multilingue. Le RGPD est une contrainte réelle, pas théorique. Vous refusez que vos données transitent par des serveurs étrangers. Vous voulez un coût prévisible sans facturation à la minute. Vous avez les compétences techniques (ou l'accès à quelqu'un qui les a) pour gérer un déploiement Docker.
 
-Un cas concret qui résume bien : un DPO (Data Protection Officer) d'un groupe industriel français m'a contacté après avoir audité l'utilisation d'Otter.ai dans son entreprise. 47 collaborateurs utilisaient Otter.ai avec des comptes personnels, sans validation IT ni juridique. Les transcriptions de comités de direction stratégiques étaient stockées sur des comptes Otter.ai gratuits, sans DPA, sans évaluation d'impact. La migration vers ClearRecap a été décidée en 48 heures.
+Un scénario fréquent en entreprise : des dizaines de collaborateurs utilisent un service comme Otter.ai avec des comptes personnels, sans validation IT ni juridique. Les transcriptions de réunions stratégiques se retrouvent sur des comptes gratuits, sans DPA, sans évaluation d'impact. C'est exactement le type de situation où une solution locale élimine le risque à la racine.
 
 ### Le scénario hybride
 

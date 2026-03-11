@@ -109,7 +109,7 @@ Piège fréquent : [erreur courante identifiée]
 À retenir : [formule / date / nom propre clé]
 ```
 
-Le résultat sur un cours de droit constitutionnel de 75 minutes : 23 fiches générées en 4 minutes sur un GPU RTX 3060 (12 Go VRAM). Un étudiant de L1 qui a testé m'a dit : « C'est mieux que mes fiches, et j'ai passé 6 heures à les faire. » Je ne sais pas si je dois être fier ou un peu triste pour lui.
+Le résultat sur un cours de droit constitutionnel de 75 minutes : 23 fiches générées en 4 minutes sur un GPU RTX 3060 (12 Go VRAM). Le gain de temps est considérable par rapport à la rédaction manuelle de fiches, qui peut prendre plusieurs heures pour un seul cours.
 
 ## Les quiz automatiques : de la transcription au contrôle de connaissances
 

@@ -36,6 +36,22 @@ export function useAuth() {
 
 const REFRESH_KEY = 'clearrecap_refresh_token';
 
+// Migrate from old localStorage keys (voiceiq_* → clearrecap_*)
+(() => {
+  try {
+    const oldToken = localStorage.getItem('voiceiq_token');
+    const oldRefresh = localStorage.getItem('voiceiq_refresh_token');
+    if (oldToken && !localStorage.getItem('clearrecap_token')) {
+      localStorage.setItem('clearrecap_token', oldToken);
+    }
+    if (oldRefresh && !localStorage.getItem(REFRESH_KEY)) {
+      localStorage.setItem(REFRESH_KEY, oldRefresh);
+    }
+    localStorage.removeItem('voiceiq_token');
+    localStorage.removeItem('voiceiq_refresh_token');
+  } catch {}
+})();
+
 // Set up axios interceptor for Bearer token
 function setupAxiosAuth(token: string | null) {
   if (token) {

@@ -17,61 +17,64 @@
 |----------|-------|--------|
 | A: Souscription PME | 7/7 | PASS (revue code) |
 | B: One-shot | 5/5 | PASS (revue code) |
-| C: Usage & packs | 5/5 | PASS (revue code) |
+| C: Usage & quotas | 5/5 | PASS (revue code) |
 
 ## 2. Tests unitaires a ajouter
 
 ### test_subscription_service.py (nouveau)
 ```python
 class TestSubscriptionService:
-    async def test_seed_plans_creates_4_plans(self, db):
-        """Verifier que seed_plans() cree free, basic, pro, team"""
+    async def test_seed_plans_creates_3_plans(self, db):
+        """Verifier que seed_plans() cree basic, pro, team"""
 
-    async def test_get_or_create_subscription_default_free(self, db):
-        """Nouveau user recoit le plan gratuit avec 60 min"""
+    async def test_get_subscription_no_subscription(self, db):
+        """Nouveau user sans abonnement, redirect vers /app/plans"""
 
     async def test_consume_minutes_from_plan_first(self, db):
         """Minutes du plan consommees avant les extras"""
 
-    async def test_consume_minutes_overflow_to_extra(self, db):
-        """Quand plan epuise, extra consommes"""
-
     async def test_consume_minutes_fails_when_none_available(self, db):
-        """Erreur si aucune minute disponible"""
+        """Erreur si aucune minute disponible (quota insuffisant)"""
 
     async def test_monthly_reset_clears_plan_minutes(self, db):
         """Reset mensuel remet minutes_used a 0"""
 
-    async def test_monthly_reset_preserves_extra_minutes(self, db):
-        """Reset mensuel ne touche pas extra_minutes"""
-
     async def test_change_plan_updates_subscription(self, db):
         """Changement de plan modifie plan_id et minutes"""
 
-    async def test_add_extra_minutes_pack_s(self, db):
-        """Achat pack S ajoute 100 minutes extra"""
+    async def test_create_subscription_basic(self, db):
+        """Souscription Basic donne 500 minutes"""
 
-    async def test_add_extra_minutes_pack_m(self, db):
-        """Achat pack M ajoute 500 minutes extra"""
+    async def test_create_subscription_pro(self, db):
+        """Souscription Pro donne 3000 minutes"""
 
-    async def test_add_extra_minutes_pack_l(self, db):
-        """Achat pack L ajoute 2000 minutes extra"""
+    async def test_create_subscription_team(self, db):
+        """Souscription Équipe+ donne 10000 minutes"""
 ```
 
 ### test_oneshot_service.py (nouveau)
 ```python
 class TestOneshotService:
-    async def test_estimate_tier_s_under_30min(self, db):
-        """Audio < 30 min → tier S"""
+    async def test_estimate_tier_court_under_30min(self, db):
+        """Audio < 30 min → tier Court, 3 EUR"""
 
-    async def test_estimate_tier_m_under_60min(self, db):
-        """Audio 30-60 min → tier M"""
+    async def test_estimate_tier_standard_under_60min(self, db):
+        """Audio 30-60 min → tier Standard, 6 EUR"""
 
-    async def test_estimate_tier_l_under_90min(self, db):
-        """Audio 60-90 min → tier L"""
+    async def test_estimate_tier_long_under_90min(self, db):
+        """Audio 60-90 min → tier Long, 9 EUR"""
 
-    async def test_estimate_tier_over_90min_error(self, db):
-        """Audio > 90 min → erreur"""
+    async def test_estimate_tier_xlong_under_120min(self, db):
+        """Audio 90-120 min → tier XLong, 12 EUR"""
+
+    async def test_estimate_tier_xxlong_under_150min(self, db):
+        """Audio 120-150 min → tier XXLong, 15 EUR"""
+
+    async def test_estimate_tier_xxxlong_under_180min(self, db):
+        """Audio 150-180 min → tier XXXLong, 18 EUR"""
+
+    async def test_estimate_tier_over_180min_error(self, db):
+        """Audio > 180 min → erreur"""
 
     async def test_create_order_sets_pending(self, db):
         """Nouvelle commande en statut pending"""
@@ -101,16 +104,16 @@ class TestAlerts:
 ### test_api_subscription.py (nouveau)
 ```python
 class TestAPISubscription:
-    async def test_get_plans_returns_4_plans(self, client):
-        """GET /api/plans retourne 4 plans actifs"""
+    async def test_get_plans_returns_3_plans(self, client):
+        """GET /api/plans retourne 3 plans actifs"""
         resp = await client.get("/api/plans")
         assert resp.status_code == 200
-        assert len(resp.json()["plans"]) == 4
+        assert len(resp.json()["plans"]) == 3
 
-    async def test_get_subscription_default_free(self, client):
-        """GET /api/subscription retourne plan gratuit par defaut"""
+    async def test_get_subscription_no_subscription(self, client):
+        """GET /api/subscription retourne pas d'abonnement par defaut"""
         resp = await client.get("/api/subscription")
-        assert resp.json()["plan"]["id"] == "free"
+        assert resp.json()["subscription"] is None
 
     async def test_change_plan_to_pro(self, client):
         """PUT /api/subscription/plan change vers Pro"""
@@ -118,13 +121,6 @@ class TestAPISubscription:
         assert resp.status_code == 200
         sub = await client.get("/api/subscription")
         assert sub.json()["plan"]["id"] == "pro"
-
-    async def test_buy_extra_pack_m(self, client):
-        """POST /api/subscription/add-minutes ajoute 500 min"""
-        resp = await client.post("/api/subscription/add-minutes", json={"pack_id": "M"})
-        assert resp.status_code == 200
-        sub = await client.get("/api/subscription")
-        assert sub.json()["extra_minutes"] >= 500
 
     async def test_get_alerts_empty_when_low_usage(self, client):
         """GET /api/subscription/alerts vide si usage < 75%"""
@@ -137,15 +133,15 @@ class TestAPISubscription:
         assert "total_minutes" in resp.json()
         assert "by_source" in resp.json()
 
-    async def test_oneshot_estimate_tier_m(self, client):
-        """POST /api/oneshot/estimate pour 45 min → tier M"""
+    async def test_oneshot_estimate_tier_standard(self, client):
+        """POST /api/oneshot/estimate pour 45 min → tier Standard"""
         resp = await client.post("/api/oneshot/estimate", json={"duration_minutes": 45})
-        assert resp.json()["tier"] == "M"
-        assert resp.json()["price_cents"] == 400
+        assert resp.json()["tier"] == "Standard"
+        assert resp.json()["price_cents"] == 600
 
     async def test_oneshot_create_order(self, client):
         """POST /api/oneshot/order cree une commande"""
-        resp = await client.post("/api/oneshot/order", json={"tier": "M"})
+        resp = await client.post("/api/oneshot/order", json={"tier": "Standard"})
         assert resp.status_code == 200
         assert resp.json()["status"] == "paid"  # stub auto-valide
 ```
@@ -155,31 +151,29 @@ class TestAPISubscription:
 ### Scenario E2E-1 : Parcours complet PME (Marie)
 ```
 Etapes :
-1. GET /api/subscription → plan free, 60 min
-2. PUT /api/subscription/plan {"plan_id": "pro"} → Pro, 2000 min
+1. GET /api/subscription → pas d'abonnement, redirect vers /app/plans
+2. POST /api/subscription {"plan_id": "pro"} → Pro, 3000 min
 3. POST /api/upload (fichier 45 min, profil business)
 4. GET /api/jobs/{id} → wait for completion
-5. GET /api/subscription → minutes_used = 45, remaining = 1955
+5. GET /api/subscription → minutes_used = 45, remaining = 2955
 6. GET /api/usage/summary → total_minutes = 45, by_source.plan = 45
 7. GET /api/transcriptions/{id}/analyses → resume, keypoints, actions
 8. GET /api/transcriptions/{id}/export/pdf → PDF telecharge
-9. Repeter uploads jusqu'a 1500 min consommees
+9. Repeter uploads jusqu'a 2250 min consommees
 10. GET /api/subscription/alerts → warning a 75%
-11. POST /api/subscription/add-minutes {"pack_id": "M"} → +500 extra
-12. Continuer uploads → extras consommes apres plan
+11. Continuer uploads jusqu'a quota epuise
 
 Verification finale :
-- minutes_used = 2000 (plan epuise)
-- extra_minutes reduit de 500
+- minutes_used = 3000 (plan epuise)
 - usage_logs coherents avec chaque upload
 ```
 
 ### Scenario E2E-2 : Parcours One-shot (Julie)
 ```
 Etapes :
-1. GET /api/oneshot/tiers → 3 tiers affiches
-2. POST /api/oneshot/estimate {"duration_minutes": 55} → tier M, 4 EUR
-3. POST /api/oneshot/order {"tier": "M"} → order cree, status "paid"
+1. GET /api/oneshot/tiers → 6 tiers affiches
+2. POST /api/oneshot/estimate {"duration_minutes": 55} → tier Standard, 6 EUR
+3. POST /api/oneshot/order {"tier": "Standard"} → order cree, status "paid"
 4. POST /api/upload (fichier 55 min, lier a l'order)
 5. GET /api/jobs/{id} → completion
 6. PUT /api/oneshot/order/{id}/link {"transcription_id": X}
@@ -188,7 +182,7 @@ Etapes :
 
 Verification :
 - Order status = "completed"
-- Pas d'impact sur subscription (reste free)
+- Pas d'impact sur subscription (utilisateur sans abonnement)
 - UsageLog source = "oneshot"
 ```
 
@@ -214,8 +208,8 @@ Verification :
 |------|----------|----------|-------|
 | A — Tunnel one-shot | `/` → depot → estimation → paiement → `/processing/:jobId` → `/result/:id` | OK | Export PDF/TXT + copie texte fonctionnels, feedback erreur ajoute |
 | B — Upload App | `/app/upload` → estimation minutes → transcription → resultat | OK | MinutesEstimate + TranscriptionProgress integres |
-| C — Sidebar + gating | Navigation sidebar 4 sections, badges [Pro] sur Templates/Presets | OK | usePlanFeatures hook, fallback free |
-| D — PlansUsage | Plans (4 colonnes, Pro recommande), packs extra (badge Meilleur prix), one-shot tiers | OK | Labels features traduits, prix/min affiches |
+| C — Sidebar + gating | Navigation sidebar 4 sections, badges [Pro] sur Templates/Presets | OK | usePlanFeatures hook, redirect sans abo |
+| D — PlansUsage | Plans (3 colonnes, Pro recommande), one-shot 6 tiers | OK | Labels features traduits, prix/min affiches |
 | E — Preferences + RGPD | Save prefs, export JSON (Art. 20), delete compte (Art. 17, double confirm) | OK | Feedback erreur save ajoute |
 | F — Admin Dashboard | Stats (MRR, minutes, transcriptions, error rate), backends, queue, billing | OK | Auto-refresh 15s, accents corriges |
 
@@ -225,7 +219,7 @@ Verification :
 |---|----------|-------------|------------|
 | 1 | Moyenne | ~50+ chaines sans accents francais (e/a/u au lieu de é/à/ù) | Corrige dans 12 fichiers frontend |
 | 2 | Haute | RGPD DELETE supprime toutes les donnees (pas de filtre user_id) | Documente comme single-user + TODO |
-| 3 | Moyenne | One-shot accepte des fichiers > 90 min sans limite | HTTP 400 si duration > 5400s |
+| 3 | Moyenne | One-shot accepte des fichiers > 180 min sans limite | HTTP 400 si duration > 10800s |
 | 4 | Basse | Sessions anonymes jamais nettoyees | Tache periodique 1h dans lifespan |
 | 5 | Basse | Export TranscriptionResult echoue silencieusement | Banniere erreur + auto-dismiss 4s |
 | 6 | Basse | Save Preferences echoue silencieusement | Banniere erreur + auto-dismiss 4s |
@@ -270,19 +264,15 @@ npx vite dev                        # http://localhost:5173
 
 **Comptes de test** (via API, mode single-user) :
 ```bash
-# Compte Free (par défaut)
+# Compte sans abonnement (par défaut)
 curl http://localhost:8000/api/subscription
 
-# Passer en Pro
-curl -X PUT http://localhost:8000/api/subscription/plan \
+# Souscrire au Pro
+curl -X POST http://localhost:8000/api/subscription \
   -H "Content-Type: application/json" -d '{"plan_id":"pro"}'
 
-# Simuler usage élevé (75% de 2000 min = 1500 min)
+# Simuler usage élevé (75% de 3000 min = 2250 min)
 # → uploader des fichiers successivement ou modifier minutes_used en DB
-
-# Acheter un pack S
-curl -X POST http://localhost:8000/api/subscription/add-minutes \
-  -H "Content-Type: application/json" -d '{"pack":"S"}'
 ```
 
 ### Scénarios interactifs
@@ -305,23 +295,25 @@ curl -X POST http://localhost:8000/api/subscription/add-minutes \
 
 **Bug trouvé & corrigé** : double création d'order (POST /order puis POST /upload qui crée aussi un order). Corrigé : supprimé l'appel redondant à /order.
 
-#### Flow B — User Free → Upload → Transcription
+#### Flow B — User sans abonnement → Upload → Redirection plans
 
 | Étape | Action | Ce qu'on voit | Statut |
 |-------|--------|---------------|--------|
-| 1 | Ouvrir `http://localhost:5173/app` | Dashboard vide, sidebar avec jauge "Gratuit — 60 min" | OK |
-| 2 | Cliquer "Upload" dans sidebar | Page upload : zone dépôt, profils, priorité, preset, langue | OK |
-| 3 | Déposer un fichier | Fichier affiché, estimation minutes visible | OK |
-| 4 | Vérifier MinutesEstimate | "~X min estimées", "60 min disponibles", solde après | OK |
-| 5 | Cliquer "Transcrire" | Progress : uploading → transcribing → analyzing → done | OK (si Whisper) |
-| 6 | Vérifier résultat | Transcription + analyses affichées | OK |
-| 7 | Vérifier jauge sidebar | Minutes diminuées | OK (refresh nécessaire) |
+| 1 | Ouvrir `http://localhost:5173/app` | Dashboard vide, sidebar avec jauge "Aucun abonnement — Choisir un plan" | OK |
+| 2 | Cliquer "Upload" dans sidebar | Redirection vers /app/plans (abonnement requis) | OK |
+| 3 | Souscrire au plan Basic (19 EUR) | Confirmation, sidebar affiche "Basic — 500 min" | OK |
+| 4 | Cliquer "Upload" dans sidebar | Page upload : zone dépôt, profils, priorité, preset, langue | OK |
+| 5 | Déposer un fichier | Fichier affiché, estimation minutes visible | OK |
+| 6 | Vérifier MinutesEstimate | "~X min estimées", "500 min disponibles", solde après | OK |
+| 7 | Cliquer "Transcrire" | Progress : uploading → transcribing → analyzing → done | OK (si Whisper) |
+| 8 | Vérifier résultat | Transcription + analyses affichées | OK |
+| 9 | Vérifier jauge sidebar | Minutes diminuées | OK (refresh nécessaire) |
 
 #### Flow C — User Pro → Oneshot App
 
 | Étape | Action | Ce qu'on voit | Statut |
 |-------|--------|---------------|--------|
-| 1 | Ouvrir `/app/oneshot` | Grille 3 tiers (Court/Standard/Long), "Populaire" sur Standard | OK |
+| 1 | Ouvrir `/app/oneshot` | Grille 6 tiers (Court/Standard/Long/XLong/XXLong/XXXLong), "Populaire" sur Standard | OK |
 | 2 | Vérifier les accents | "Transcription à la demande", "déposez", "Récapitulatif" | OK (corrigé) |
 | 3 | Sélectionner profil "Business" | Bouton Business en indigo | OK |
 | 4 | Déposer un fichier | Taille en "Mo" (pas "MB"), durée estimée | OK (corrigé) |
@@ -338,13 +330,11 @@ curl -X POST http://localhost:8000/api/subscription/add-minutes \
 | 1 | Ouvrir `/app/plans` | Bannière plan actuel, jauge, stats usage | OK |
 | 2 | Changer de plan (ex: Basic → Pro) | Bouton "Choisir ce plan" → bannière mise à jour | OK |
 | 3 | Provoquer une erreur (ex: plan inexistant) | Bannière erreur inline, page reste visible | OK (corrigé) |
-| 4 | Acheter Pack S | Bouton "Acheter" → solde extra mis à jour | OK |
-| 5 | Provoquer erreur achat | Bannière erreur inline, page reste visible | OK (corrigé) |
-| 6 | Vérifier section One-shot | 3 tiers, CTA "Essayer" vers `/` | OK |
-| 7 | Vérifier badge "Meilleur prix" | Affiché sur Pack L | OK |
+| 4 | Vérifier section One-shot | 6 tiers, CTA "Essayer le one-shot dès 3 EUR" vers `/` | OK |
+| 5 | Provoquer erreur action | Bannière erreur inline, page reste visible | OK (corrigé) |
 | 8 | Vérifier badge "Recommandé" | Affiché sur plan Pro | OK |
 
-**Bug trouvé & corrigé** : erreur d'action (changePlan/buyExtraMinutes) effaçait toute la page au lieu d'afficher un bandeau inline. État error splitté en loadError/actionError.
+**Bug trouvé & corrigé** : erreur d'action (changePlan) effaçait toute la page au lieu d'afficher un bandeau inline. État error splitté en loadError/actionError.
 
 #### Flow E — Compte / RGPD
 
@@ -400,23 +390,25 @@ curl -X POST http://localhost:8000/api/subscription/add-minutes \
 
 ## 7. Scenarios de demo / tests manuels (Passe 4)
 
-### Scenario 1 : Utilisateur gratuit non tech
+### Scenario 1 : Nouvel inscrit sans abonnement
 
-**Pre-requis** : compte par defaut (plan Gratuit, 60 min), backend v7 demarre.
+**Pre-requis** : compte par defaut (pas d'abonnement), backend v7 demarre.
 
 | Etape | Action | Ce que je dois voir |
 |-------|--------|---------------------|
-| 1 | Ouvrir l'app, regarder la sidebar | Jauge "Gratuit — 60 min" en vert, barre pleine |
-| 2 | Cliquer "Upload" dans la sidebar | Page Upload avec zone de depot et selecteur de profil |
-| 3 | Deposer un fichier audio court (< 5 min) | Le fichier apparait dans la zone, taille affichee |
-| 4 | Verifier l'estimation de minutes | Bloc "Consommation estimee" : ~X min estimees, 60 min disponibles, solde apres en vert |
-| 5 | Cliquer "Transcribe & Analyze" | Ecran "Nous preparons vos resultats" : timeline 4 etapes, 3 bullets, reassurance confidentialite |
-| 6 | Attendre la fin | "C'est pret !" pendant 1.5s, puis redirection vers la transcription |
-| 7 | Verifier la page de resultat | Transcription texte affichee, onglets Resume / Points cles / Actions |
-| 8 | Revenir au dashboard | La transcription apparait dans la liste |
-| 9 | Verifier la jauge sidebar | Minutes restantes diminuees (ex: 55 min), barre toujours verte |
+| 1 | Ouvrir l'app, regarder la sidebar | Jauge "Aucun abonnement — Choisir un plan" |
+| 2 | Cliquer "Upload" dans la sidebar | Redirection vers /app/plans (abonnement requis) |
+| 3 | Souscrire au plan Basic (19 EUR/mois) | Confirmation, sidebar affiche "Basic — 500 min" |
+| 4 | Cliquer "Upload" dans la sidebar | Page Upload avec zone de depot et selecteur de profil |
+| 5 | Deposer un fichier audio court (< 5 min) | Le fichier apparait dans la zone, taille affichee |
+| 6 | Verifier l'estimation de minutes | Bloc "Consommation estimee" : ~X min estimees, 500 min disponibles, solde apres en vert |
+| 7 | Cliquer "Transcribe & Analyze" | Ecran "Nous preparons vos resultats" : timeline 4 etapes, 3 bullets, reassurance confidentialite |
+| 8 | Attendre la fin | "C'est pret !" pendant 1.5s, puis redirection vers la transcription |
+| 9 | Verifier la page de resultat | Transcription texte affichee, onglets Resume / Points cles / Actions |
+| 10 | Revenir au dashboard | La transcription apparait dans la liste |
+| 11 | Verifier la jauge sidebar | Minutes restantes diminuees (ex: 495 min), barre toujours verte |
 
-**Ce qui prouve que ca marche** : l'utilisateur a depose un fichier, vu l'ecran d'attente rassurant, obtenu sa transcription, et les minutes ont ete deduites.
+**Ce qui prouve que ca marche** : l'utilisateur sans abonnement est redirige vers les plans, souscrit, puis depose un fichier, vu l'ecran d'attente rassurant, obtenu sa transcription, et les minutes ont ete deduites.
 
 ### Scenario 2 : Utilisateur Pro qui consomme des minutes
 
@@ -424,32 +416,31 @@ curl -X POST http://localhost:8000/api/subscription/add-minutes \
 
 | Etape | Action | Ce que je dois voir |
 |-------|--------|---------------------|
-| 1 | Ouvrir la page Plans & Usage | Plan Pro affiche, 2000 min, barre de progression |
+| 1 | Ouvrir la page Plans & Usage | Plan Pro affiche, 3000 min, barre de progression |
 | 2 | Simuler un usage eleve (optionnel via API) | Consommer des minutes via uploads successifs |
-| 3 | Atteindre 75% d'usage (1500/2000 min) | Toast orange en bas a droite : "X minutes restantes sur votre forfait." CTA "Ajouter des minutes" |
+| 3 | Atteindre 75% d'usage (2250/3000 min) | Toast orange en bas a droite : "X minutes restantes sur votre forfait." CTA "Changer de plan" |
 | 4 | Dismisser l'alerte | Le toast disparait. Rafraichir la page : il ne revient pas (sessionStorage) |
-| 5 | Atteindre 90% (1800/2000 min) | Toast rouge : "Plus que X minutes. Rechargez pour continuer." CTA "Recharger maintenant" |
-| 6 | Cliquer "Recharger maintenant" | Redirection vers la page Plans & Usage |
-| 7 | Acheter un pack S (100 min) | Confirmation, "+100 min extra" visible sous la jauge sidebar |
-| 8 | Atteindre 100% du plan | Toast rouge fonce : "Quota epuise. Vos transcriptions sont en pause." Icone distincte |
-| 9 | Uploader un fichier malgre le quota epuise | Les minutes extra sont consommees, transcription fonctionne |
+| 5 | Atteindre 90% (2700/3000 min) | Toast rouge : "Plus que X minutes. Changez de plan pour continuer." CTA "Changer de plan" |
+| 6 | Cliquer "Changer de plan" | Redirection vers la page Plans & Usage |
+| 7 | Atteindre 100% du plan | Toast rouge fonce : "Quota epuise. Vos transcriptions sont en pause." Icone distincte |
+| 8 | Tenter un upload avec quota epuise | Upload bloque, message "quota insuffisant" |
 
-**Ce qui prouve que ca marche** : les alertes apparaissent aux bons seuils, les packs extra fonctionnent, les messages sont clairs.
+**Ce qui prouve que ca marche** : les alertes apparaissent aux bons seuils, l'upgrade de plan est propose, les messages sont clairs.
 
-### Scenario 3 : One-shot Court / Standard / Long
+### Scenario 3 : One-shot 6 tiers (Court → XXXLong)
 
-**Pre-requis** : aucun compte requis (plan gratuit par defaut suffit).
+**Pre-requis** : aucun compte requis (sans abonnement suffit).
 
 | Etape | Action | Ce que je dois voir |
 |-------|--------|---------------------|
-| 1 | Ouvrir /oneshot | Grille de 3 formules : Fichier court (3 EUR), Fichier standard (4 EUR, badge "Populaire"), Fichier long (5 EUR) |
-| 2 | Verifier les features listees | Court : 3 features. Standard : 4 features (+ actions). Long : 5 features (+ quiz). Textes lisibles |
+| 1 | Ouvrir /oneshot | Grille de 6 formules : Court (3 EUR/30min), Standard (6 EUR/60min, badge "Populaire"), Long (9 EUR/90min), XLong (12 EUR/120min), XXLong (15 EUR/150min), XXXLong (18 EUR/180min) |
+| 2 | Verifier les features listees | Court : 3 features. Standard : 4 features (+ actions). Long+ : 5 features (+ quiz). Textes lisibles |
 | 3 | Verifier le selecteur de profil | 5 boutons : Generique, Business, Education, Medical, Legal. Generique selectionne par defaut |
 | 4 | Choisir profil "Business" | Le bouton Business passe en indigo |
 | 5 | Deposer un fichier audio (~40 min) | Fichier affiche avec nom, taille, duree estimee (~40 min) |
-| 6 | Verifier le recapitulatif | Fichier, profil Business, formule Standard (< 60 min), 4 EUR, features incluses |
+| 6 | Verifier le recapitulatif | Fichier, profil Business, formule Standard (< 60 min), 6 EUR, features incluses |
 | 7 | Verifier la reassurance | Sous le CTA : "Paiement securise · Resultat en 2-5 min · Sans abonnement" |
-| 8 | Cliquer "Transcrire mon fichier — 4 EUR" | Ecran "Nous preparons vos resultats" avec timeline |
+| 8 | Cliquer "Transcrire mon fichier — 6 EUR" | Ecran "Nous preparons vos resultats" avec timeline |
 | 9 | Attendre la fin | "C'est pret !", redirection vers la transcription |
 | 10 | Verifier la comparaison en bas | Section "One-shot vs abonnement" avec prix/min comparative |
 

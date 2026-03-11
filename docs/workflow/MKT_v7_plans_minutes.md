@@ -12,7 +12,7 @@ VoiceIQ se positionne comme l'alternative **locale et confidentielle** aux servi
 |-----|---------|----------|-----------------|
 | Traitement | 100% local | Cloud | Cloud API |
 | Confidentialite | Totale | Donnees sur serveurs US | Donnees sur serveurs |
-| Prix/min | ~0.025 EUR | ~0.007-0.014 EUR | ~0.003-0.008 USD |
+| Prix/min | 0.010-0.038 EUR | ~0.007-0.014 EUR | ~0.003-0.008 USD |
 | Analyse IA | Resume, actions, quiz, flashcards | Resume, actions | Transcription pure |
 | Cible | PME, profs, liberaux FR | Entreprises US | Developpeurs |
 | Langue | Multi (Whisper) | EN principalement | Multi |
@@ -41,7 +41,7 @@ VoiceIQ se positionne comme l'alternative **locale et confidentielle** aux servi
 
 ### Segment C : Particuliers / Usage ponctuel
 - Besoin : transcription occasionnelle (interview, memo vocal)
-- Budget : 3-5 EUR ponctuel
+- Budget : 3-18 EUR ponctuel
 - Canal : Google Ads "transcrire audio en texte", SEO
 - Message : "Transcrivez un fichier audio pour 3 EUR, sans abonnement"
 
@@ -53,20 +53,20 @@ VoiceIQ se positionne comme l'alternative **locale et confidentielle** aux servi
 
 ## 3. Offre & Pricing Strategy
 
-### Strategie : Good-Better-Best + One-shot
+### Strategie : 3 plans payes + One-shot
 
 ```
          Particuliers          PME/Solo           PME/Equipe         Education
          ──────────           ─────────           ──────────         ─────────
          One-shot             Basic               Pro                Team
-         3-5 EUR              19 EUR/mois         49 EUR/mois        99 EUR/mois
-         Ponctuel             300 min             2000 min           5000 min
+         3-18 EUR             19 EUR/mois         49 EUR/mois        99 EUR/mois
+         Ponctuel             500 min             3000 min           10000 min
 ```
 
 ### Logique de pricing
 - **Cout reel** : ~0.003 EUR/min (GPU local)
-- **Prix plan Pro** : 49 EUR / 2000 min = 0.0245 EUR/min → **marge 88%**
-- **Prix one-shot** : 4 EUR / 60 min = 0.067 EUR/min → **marge 96%**
+- **Prix plan Pro** : 49 EUR / 3000 min = 0.016 EUR/min → **marge 81%**
+- **Prix one-shot Standard** : 6 EUR / 60 min = 0.10 EUR/min → **marge 97%**
 - **Reference marche** : Otter.ai Pro a ~17 USD pour 1200 min = 0.014 USD/min
 
 VoiceIQ est legerement plus cher que Otter.ai par minute, mais offre :
@@ -82,50 +82,47 @@ VoiceIQ est legerement plus cher que Otter.ai par minute, mais offre :
 
 | Plan | Prix | Minutes | Prix/min | Features cles |
 |------|------|---------|----------|---------------|
-| Gratuit | 0 EUR | 60/mois | gratuit | Transcription, resume, points cles |
-| Basic | 19 EUR | 300/mois | 0.063 EUR | + actions, quiz, chat, export PDF |
-| Pro | 49 EUR | 2000/mois | 0.025 EUR | + tous profils, batch, PPTX, priorite |
-| Team | 99 EUR | 5000/mois | 0.020 EUR | + multi-workspace, flashcards, API |
+| Basic | 19 EUR | 500/mois | 0.038 EUR | Transcription, resume, points cles, actions, quiz, export PDF |
+| Pro | 49 EUR | 3000/mois | 0.016 EUR | + tous profils, batch, PPTX, chat IA, priorite |
+| Team | 99 EUR | 10000/mois | 0.0099 EUR | + multi-workspace, flashcards, API |
 
-Packs extra : S (100 min, 3 EUR, 0.03/min), M (500 min, 12 EUR, 0.024/min), L (2000 min, 40 EUR, 0.02/min)
-One-shot : Court (30 min, 3 EUR), Standard (60 min, 4 EUR), Long (90 min, 5 EUR)
+One-shot (6 formules) : Court (30 min, 3 EUR), Standard (60 min, 6 EUR), Long (90 min, 9 EUR), XLong (120 min, 12 EUR), XXLong (150 min, 15 EUR), XXXLong (180 min, 18 EUR)
 Alertes : warning a 75%, critical a 90%
 
 ### 4.2 Points forts de la grille
 
-1. **Progression logique des prix** : le prix/min baisse a chaque palier (0.063 → 0.025 → 0.020), recompensant l'engagement
-2. **Plan gratuit genereux** : 60 min/mois permet de traiter ~1 reunion ou cours par semaine — suffisant pour tester
-3. **One-shot bien positionne** : 3-5 EUR est un prix psychologiquement faible, accessible sans reflexion
-4. **Packs extra coherents** : les prix/min sont alignes avec le plan equivalent (pack L = meme prix/min que le plan Team)
+1. **Progression logique des prix** : le prix/min baisse a chaque palier (0.038 → 0.016 → 0.0099), recompensant l'engagement
+2. **One-shot accessible** : des 3 EUR pour une transcription ponctuelle, sans abonnement — ideal pour tester le service
+3. **6 tiers one-shot clairs** : 3-18 EUR couvre tous les besoins de 30 min a 180 min, prix lineaire et previsible
+4. **3 plans payes simples** : pas de plan gratuit qui dilue la valeur, chaque plan offre un vrai volume de minutes
 
 ### 4.3 Risques de perception et frustration
 
 | Risque | Explication | Impact | Mitigation proposee |
 |--------|------------|--------|---------------------|
-| **Saut Basic → Pro** | L'ecart Basic (300 min) → Pro (2000 min) est un facteur 6.7x pour un facteur prix 2.6x — excellent rapport, mais le saut en prix absolu (19 → 49 EUR) peut freiner les independants | Moyen | Mettre en avant le prix/min ("0.025 EUR/min vs 0.063 EUR/min") sur la page pricing |
-| **Free trop limite en features** | Le plan gratuit n'inclut que 3 features (transcription, resume, keypoints) — un utilisateur qui decouvre ne voit pas la valeur des actions, du chat, du quiz | Haut | Proposer 1-2 "degustations" : permettre 3 analyses avancees gratuites (quiz, actions) pour montrer la valeur |
-| **Confusion one-shot vs pack** | Le pack S (100 min, 3 EUR) a le meme prix qu'un one-shot S (30 min, 3 EUR) — mais l'un donne 100 min et l'autre 30 min. Un utilisateur pourrait se sentir arnaque par le one-shot | Moyen | Clarifier la distinction : le one-shot est "sans compte, sans engagement", le pack necessite un compte. Le one-shot paye la commodite |
+| **Saut Basic → Pro** | L'ecart Basic (500 min) → Pro (3000 min) est un facteur 6x pour un facteur prix 2.6x — excellent rapport, mais le saut en prix absolu (19 → 49 EUR) peut freiner les independants | Moyen | Mettre en avant le prix/min ("0.016 EUR/min vs 0.038 EUR/min") sur la page pricing |
+| **Decouverte sans abonnement** | Sans plan gratuit, les utilisateurs doivent payer pour tester — le one-shot des 3 EUR sert de porte d'entree a faible risque | Moyen | Mettre en avant le one-shot Court (3 EUR, 30 min) comme moyen de decouverte, avec un CTA clair "Essayer des 3 EUR" |
 | **Pas de plan annuel** | Tous les plans sont mensuels — pas de reduction pour engagement annuel | Faible | Ajouter une option annuelle avec -20% (ex: Pro annuel = 39 EUR/mois = 468 EUR/an au lieu de 588 EUR) |
 | **"Team" evoque grandes equipes** | Le nom "Equipe+ (Education)" est ambigu — c'est un plan premium, mais le nom suggere qu'il faut etre une equipe pour l'utiliser | Moyen | Renommer en "Premium" ou "Institution" ou laisser "Equipe+" mais ajouter un sous-texte "Pour les pros et etablissements" |
 
 ### 4.4 Recommandations structurelles (sans changer les prix)
 
 **Recommandation 1 : Mettre le plan Pro en "sweet spot" visuel**
-Le Pro est le meilleur rapport qualite-prix (0.025 EUR/min). Il doit etre :
+Le Pro est le meilleur rapport qualite-prix (0.016 EUR/min). Il doit etre :
 - Visuellement mis en avant (badge "Populaire" ou "Meilleur rapport qualite-prix")
 - Positionne au centre de la grille (colonne 3 sur 4)
 - Avec un design legerement plus grand / plus colore que les autres
 → C'est deja le cas en partie dans PlansUsage.tsx (gradient violet), mais il manque un badge explicite.
 
 **Recommandation 2 : Clarifier la separation one-shot vs abonnement**
-- Sur la page One-shot : ne pas mentionner les packs extra (ça brouille le message)
+- Sur la page One-shot : presenter les 6 tiers clairement (Court a XXXLong, 3-18 EUR)
 - Sur la page Plans : ne pas mentionner le one-shot dans la grille de plans, mais avoir un lien clair "Besoin d'une seule transcription ? →"
 - Deux entrees distinctes dans la sidebar (deja fait : "Plans & Usage" et "One-shot")
 
 **Recommandation 3 : Ajouter un comparateur prix/min**
 Sur la page pricing, afficher pour chaque plan :
-- Le prix par minute (ex: "0.025 EUR/min" pour Pro)
-- L'equivalent en reunions (ex: "~44 reunions de 45 min / mois")
+- Le prix par minute (ex: "0.016 EUR/min" pour Pro)
+- L'equivalent en reunions (ex: "~66 reunions de 45 min / mois")
 - La comparaison avec le one-shot (ex: "7x moins cher qu'en one-shot")
 
 ### 4.5 Messages cles pour marketing + in-app
@@ -134,28 +131,28 @@ Sur la page pricing, afficher pour chaque plan :
 |----------|------------------|--------------------|
 | Landing PME | "Gagnez 2h par semaine sur vos comptes-rendus" | "Transcription IA + analyse automatique. 100% local." |
 | Landing Education | "Generez quiz et flashcards a partir de vos cours" | "Deposez un enregistrement, recevez vos supports." |
-| Page One-shot | "Transcrivez un fichier pour 3 EUR. Sans compte." | "Paiement securise. Resultat en 2-5 minutes." |
-| Page Plans (hero) | "Choisissez votre rythme" | "60 minutes offertes. Changez ou annulez a tout moment." |
+| Page One-shot | "Transcrivez un fichier pour 3 EUR. Sans abonnement." | "Paiement securise. Resultat en 2-5 minutes." |
+| Page Plans (hero) | "Choisissez votre rythme" | "Des 19 EUR/mois. Changez ou annulez a tout moment." |
 | Alerte quota 75% | "Plus que {X} minutes ce mois-ci" | "Ajoutez des minutes pour continuer sans interruption." |
 | Alerte quota 100% | "Quota atteint pour ce mois" | "Rechargez en 1 clic ou passez au plan superieur." |
-| Email onboarding J+0 | "Bienvenue ! 60 minutes vous attendent." | "Deposez votre premier fichier en 30 secondes." |
-| Email J+10 | "Vous avez utilise {X}% de vos minutes" | "Passez au plan Basic pour 300 min/mois." |
-| CTA sidebar (plan epuise) | "Rechargez vos minutes" | "Des 3 EUR pour 100 minutes." |
+| Email onboarding J+0 | "Bienvenue — choisissez un abonnement pour commencer" | "Deposez votre premier fichier en 30 secondes." |
+| Email J+10 | "Vous avez utilise {X}% de vos minutes" | "Passez au plan Basic pour 500 min/mois." |
+| CTA sidebar (plan epuise) | "Rechargez vos minutes" | "Passez au plan superieur ou utilisez le one-shot." |
 
 ### 4.6 Propositions d'A/B tests
 
-#### Test 1 : Duree du plan gratuit (impact sur conversion)
-- **Variante A** (actuelle) : 60 min/mois
-- **Variante B** : 90 min/mois
-- **Variante C** : 30 min/mois mais avec 3 analyses avancees offertes (quiz, actions, chat)
-- **Metrique cle** : taux de conversion Gratuit → Basic dans les 30 premiers jours
-- **Hypothese** : la Variante C convertit mieux car l'utilisateur decouvre la valeur des features avancees
+#### Test 1 : CTA one-shot sur la landing (impact sur conversion)
+- **Variante A** (actuelle) : "Essayer le one-shot des 3 EUR"
+- **Variante B** : "Commencer des 3 EUR — sans abonnement"
+- **Variante C** : "Transcrivez votre premier fichier pour 3 EUR"
+- **Metrique cle** : taux de clic CTA → completion one-shot dans les 7 premiers jours
+- **Hypothese** : la Variante C (orientee action) convertit mieux car elle est plus concrete
 
 #### Test 2 : Copy de l'alerte quota (impact sur achat de packs)
 - **Variante A** (actuelle) : "Il vous reste {X} minutes sur votre plan."
-- **Variante B** : "Plus que {X} minutes. Ajoutez 100 min pour 3 EUR — moins cher qu'un cafe."
+- **Variante B** : "Plus que {X} minutes. Passez au plan superieur pour plus de minutes a meilleur prix."
 - **Variante C** : "Plus que {X} minutes. A votre rythme actuel, vous serez a court dans ~{Y} jours."
-- **Metrique cle** : taux de clic sur le CTA alerte → achat de pack ou upgrade plan
+- **Metrique cle** : taux de clic sur le CTA alerte → upgrade plan
 - **Hypothese** : la Variante B (ancrage prix cafe) ou C (projection temporelle) declenchent plus d'action que le message neutre
 
 #### Test 3 : Page One-shot — Simple vs Power (impact sur completion)
@@ -170,21 +167,21 @@ Sur la page pricing, afficher pour chaque plan :
 
 ```
 1. Decouverte     → SEO, Ads, bouche a oreille
-2. Essai gratuit  → 60 min/mois, inscription email seule
+2. Essai one-shot → Premiere transcription des 3 EUR, sans abonnement
 3. Activation     → Premier fichier transcrit en < 5 min
-4. Engagement     → 3+ fichiers dans les 14 premiers jours
-5. Conversion     → Alerte quota + CTA upgrade
+4. Engagement     → 2+ one-shots ou souscription plan Basic
+5. Conversion     → CTA upgrade vers plan mensuel
 6. Retention      → Valeur recurrente (CR hebdo, cours mensuels)
-7. Expansion      → Packs extra, upgrade plan, recommandation
+7. Expansion      → Upgrade plan, recommandation
 ```
 
 ### Metriques funnel cibles
 | Etape | Taux cible | Action si en dessous |
 |-------|-----------|---------------------|
-| Visite → Signup | 5-8% | Optimiser landing, A/B test CTA |
-| Signup → 1er fichier | 60%+ | Onboarding email J+1, simplifier upload |
-| 1er fichier → 3 fichiers (14j) | 40%+ | Emails J+3, J+7 avec use cases |
-| Gratuit → Payant | 8-12% | Alertes quota, valeur ajoutee visible |
+| Visite → 1er one-shot | 3-5% | Optimiser landing, A/B test CTA |
+| 1er one-shot → inscription | 40%+ | Email post-achat, valeur ajoutee visible |
+| Inscription → plan mensuel | 15-25% | Onboarding email, comparaison prix/min |
+| One-shot → abonnement (30j) | 10-15% | Emails J+3, J+7 avec use cases + economies |
 | Churn mensuel | < 5% | Emails retention, enquete depart |
 
 ## 6. Calendrier marketing (3 mois)
@@ -200,14 +197,14 @@ Sur la page pricing, afficher pour chaque plan :
 - LinkedIn : 2 posts/semaine (use cases, temoignages)
 - Partenariats : 2-3 blogueurs/influenceurs productivite
 - First 50 users → feedback + temoignages
-- Deploiement A/B test 1 (duree plan gratuit)
+- Deploiement A/B test 1 (CTA one-shot sur la landing)
 
 ### Mois 3 : Optimisation
 - A/B tests landing page (hero, CTA, pricing)
 - A/B test 2 (copy alertes quota)
 - A/B test 3 (page one-shot simple vs power)
 - Retargeting Ads (visiteurs non convertis)
-- Programme referral (parrainage = 50 min gratuites)
+- Programme referral (parrainage = 1 one-shot Court offert)
 - Premier cas client detaille (etude de cas PME)
 
 ## 7. Canaux de communication

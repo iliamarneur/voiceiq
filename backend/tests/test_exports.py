@@ -11,6 +11,14 @@ pytestmark = pytest.mark.asyncio
 reload_profiles()
 
 
+@pytest.fixture(autouse=True)
+def disable_auth(monkeypatch):
+    """Disable auth for export tests."""
+    monkeypatch.setenv("AUTH_ENABLED", "false")
+    import app.services.auth_service as auth_mod
+    monkeypatch.setattr(auth_mod, "AUTH_ENABLED", False)
+
+
 class TestProfileExports:
     """Test export configs per profile."""
 

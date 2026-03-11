@@ -5,24 +5,27 @@
 ### 1.1 Authentification
 | Point | Statut | Commentaire |
 |-------|--------|-------------|
-| Auth utilisateur | STUB | user_id="default", pas d'auth reelle |
-| Protection routes API | ABSENT | Toutes les routes sont publiques |
-| Token/Session | ABSENT | Pas de JWT ni session |
+| Auth utilisateur | FAIT | JWT HS256, bcrypt, register/login/me |
+| Protection routes API | FAIT (opt-in) | AUTH_ENABLED=true active la protection |
+| Token/Session | FAIT | JWT 24h, Bearer header |
 | Rate limiting | FAIT (partiel) | 10 req/min/IP sur endpoints billing et webhook |
+| Protection admin | FAIT | require_admin sur /api/admin/* |
 
-**Recommandations prioritaires :**
-- Implementer JWT auth (ou OAuth2 avec provider externe)
-- Proteger tous les endpoints /api/* avec middleware auth
-- ~~Ajouter rate limiting~~ FAIT sur billing/webhook (etendre a tous les endpoints)
+**Etat :**
+- Auth JWT implementee avec modele User (email, password bcrypt, role)
+- Variable AUTH_ENABLED (false=legacy stub, true=JWT obligatoire)
+- Routes admin protegees par role check
+- ~~Implementer JWT auth~~ FAIT
+- ~~Proteger les routes admin~~ FAIT
+- Etendre rate limiting a tous les endpoints (ajustable plus tard)
 
 ### 1.2 Validation des inputs
 | Endpoint | Validation | Statut |
 |----------|-----------|--------|
 | POST /api/upload | Type MIME, taille max | OK |
-| PUT /api/subscription/plan | plan_id dans liste | OK |
-| POST /api/subscription/add-minutes | pack_id dans liste | OK |
-| POST /api/oneshot/order | tier dans liste | OK |
-| POST /api/oneshot/estimate | duration_minutes > 0 | OK |
+| PUT /api/subscription/plan | plan_id dans {basic,pro,team} | OK |
+| POST /api/oneshot/order | tier dans {court,standard,long,xlong,xxlong,xxxlong} | OK |
+| POST /api/oneshot/estimate | duration_minutes > 0, max 180 | OK |
 | POST /api/upload/batch | Limite nombre fichiers | A VERIFIER |
 
 **Points OK :** Les schemas Pydantic valident les inputs sur les routes billing.
@@ -31,14 +34,13 @@
 ### 1.3 Endpoints sensibles
 | Endpoint | Risque | Mitigation |
 |----------|--------|------------|
-| PUT /api/subscription/plan | Changement plan | Stripe checkout si configure, stub sinon |
-| POST /api/subscription/add-minutes | Achat minutes | Stripe checkout si configure, stub sinon |
+| PUT /api/subscription/plan | Changement plan (3 plans: basic, pro, team) | Stripe checkout si configure, stub sinon |
 | POST /api/oneshot/order | Commande one-shot | Stripe checkout si configure, stub sinon |
 | POST /api/stripe/webhook | Webhook Stripe | Signature verifiee, idempotent, rate limited |
 | DELETE /api/transcriptions/{id} | Suppression donnees | Auth requise |
 | POST /api/upload | Upload malveillant | Validation MIME + scan |
 
-**Risque principal :** Sans auth, n'importe qui peut changer de plan, ajouter des minutes, creer des commandes gratuites. Acceptable en dev, critique a corriger avant prod.
+**Risque principal :** Sans auth, n'importe qui peut changer de plan ou creer des commandes one-shot. Acceptable en dev, critique a corriger avant prod.
 
 ### 1.4 Secrets et configuration
 | Element | Stockage | Statut |
@@ -99,10 +101,11 @@ Les profils medical et legal traitent des donnees potentiellement sensibles (san
 
 ## 4. Checklist pre-production
 
-- [ ] Auth JWT/OAuth implementee
-- [ ] Rate limiting configure
+- [x] Auth JWT implementee (HS256, bcrypt, AUTH_ENABLED opt-in)
+- [x] Protection admin routes (require_admin middleware)
+- [ ] Rate limiting etendu (au-dela de billing/webhook)
 - [ ] HTTPS actif
-- [ ] CORS restreint
+- [x] CORS configurable (ALLOWED_ORIGINS dans .env)
 - [ ] CSP headers ajoutes
 - [ ] Stripe webhook signature validee
 - [ ] Audit log billing actif
@@ -118,9 +121,9 @@ Les profils medical et legal traitent des donnees potentiellement sensibles (san
 
 | Categorie | Score | Commentaire |
 |-----------|-------|-------------|
-| Auth | 1/5 | Pas d'auth reelle |
+| Auth | 4/5 | JWT HS256 + bcrypt + admin role check |
 | Input validation | 4/5 | Pydantic schemas OK |
 | Data protection | 3/5 | Local OK, mais pas de retention policy |
 | Logging/Audit | 2/5 | Usage logs OK, audit billing manquant |
-| Infrastructure | 3/5 | Docker OK, HTTPS/CORS manquants |
-| **Global** | **2.6/5** | **Acceptable pour dev, insuffisant pour prod** |
+| Infrastructure | 3.5/5 | Docker OK, CORS configurable, HTTPS manquant |
+| **Global** | **3.7/5** | **Acceptable pour beta fermee** |

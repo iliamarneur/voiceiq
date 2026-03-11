@@ -11,7 +11,7 @@ from app.models import (
 )
 from app.services.admin_service import (
     calculate_mrr,
-    count_active_subscriptions,
+    count_total_users,
     total_minutes_current_period,
     total_transcriptions_count,
     calculate_error_rate,
@@ -32,10 +32,10 @@ async def db():
 
 
 async def _seed_plans(db):
-    """Add standard plans."""
-    db.add(Plan(id="free", name="Gratuit", price_cents=0, minutes_included=60, features=["transcription"]))
-    db.add(Plan(id="pro", name="Pro", price_cents=4900, minutes_included=2000, features=["transcription", "chat"]))
-    db.add(Plan(id="team", name="Team", price_cents=9900, minutes_included=5000, features=["transcription", "chat", "multi_workspace"]))
+    """Add standard plans (no free plan)."""
+    db.add(Plan(id="basic", name="Basic (Solo)", price_cents=1900, minutes_included=500, features=["transcription", "summary"]))
+    db.add(Plan(id="pro", name="Pro (PME)", price_cents=4900, minutes_included=3000, features=["transcription", "chat"]))
+    db.add(Plan(id="team", name="Équipe+", price_cents=9900, minutes_included=10000, features=["transcription", "chat", "multi_workspace"]))
     await db.commit()
 
 
@@ -51,23 +51,22 @@ async def test_mrr_with_paid_subscriptions(db):
     await _seed_plans(db)
     db.add(UserSubscription(user_id="u1", plan_id="pro", status="active"))
     db.add(UserSubscription(user_id="u2", plan_id="team", status="active"))
-    db.add(UserSubscription(user_id="u3", plan_id="free", status="active"))
+    db.add(UserSubscription(user_id="u3", plan_id="basic", status="active"))
     await db.commit()
 
     mrr = await calculate_mrr(db)
-    assert mrr == 4900 + 9900  # free excluded
+    assert mrr == 1900 + 4900 + 9900
 
 
 @pytest.mark.anyio
-async def test_count_active_subscriptions(db):
+async def test_mrr_excludes_cancelled(db):
     await _seed_plans(db)
     db.add(UserSubscription(user_id="u1", plan_id="pro", status="active"))
-    db.add(UserSubscription(user_id="u2", plan_id="free", status="active"))
-    db.add(UserSubscription(user_id="u3", plan_id="pro", status="cancelled"))
+    db.add(UserSubscription(user_id="u2", plan_id="pro", status="cancelled"))
     await db.commit()
 
-    count = await count_active_subscriptions(db)
-    assert count == 2  # cancelled excluded
+    mrr = await calculate_mrr(db)
+    assert mrr == 4900
 
 
 @pytest.mark.anyio

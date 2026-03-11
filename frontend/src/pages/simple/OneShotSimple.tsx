@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Upload, FileAudio, Loader2, CreditCard, Shield, CheckCircle, Sparkles, ArrowRight, Globe } from 'lucide-react';
 import axios from 'axios';
+import { MetaTags, getCanonical, getHreflangAlternates, PAGE_META } from '../../components/SEO';
 
 const FEATURE_LABELS: Record<string, string> = {
   transcription: 'Transcription complète',
@@ -126,6 +127,14 @@ function OneShotSimple() {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8"
     >
+      {/* SEO */}
+      <MetaTags
+        title={PAGE_META.oneshot.title}
+        description={PAGE_META.oneshot.description}
+        canonical={getCanonical('/oneshot')}
+        hreflangAlternates={getHreflangAlternates('/oneshot')}
+      />
+
       {/* Hero */}
       <div className="text-center pt-4">
         <h1 className="text-3xl lg:text-4xl font-bold text-slate-800">

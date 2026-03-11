@@ -5,8 +5,8 @@
 ### Hero
 **Titre :** Transformez vos reunions en comptes-rendus intelligents en 2 minutes.
 **Sous-titre :** Transcription IA locale + analyse automatique. Resume, points cles, actions — sans envoyer vos donnees dans le cloud.
-**CTA principal :** Essayer gratuitement
-**Sous-CTA :** 60 minutes offertes · Pas de carte bancaire
+**CTA principal :** Commencer des 3 EUR
+**Sous-CTA :** Des 3 EUR par transcription · Sans abonnement
 
 ### Social proof
 **Titre section :** Ils gagnent du temps avec VoiceIQ
@@ -25,14 +25,14 @@
 - **Gagnez du temps** : 2 heures par semaine en moyenne sur la redaction de comptes-rendus.
 - **100% confidentiel** : Traitement local sur votre machine. Aucune donnee ne transite par le cloud.
 - **Analyses intelligentes** : Pas juste une transcription. Resume, actions, quiz, flashcards, adaptes a votre metier.
-- **Prix transparent** : Des 0 EUR/mois. Payez uniquement ce que vous utilisez.
+- **Prix transparent** : Des 19 EUR/mois ou des 3 EUR en one-shot. Payez uniquement ce que vous utilisez.
 - **Multi-formats** : MP3, WAV, M4A, MP4 et 10+ formats. Export PDF, PPTX, SRT, VTT.
 - **5 profils metier** : Business, Education, Medical, Legal, Generique. Chaque profil adapte l'analyse a votre contexte.
 
 ### CTA final
 **Titre :** Pret a simplifier vos comptes-rendus ?
-**CTA :** Commencer gratuitement — 60 minutes offertes
-**Sous-texte :** Pas de carte bancaire · Annulation libre · Vos donnees restent chez vous
+**CTA :** Commencer des 19 EUR/mois — 500 minutes incluses
+**Sous-texte :** Annulation libre · Vos donnees restent chez vous
 
 ---
 
@@ -42,7 +42,7 @@
 **Titre :** Transformez vos cours en supports pedagogiques en 2 minutes.
 **Sous-titre :** Quiz, flashcards, resumes de chapitre — generes automatiquement a partir de vos enregistrements.
 **CTA :** Essayer avec votre prochain cours
-**Sous-CTA :** 60 minutes offertes · Ideal pour un cours de 50 min
+**Sous-CTA :** Des 3 EUR par transcription · Ideal pour un cours de 50 min
 
 ### Benefices specifiques
 - **Quiz automatiques** : Generez des QCM de revision a partir de votre cours, en un clic.
@@ -60,17 +60,12 @@
 
 ### Plans
 
-**Gratuit — 0 EUR/mois**
-Pour decouvrir VoiceIQ
-- 60 minutes de transcription / mois
+**Basic — 19 EUR/mois**
+Pour les independants et petites equipes
+- 500 minutes / mois (0.038 EUR/min)
 - Transcription Whisper
 - Resume automatique
 - Points cles
-
-**Basic — 19 EUR/mois**
-Pour les independants et petites equipes
-- 300 minutes / mois
-- Tout le plan Gratuit +
 - Points d'action
 - Quiz de revision
 - Export PDF, TXT
@@ -79,7 +74,7 @@ Pour les independants et petites equipes
 
 **Pro — 49 EUR/mois** ★ Populaire
 Pour les PME et les usages reguliers
-- 2 000 minutes / mois
+- 3 000 minutes / mois (0.016 EUR/min)
 - Tout le plan Basic +
 - Chat IA avec la transcription
 - Tous les profils metier
@@ -90,7 +85,7 @@ Pour les PME et les usages reguliers
 
 **Team — 99 EUR/mois**
 Pour les etablissements et grandes equipes
-- 5 000 minutes / mois
+- 10 000 minutes / mois (0.0099 EUR/min)
 - Tout le plan Pro +
 - Chapitrage automatique
 - Flashcards
@@ -99,26 +94,22 @@ Pour les etablissements et grandes equipes
 - Acces API
 - Onboarding dedie
 
-### Packs de minutes
-**Titre :** Besoin de plus de minutes ?
-**Sous-titre :** Achetez des packs supplementaires, valables sans limite de temps.
-- Pack S : 100 minutes — 3 EUR (0.03 EUR/min)
-- Pack M : 500 minutes — 12 EUR (0.024 EUR/min)
-- Pack L : 2 000 minutes — 40 EUR (0.02 EUR/min)
-
 ### One-shot
 **Titre :** Besoin ponctuel ? Pas besoin d'abonnement.
-**Sous-titre :** Transcrivez un fichier a la demande, sans engagement.
-- Jusqu'a 30 min : 3 EUR
-- Jusqu'a 60 min : 4 EUR
-- Jusqu'a 90 min : 5 EUR
+**Sous-titre :** Transcrivez un fichier a la demande, sans engagement. 6 formules selon la duree.
+- Jusqu'a 30 min : 3 EUR (Court)
+- Jusqu'a 60 min : 6 EUR (Standard)
+- Jusqu'a 90 min : 9 EUR (Long)
+- Jusqu'a 120 min : 12 EUR (XLong)
+- Jusqu'a 150 min : 15 EUR (XXLong)
+- Jusqu'a 180 min : 18 EUR (XXXLong)
 
 ### FAQ Tarifs
 **Q : Que se passe-t-il quand j'ai utilise toutes mes minutes ?**
-R : Vous recevez une alerte a 75% et 90%. A 100%, vous pouvez acheter un pack supplementaire ou passer au plan superieur.
+R : Vous recevez une alerte a 75% et 90%. A 100%, vous pouvez passer au plan superieur ou utiliser le one-shot pour une transcription ponctuelle.
 
 **Q : Les minutes non utilisees sont-elles reportees ?**
-R : Les minutes du plan sont remises a zero chaque mois. Les minutes des packs supplementaires n'expirent jamais.
+R : Les minutes du plan sont remises a zero chaque mois.
 
 **Q : Puis-je changer de plan en cours de mois ?**
 R : Oui, le changement est immediat. Votre quota est ajuste au nouveau plan.
@@ -131,20 +122,19 @@ R : Non, tous les plans sont sans engagement. Vous pouvez annuler a tout moment.
 ## 4. Sequence emails onboarding (5 emails)
 
 ### Email 1 : Bienvenue (J+0, immediat)
-**Objet :** Bienvenue sur VoiceIQ — vos 60 minutes vous attendent
+**Objet :** Bienvenue sur VoiceIQ — choisissez un abonnement pour commencer
 **Corps :**
 Bonjour [Prenom],
 
-Votre compte VoiceIQ est pret. Vous disposez de 60 minutes de transcription gratuites ce mois-ci.
+Votre compte VoiceIQ est pret. Choisissez un abonnement pour commencer a transcrire :
 
-Pour commencer :
-1. Connectez-vous a votre espace
-2. Cliquez sur "Nouveau"
-3. Deposez votre premier fichier audio
+- **Basic** : 500 min/mois pour 19 EUR
+- **Pro** : 3 000 min/mois pour 49 EUR (★ Populaire)
+- **Team** : 10 000 min/mois pour 99 EUR
 
-En 2 minutes, vous aurez votre transcription + resume + points cles.
+Vous pouvez aussi essayer le one-shot des 3 EUR, sans abonnement.
 
-[Transcrire mon premier fichier →]
+[Choisir mon plan →]
 
 A bientot,
 L'equipe VoiceIQ
@@ -185,16 +175,16 @@ Son workflow :
 [Essayer le profil Business →]
 
 ### Email 4 : Quota & upgrade (J+10)
-**Objet :** Vous avez utilise [X]% de vos minutes gratuites
+**Objet :** Vous avez utilise [X]% de vos minutes
 **Corps :**
 Bonjour [Prenom],
 
-Ce mois-ci, vous avez transcrit [X] minutes sur vos 60 minutes gratuites.
+Ce mois-ci, vous avez transcrit [X] minutes sur votre plan.
 
 Si vous avez besoin de plus :
-- **Pack ponctuel** : 100 min pour 3 EUR
-- **Plan Basic** : 300 min/mois pour 19 EUR (+ actions, quiz, export)
-- **Plan Pro** : 2 000 min/mois pour 49 EUR (+ chat IA, batch, tous profils)
+- **Plan Basic** : 500 min/mois pour 19 EUR
+- **Plan Pro** : 3 000 min/mois pour 49 EUR (+ chat IA, batch, tous profils)
+- **Plan Team** : 10 000 min/mois pour 99 EUR (+ API, flashcards, mind maps)
 
 [Voir les plans →]
 
@@ -233,28 +223,26 @@ L'equipe VoiceIQ
 
 ### Plans
 - Upgrade CTA : "Passer au plan [Pro]"
-- Downgrade : "Revenir au plan [Gratuit]"
-- Pack CTA : "Ajouter 500 minutes — 12 EUR"
-- Confirmation pack : "500 minutes ajoutees a votre compte"
+- Downgrade : "Annuler l'abonnement"
 - Confirmation plan : "Votre plan a ete mis a jour"
 
 ### Alertes quota
 - 75% : "Il vous reste [X] minutes sur votre plan [Basic]. [Acheter un pack] [Voir les plans]"
 - 90% : "Attention : seulement [X] minutes restantes. [Upgrade recommande]"
-- 100% : "Quota epuise. Achetez un pack ou passez au plan superieur pour continuer."
+- 100% : "Quota epuise. Passez au plan superieur pour continuer."
 
 ### One-shot
-- Estimation : "Duree estimee : [X] min · Tier [M] · [4 EUR]"
-- CTA : "Payer et transcrire — [4 EUR]"
+- Estimation : "Duree estimee : [X] min · Tier [Standard] · [6 EUR]"
+- CTA : "Payer et transcrire — [6 EUR]"
 - Confirmation : "Paiement recu. Transcription en cours..."
 - Resultat : "Votre transcription est prete. [Telecharger le PDF]"
 
 ### Etats vides
 - Dashboard vide : "Aucune transcription pour l'instant. [Transcrire votre premier fichier →]"
-- Usage vide : "Aucune utilisation ce mois-ci. Vos 60 minutes vous attendent."
+- Usage vide : "Aucune utilisation ce mois-ci."
 
 ### Erreurs
 - Upload echoue : "L'envoi a echoue. Verifiez votre connexion et reessayez."
 - Format non supporte : "Format non supporte. Formats acceptes : MP3, WAV, M4A, MP4..."
 - Fichier trop gros : "Fichier trop volumineux. Taille maximale : 500 Mo."
-- Minutes insuffisantes : "Minutes insuffisantes. [Acheter un pack] ou [changer de plan]."
+- Minutes insuffisantes : "Minutes insuffisantes. [Changer de plan] ou [utiliser le one-shot]."

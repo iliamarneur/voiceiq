@@ -14,7 +14,7 @@ from pathlib import Path
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Plan, UserSubscription, UsageLog, OneshotOrder
+from app.models import Plan, UserSubscription, UsageLog, OneshotOrder, User
 
 logger = logging.getLogger(__name__)
 
@@ -358,12 +358,16 @@ async def get_subscription_alerts(db: AsyncSession, user_id: str = "default") ->
             "message": f"Attention : seulement {minutes_remaining} minutes restantes.",
             "percent": usage_percent,
         })
+        # Send critical quota email
+        await _send_quota_email(db, user_id, "critical", int(usage_percent), minutes_remaining, plan)
     elif usage_percent >= warning_pct:
         alerts.append({
             "level": "warning",
             "message": f"Il vous reste {minutes_remaining} minutes sur votre plan {plan.name if plan else ''}.",
             "percent": usage_percent,
         })
+        # Send warning quota email
+        await _send_quota_email(db, user_id, "warning", int(usage_percent), minutes_remaining, plan)
 
     return {
         "alerts": alerts,
@@ -372,6 +376,25 @@ async def get_subscription_alerts(db: AsyncSession, user_id: str = "default") ->
         "minutes_included": minutes_included,
         "extra_minutes_balance": sub.extra_minutes_balance,
     }
+
+
+async def _send_quota_email(db: AsyncSession, user_id: str, level: str, percent: int, minutes_remaining: int, plan) -> None:
+    """Send quota alert email if user has an email address."""
+    try:
+        from app.services.email_service import send_quota_warning, send_quota_critical
+        # Find user email
+        user_result = await db.execute(select(User).where(User.id == user_id))
+        user = user_result.scalar_one_or_none()
+        if not user or not user.email:
+            return
+        plan_name = plan.name if plan else "inconnu"
+        if level == "critical":
+            send_quota_critical(user.name or user.email, user.email, minutes_remaining, plan_name)
+        else:
+            send_quota_warning(user.name or user.email, user.email, percent, minutes_remaining, plan_name)
+        logger.info(f"Quota {level} email sent to {user.email}")
+    except Exception as e:
+        logger.warning(f"Failed to send quota {level} email for user {user_id}: {e}")
 
 
 # ── One-shot ────────────────────────────────────────────

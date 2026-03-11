@@ -15,15 +15,25 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
-# ── Config ────────────────────────────────────────────────
-SMTP_HOST = os.environ.get("SMTP_HOST", "")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER = os.environ.get("SMTP_USER", "")
-SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-SMTP_FROM = os.environ.get("SMTP_FROM", "ClearRecap <noreply@clearrecap.fr>")
-EMAIL_ENABLED = bool(SMTP_HOST and SMTP_USER)
+# ── Config (read dynamically to support late dotenv loading) ──
+def _smtp_config():
+    host = os.environ.get("SMTP_HOST", "")
+    user = os.environ.get("SMTP_USER", "")
+    return {
+        "host": host,
+        "port": int(os.environ.get("SMTP_PORT", "587")),
+        "user": user,
+        "password": os.environ.get("SMTP_PASSWORD", ""),
+        "from_addr": os.environ.get("SMTP_FROM", "ClearRecap <noreply@clearrecap.fr>"),
+        "enabled": bool(host and user),
+    }
 
 APP_NAME = "ClearRecap"
+
+def _app_url():
+    return os.environ.get("APP_BASE_URL", "http://localhost:5173")
+
+# Module-level alias — evaluated once but good enough for dev; _app_url() is authoritative
 APP_URL = os.environ.get("APP_BASE_URL", "http://localhost:5173")
 
 
@@ -122,7 +132,8 @@ def template_account_deleted(name: str, email: str) -> EmailMessage:
 # ── Send ──────────────────────────────────────────────────
 def send_email(msg: EmailMessage) -> bool:
     """Send an email. Returns True on success."""
-    if not EMAIL_ENABLED:
+    cfg = _smtp_config()
+    if not cfg["enabled"]:
         # Console mode — log the email
         logger.info(f"[EMAIL STUB] To: {msg.to} | Subject: {msg.subject}")
         logger.debug(f"[EMAIL STUB] Body: {msg.text}")
@@ -130,16 +141,21 @@ def send_email(msg: EmailMessage) -> bool:
 
     try:
         mime = MIMEMultipart("alternative")
-        mime["From"] = SMTP_FROM
+        mime["From"] = cfg["from_addr"]
         mime["To"] = msg.to
         mime["Subject"] = msg.subject
         mime.attach(MIMEText(msg.text, "plain", "utf-8"))
         mime.attach(MIMEText(msg.html, "html", "utf-8"))
 
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.send_message(mime)
+        if cfg["port"] == 465:
+            with smtplib.SMTP_SSL(cfg["host"], cfg["port"]) as server:
+                server.login(cfg["user"], cfg["password"])
+                server.send_message(mime)
+        else:
+            with smtplib.SMTP(cfg["host"], cfg["port"]) as server:
+                server.starttls()
+                server.login(cfg["user"], cfg["password"])
+                server.send_message(mime)
 
         logger.info(f"Email sent to {msg.to}: {msg.subject}")
         return True
@@ -163,6 +179,63 @@ def send_quota_critical(name: str, email: str, minutes_remaining: int, plan_name
 
 def send_account_deleted(name: str, email: str) -> bool:
     return send_email(template_account_deleted(name, email))
+
+
+def template_payment_success(name: str, email: str, amount_display: str, description: str) -> EmailMessage:
+    body = f"""<h1>Paiement confirmé</h1>
+<p>Bonjour {name},</p>
+<p>Votre paiement de <strong>{amount_display}</strong> a été traité avec succès.</p>
+<p>Détail : {description}</p>
+<p><a class="btn" href="{APP_URL}/app">Accéder à {APP_NAME}</a></p>
+<p>Merci de votre confiance !</p>"""
+    return EmailMessage(
+        to=email,
+        subject=f"{APP_NAME} — Paiement confirmé ({amount_display})",
+        html=_wrap_html("Paiement confirmé", body),
+        text=f"Bonjour {name}, paiement de {amount_display} confirmé. {description}. {APP_URL}/app",
+    )
+
+
+def template_payment_failed(name: str, email: str, plan_name: str) -> EmailMessage:
+    body = f"""<h1>Échec de paiement</h1>
+<p>Bonjour {name},</p>
+<p>Le renouvellement de votre abonnement <strong>{plan_name}</strong> a échoué.</p>
+<p>Veuillez mettre à jour votre moyen de paiement pour éviter une interruption de service.</p>
+<p><a class="btn" href="{APP_URL}/app/plans">Mettre à jour le paiement</a></p>
+<p>Si le problème persiste, contactez-nous.</p>"""
+    return EmailMessage(
+        to=email,
+        subject=f"{APP_NAME} — Échec de paiement",
+        html=_wrap_html("Échec de paiement", body),
+        text=f"Bonjour {name}, le renouvellement de {plan_name} a échoué. Mettez à jour votre paiement : {APP_URL}/app/plans",
+    )
+
+
+def template_subscription_cancelled(name: str, email: str, plan_name: str) -> EmailMessage:
+    body = f"""<h1>Abonnement annulé</h1>
+<p>Bonjour {name},</p>
+<p>Votre abonnement <strong>{plan_name}</strong> a été annulé.</p>
+<p>Vous conservez l'accès jusqu'à la fin de votre période de facturation en cours.</p>
+<p>Vous pouvez toujours utiliser le <a href="{APP_URL}/">mode one-shot</a> sans abonnement.</p>
+<p><a class="btn" href="{APP_URL}/app/plans">Se réabonner</a></p>"""
+    return EmailMessage(
+        to=email,
+        subject=f"{APP_NAME} — Abonnement annulé",
+        html=_wrap_html("Abonnement annulé", body),
+        text=f"Bonjour {name}, votre abonnement {plan_name} a été annulé. Réabonnez-vous : {APP_URL}/app/plans",
+    )
+
+
+def send_payment_success(name: str, email: str, amount_display: str, description: str) -> bool:
+    return send_email(template_payment_success(name, email, amount_display, description))
+
+
+def send_payment_failed(name: str, email: str, plan_name: str) -> bool:
+    return send_email(template_payment_failed(name, email, plan_name))
+
+
+def send_subscription_cancelled(name: str, email: str, plan_name: str) -> bool:
+    return send_email(template_subscription_cancelled(name, email, plan_name))
 
 
 def template_password_reset(email: str, reset_link: str) -> EmailMessage:

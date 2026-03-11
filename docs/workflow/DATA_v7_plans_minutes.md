@@ -6,13 +6,13 @@
 |----------|-------------|--------|-----------|
 | **MRR** | Monthly Recurring Revenue | UserSubscription | Quotidien |
 | **Minutes consommees** | Total minutes transcrites | UsageLog | Temps reel |
-| **Taux de conversion** | Gratuit → Payant | UserSubscription | Hebdo |
+| **Taux d'abonnement** | Inscription → Abonnement | UserSubscription | Hebdo |
 | **Churn rate** | Abonnements annules / total | UserSubscription | Mensuel |
 | **ARPU** | Revenu moyen par utilisateur | Subscriptions + Oneshot | Mensuel |
 | **Minutes/user/mois** | Usage moyen par utilisateur | UsageLog | Mensuel |
 | **One-shot volume** | Nombre et CA one-shot | OneshotOrder | Quotidien |
 | **Profil popularity** | Repartition par profil metier | UsageLog | Hebdo |
-| **Pack extra sales** | Volume packs supplementaires | Transactions | Quotidien |
+| **One-shot recurrence** | Users one-shot recurrents (candidats abo) | OneshotOrder | Hebdo |
 | **Quota hit rate** | % users atteignant 75%/90%/100% | Alerts | Mensuel |
 
 ## 2. Schema de tables analytiques
@@ -26,13 +26,11 @@ CREATE TABLE daily_metrics (
     new_signups INT,
     total_minutes_consumed INT,
     plan_minutes_consumed INT,
-    extra_minutes_consumed INT,
     oneshot_minutes_consumed INT,
     mrr_cents INT,              -- sum(plan.price_cents) des abonnes actifs
     oneshot_revenue_cents INT,
-    extra_pack_revenue_cents INT,
     total_revenue_cents INT,
-    free_users INT,
+    no_subscription_users INT,
     basic_users INT,
     pro_users INT,
     team_users INT,
@@ -53,9 +51,6 @@ CREATE TABLE user_metrics (
     hit_75_alert BOOLEAN,
     hit_90_alert BOOLEAN,
     hit_100_blocked BOOLEAN,
-    extra_packs_bought INT,
-    extra_minutes_bought INT,
-    extra_revenue_cents INT,
     oneshot_count INT,
     oneshot_revenue_cents INT,
     transcription_count INT,
@@ -70,7 +65,7 @@ CREATE TABLE funnel_events (
     id INTEGER PRIMARY KEY,
     user_id TEXT,
     event_type TEXT,             -- 'signup', 'first_transcription', 'hit_quota',
-                                 -- 'view_plans', 'upgrade', 'buy_pack', 'churn'
+                                 -- 'view_plans', 'upgrade', 'churn'
     event_data JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -143,7 +138,7 @@ Metriques a afficher dans un dashboard admin (extension du Streamlit existant ou
 - Courbe : minutes/jour sur 30j
 
 ### Funnel
-- Signups → Premier fichier → Hit quota → Upgrade
+- Signups → Premier one-shot → View plans → Abonnement
 - Taux de conversion a chaque etape
 
 ### Alertes business
@@ -162,8 +157,8 @@ Pour le calcul de marge, le cout reel par minute transcrite :
 | LLM (Ollama local) | ~0.002 EUR | Inference GPU |
 | **Total** | **~0.003 EUR/min** | Cout marginal |
 
-Avec un prix de vente moyen de ~0.025 EUR/min (plan Pro), la marge brute est d'environ **88%**.
-Le one-shot a ~0.07-0.10 EUR/min, marge encore plus elevee.
+Avec un prix de vente moyen de ~0.016 EUR/min (plan Pro 49 EUR/3000 min), la marge brute est d'environ **81%**.
+Le one-shot a ~0.10 EUR/min, marge encore plus elevee.
 
 ## 6. Implementation
 

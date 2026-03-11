@@ -12,7 +12,7 @@ const MODES = [
     title: 'Fichier audio/video',
     description: 'Importez un fichier depuis votre ordinateur (reunions, consultations, conferences...)',
     color: 'from-indigo-500 to-blue-500',
-    route: '/upload',
+    route: '/app/upload',
   },
   {
     id: 'record',
@@ -20,7 +20,7 @@ const MODES = [
     title: 'Enregistrer',
     description: 'Enregistrez un audio directement depuis votre micro, puis traitez-le comme un fichier.',
     color: 'from-rose-500 to-pink-500',
-    route: '/record',
+    route: '/app/record',
   },
   {
     id: 'dictate',
@@ -28,7 +28,7 @@ const MODES = [
     title: 'Dicter en direct',
     description: 'Dictez en temps reel, la transcription apparait a l\'ecran au fur et a mesure.',
     color: 'from-amber-500 to-orange-500',
-    route: '/dictate',
+    route: '/app/dictate',
   },
 ];
 

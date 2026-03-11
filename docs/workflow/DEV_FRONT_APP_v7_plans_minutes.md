@@ -103,8 +103,8 @@ Props : id (from URL), sessionToken (from URL query)
 
 - Fetch GET /api/public/transcriptions/{id}?session_token=...
 - Affiche : transcription texte (scrollable), resume, points cles
-- Si tier Standard/Long : affiche aussi actions
-- Si tier Long : affiche aussi quiz
+- Si tier Standard ou superieur : affiche aussi actions
+- Si tier Long ou superieur : affiche aussi quiz
 - Boutons export : [PDF] [TXT] [Copier]
 - UpsellBanner en bas (dismissible)
 ```
@@ -113,7 +113,7 @@ Props : id (from URL), sessionToken (from URL query)
 
 ```
 - Fetch GET /api/public/plans
-- Grille 4 colonnes (Free, Basic, Pro, Equipe+)
+- Grille 3 colonnes (Basic, Pro, Equipe+)
 - CTA sur chaque plan : "S'inscrire" → redirect vers /app (ou signup futur)
 - Pas de gestion d'achat (juste marketing)
 ```
@@ -265,12 +265,12 @@ Sections :
 
 ### Passe 3 — Refonte PlansUsage + Preferences RGPD
 
-**Objectif** : la page Plans est simplifiee (plan actuel + jauge + usage + packs + changement). La page Preferences integre l'export et la suppression RGPD.
+**Objectif** : la page Plans est simplifiee (plan actuel + jauge + usage + changement de plan). La page Preferences integre l'export et la suppression RGPD.
 
 **Fichiers a modifier :**
 | Fichier | Changement |
 |---------|-----------|
-| `src/pages/app/PlansUsage.tsx` | Refonte layout : banniere plan + graphique + packs + plans |
+| `src/pages/app/PlansUsage.tsx` | Refonte layout : banniere plan + graphique + plans (3 colonnes, pas de packs extra) |
 | `src/pages/app/Preferences.tsx` | Ajouter section "Donnees personnelles" avec export/suppression |
 
 ### Passe 4 — Admin Dashboard
@@ -297,7 +297,7 @@ Sections :
 ## PARTIE II — IMPLEMENTATION v1 (historique)
 
 ### Etat actuel (inchange)
-- PlansUsage.tsx : plan + jauge + grille plans + packs extra + usage
+- PlansUsage.tsx : plan + jauge + grille 3 plans (Basic/Pro/Equipe+) + usage
 - Upload.tsx : drop zone + profils + priority + preset + langue + estimation + progress
 - Oneshot.tsx : Variante B (grille tiers, profils, recap, reassurance, comparaison)
 - QuotaAlert.tsx : toast niveaux warning/critical/blocked, dismiss sessionStorage

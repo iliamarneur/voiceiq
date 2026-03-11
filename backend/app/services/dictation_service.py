@@ -12,7 +12,6 @@ from app.models import DictationSession, Job, Transcription
 from app.services.transcription_service import _run_whisper_fast, get_dictation_model_name
 from app.services.audio_analysis_service import get_vad_params
 from app.services.dictionary_service import apply_dictionary_corrections
-from app.services.subscription_service import consume_minutes
 from app.services.stt_backends import resolve_stt_backend, transcribe_audio_via_backend
 
 logger = logging.getLogger(__name__)
@@ -20,9 +19,9 @@ logger = logging.getLogger(__name__)
 UPLOAD_DIR = "uploads"
 
 
-async def start_session(db: AsyncSession, profile: str = "generic") -> DictationSession:
+async def start_session(db: AsyncSession, profile: str = "generic", user_id: str = "default") -> DictationSession:
     """Create a new dictation session."""
-    session = DictationSession(profile=profile)
+    session = DictationSession(profile=profile, user_id=user_id)
     db.add(session)
     await db.commit()
     await db.refresh(session)
@@ -155,6 +154,7 @@ async def save_as_transcription(
         profile=session.profile,
         priority="P1",
         source_type="dictation",
+        user_id=session.user_id,
     )
     db.add(job)
     await db.flush()
@@ -172,6 +172,7 @@ async def save_as_transcription(
         profile=session.profile,
         audio_type="dictation",
         job_id=job.id,
+        user_id=session.user_id,
     )
     db.add(transcription)
     await db.flush()
@@ -180,21 +181,8 @@ async def save_as_transcription(
     session.transcription_id = transcription.id
     await db.commit()
 
-    # v7: consume minutes for dictation usage
-    if session.total_duration and session.total_duration > 0:
-        try:
-            await consume_minutes(
-                db,
-                audio_duration_seconds=session.total_duration,
-                transcription_id=transcription.id,
-                job_id=job.id,
-                source_type="dictation",
-                profile_used=session.profile,
-                whisper_model=get_dictation_model_name(),
-                language=session.language,
-            )
-        except Exception as e:
-            logger.warning(f"Usage logging failed for dictation {session.id}: {e}")
+    # Note: minutes are consumed at finalize time (when audio is actually transcribed),
+    # not at save time, to avoid double-counting.
 
     logger.info(f"Dictation session {session.id} saved as transcription {transcription.id}")
     return {

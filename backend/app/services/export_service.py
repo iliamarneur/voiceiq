@@ -114,28 +114,49 @@ def _render_generic_analysis_pdf(pdf, content):
                 pdf.ln(2)
 
         # Render list-like fields
-        list_fields = ["points", "items", "questions", "actions", "flashcards", "slides", "bullets"]
+        list_fields = ["points", "items", "questions", "actions", "flashcards", "cards",
+                        "slides", "bullets", "faq", "decisions"]
         for field in list_fields:
             if field in content and isinstance(content[field], list):
                 for item in content[field]:
+                    pdf.set_x(pdf.l_margin)  # Reset cursor to left margin
                     if isinstance(item, str):
                         pdf.set_font("Helvetica", "", 10)
-                        pdf.cell(6, 5.5, _sanitize_latin1("-"))
-                        pdf.multi_cell(0, 5.5, _sanitize_latin1(item))
+                        pdf.multi_cell(0, 5.5, _sanitize_latin1(f"- {item}"))
                     elif isinstance(item, dict):
                         # Try common sub-fields
                         line = item.get("text") or item.get("question") or item.get("title") or item.get("term") or ""
                         if line:
                             pdf.set_font("Helvetica", "B", 10)
-                            pdf.cell(6, 5.5, _sanitize_latin1("-"))
+                            pdf.set_x(pdf.l_margin)
                             pdf.multi_cell(0, 5.5, _sanitize_latin1(str(line)))
                         # Sub-detail
                         detail = item.get("answer") or item.get("definition") or item.get("description") or ""
                         if detail:
                             pdf.set_font("Helvetica", "", 9)
-                            pdf.cell(10, 5, "")
+                            pdf.set_text_color(60, 60, 60)
+                            pdf.set_x(pdf.l_margin)
                             pdf.multi_cell(0, 5, _sanitize_latin1(str(detail)))
-                    pdf.ln(1)
+                            pdf.set_text_color(0, 0, 0)
+                        # Quiz: choices + explanation
+                        choices = item.get("choices", [])
+                        if choices:
+                            letters = "ABCDEFGH"
+                            for ci, choice in enumerate(choices):
+                                letter = letters[ci] if ci < len(letters) else str(ci+1)
+                                correct = item.get("answer", "") == letter
+                                pdf.set_font("Helvetica", "B" if correct else "", 9)
+                                prefix = ">> " if correct else "   "
+                                pdf.set_x(pdf.l_margin)
+                                pdf.multi_cell(0, 4.5, _sanitize_latin1(f"{prefix}{letter}. {choice}"))
+                            explanation = item.get("explanation", "")
+                            if explanation:
+                                pdf.set_font("Helvetica", "I", 8)
+                                pdf.set_text_color(100, 100, 100)
+                                pdf.set_x(pdf.l_margin)
+                                pdf.multi_cell(0, 4.5, _sanitize_latin1(explanation))
+                                pdf.set_text_color(0, 0, 0)
+                    pdf.ln(2)
                 pdf.ln(2)
         return
 

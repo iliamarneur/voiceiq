@@ -12,6 +12,7 @@ services:
       - clearrecap-data:/app/data
       - clearrecap-uploads:/app/uploads
       - clearrecap-exports:/app/exports
+      - ./content:/app/content:ro
     ports:
       - "8002:8002"
     extra_hosts:

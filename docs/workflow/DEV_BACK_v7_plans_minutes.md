@@ -296,13 +296,13 @@ Par defaut OFF = tout fonctionne comme avant.
 ### Etat implementation (inchange)
 - Backend v7 complet : models, services, routes, tests
 - 41 tests subscription + 13 Stripe + 9 RGPD = 63 tests PASS
-- Tiers one-shot : Court/Standard/Long
+- Tiers one-shot : Court/Standard/Long/XLong/XXLong/XXXLong
 - Alertes : warning 75%, critical 90%, blocked 100%
 - Stripe sandbox : checkout + webhook + BillingEvent
 - RGPD : export + suppression + batch limit 20
 
 ### Passe 3 — Renommage tiers one-shot (2026-03-07)
-- `plans.json` : S/M/L → Court/Standard/Long
+- `plans.json` : S/M/L → Court/Standard/Long/XLong/XXLong/XXXLong (6 tiers, max 180 min)
 - `subscription_service.py` : estimate_oneshot_tier() mis a jour
 - `main.py` : endpoint tiers + champ label
 - 41/41 tests PASS

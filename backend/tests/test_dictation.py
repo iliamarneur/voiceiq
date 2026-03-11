@@ -6,6 +6,16 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
+@pytest.fixture(autouse=True)
+def reset_backend_caches(monkeypatch):
+    """Reset backend config caches and clear API keys."""
+    for key in ["OPENAI_API_KEY", "OPENAI_STT_API_KEY", "DEEPGRAM_API_KEY"]:
+        monkeypatch.delenv(key, raising=False)
+    from app.services import stt_backends, llm_backends
+    stt_backends._config_cache = None
+    llm_backends._config_cache = None
+
+
 class TestDictationModelConfig:
     """Test dictation model loading and configuration."""
 
@@ -36,7 +46,7 @@ class TestDictationModelConfig:
 
     def test_fast_model_uses_gpu_when_available(self):
         """Verify that get_fast_whisper_model uses GPU if CUDA available."""
-        import torch
+        torch = pytest.importorskip("torch")
         from app.services import transcription_service
         # Just verify the function exists and the logic is correct by reading source
         import inspect

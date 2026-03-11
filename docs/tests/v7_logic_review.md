@@ -19,40 +19,19 @@
      → source = "plan", sub.minutes_used += minutes_needed
 
 5. SINON SI plan_remaining > 0 (partiel):
-     from_plan = plan_remaining
-     from_extra = minutes_needed - from_plan
-     SI extra_balance >= from_extra:
-       → source = "plan+extra"
-       → sub.minutes_used += from_plan
-       → sub.extra_minutes_balance -= from_extra
-     SINON:
-       → source = "plan_exceeded"
-       → sub.minutes_used += minutes_needed  ← TOUT debite du plan (pas de l'extra partiel)
-       → WARNING logged
-
-6. SINON SI extra_balance >= minutes_needed:
-     → source = "extra", extra_balance -= minutes_needed
-
-7. SINON (rien):
-     → source = "exceeded"
+     → source = "plan_exceeded"
      → sub.minutes_used += minutes_needed  ← Depassement autorise
+     → WARNING logged
+
+6. SINON (plan_remaining == 0):
+     → source = "exceeded"
+     → Blocage : transcription refusee
      → WARNING logged
 ```
 
 ### Problemes identifies
 
-**P1 — Depassement plan+extra avec extra partiel (etape 5 SINON)**
-
-Quand `plan_remaining > 0` et `extra_balance > 0` mais insuffisant pour couvrir le total :
-- Le code debite `minutes_needed` du plan (pas juste `plan_remaining`)
-- L'extra_balance n'est **pas touche** du tout
-- Resultat : on perd les minutes extra restantes
-
-**Exemple** : plan_remaining=2, extra=1, needed=5
-- Attendu : 2 du plan + 1 d'extra + 2 en depassement
-- Reel : 5 du plan + 0 d'extra → extra perdu
-
-**P2 — Arrondi minimum a 1 minute**
+**P1 — Arrondi minimum a 1 minute**
 
 `max(1, ceil(duration/60))` → un fichier de 5 secondes coute 1 minute.
 C'est probablement voulu mais non documente dans la spec.
@@ -99,16 +78,12 @@ await consume_minutes(
 
 | Plan | Champ | Spec v7 | Code | Ecart |
 |------|-------|---------|------|-------|
-| free | max_dictionaries | **3** | 1 | -2 |
-| free | max_workspaces | 1 | 1 | OK |
 | basic | max_dictionaries | **10** | 1 | -9 |
 | basic | max_workspaces | **3** | 1 | -2 |
 | pro | max_dictionaries | illimite | -1 | OK |
 | pro | max_workspaces | **10** | 1 | -9 |
 | team | max_dictionaries | illimite | -1 | OK |
 | team | max_workspaces | **illimite (-1)** | 10 | devrait etre -1 |
-
-**5 valeurs incorrectes sur 16 champs de limites.**
 
 ---
 
@@ -127,7 +102,7 @@ Les champs `max_dictionaries`, `max_workspaces` et `features` existent dans le m
 
 ## 4. Reset mensuel
 
-**Logique** : reactive dans `get_or_create_subscription()` L122-128
+**Logique** : reactive dans `get_subscription()` L122-128
 
 ```python
 if sub.current_period_end and datetime.utcnow() > sub.current_period_end:
@@ -139,7 +114,6 @@ if sub.current_period_end and datetime.utcnow() > sub.current_period_end:
 **Comportement** :
 - Declenche uniquement quand on accede a l'abo (pas de cron)
 - Suffisant en mono-user
-- Les `extra_minutes_balance` ne sont PAS remises a zero (correct — pas d'expiration)
 - Si l'utilisateur ne se connecte pas pendant 60 jours, il ne "perd" qu'un mois (le reset recree une nouvelle periode de 30j a partir de maintenant)
 
 **Risque faible** en mono-user. A revoir pour multi-user (cron job necessaire).
@@ -154,6 +128,7 @@ if sub.current_period_end and datetime.utcnow() > sub.current_period_end:
 | Creation commande | OK |
 | Lien commande ↔ transcription | **NON** — pas de flow integre |
 | Blocage upload si minutes epuisees sans one-shot | **NON** — upload toujours autorise |
-| Analyses limitees au tier (S=3, M=4, L=5) | **NON** — toutes les analyses du profil sont lancees |
+| Analyses limitees au tier (6 tiers, Court through XXXLong) | **NON** — toutes les analyses du profil sont lancees |
 
 Le one-shot est un "catalogue" sans integration reelle dans le flow de transcription.
+Max oneshot duration : 180 min.

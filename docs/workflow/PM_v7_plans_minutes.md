@@ -12,7 +12,7 @@ Les professionnels (PME, artisans, professions liberales) et enseignants ont bes
 **VoiceIQ** : transcription audio intelligente locale, avec analyse IA contextuelle, a prix accessible.
 - Transcription Whisper locale (pas de cloud, confidentialite)
 - Analyse LLM contextuelle (profils metier : business, education, medical, legal)
-- Modele hybride : plans mensuels + one-shot + packs de minutes
+- Modele hybride : 3 plans mensuels payants + 6 tiers one-shot
 - Interface simple, pas besoin de competences techniques
 
 ## 3. Personas
@@ -23,7 +23,7 @@ Les professionnels (PME, artisans, professions liberales) et enseignants ont bes
 - Besoin : comptes-rendus automatiques, points d'action
 - Budget : 20-50 EUR/mois
 - Pain : perd 2h/semaine a rediger des CR manuellement
-- Plan cible : **Pro (49 EUR/mois, 2000 min)**
+- Plan cible : **Pro (49 EUR/mois, 3000 min)**
 
 ### Persona B : Thomas, professeur lycee
 - 35 ans, prof d'histoire-geo
@@ -31,7 +31,7 @@ Les professionnels (PME, artisans, professions liberales) et enseignants ont bes
 - 10-15 heures de cours/semaine
 - Besoin : transcription + generation quiz/flashcards automatique
 - Budget : 15-30 EUR/mois (budget personnel ou etablissement)
-- Plan cible : **Basic (19 EUR/mois, 300 min)** ou **Team via etablissement**
+- Plan cible : **Basic (19 EUR/mois, 500 min)** ou **Team via etablissement**
 
 ### Persona C : Julie, avocate independante
 - 38 ans, avocate en droit des affaires
@@ -39,46 +39,41 @@ Les professionnels (PME, artisans, professions liberales) et enseignants ont bes
 - 2-3 consultations/mois de 45-90 min
 - Besoin : transcription precise + confidentialite totale
 - Budget : ponctuel, pas d'abonnement
-- Plan cible : **One-shot (M ou L, 4-5 EUR/session)**
+- Plan cible : **One-shot (Standard ou Long, 6-9 EUR/session)**
 
 ### Persona D : Etudiant / particulier
 - Usage occasionnel (1-2 fichiers/mois)
 - Decouverte du produit
-- Plan cible : **Gratuit (60 min/mois)** puis upgrade eventuel
+- Plan cible : **One-shot (des 3 EUR par transcription)**
 
 ## 4. Spec fonctionnelle
 
 ### 4.1 Plans d'abonnement
 
-| Plan | Prix | Minutes incluses | Features |
-|------|------|-----------------|----------|
-| Gratuit | 0 EUR | 60/mois | Transcription, resume, points cles |
-| Basic (Solo) | 19 EUR/mois | 300/mois | + actions, quiz, export PDF/TXT, dictionnaires |
-| Pro (PME) | 49 EUR/mois | 2000/mois | + tous les profils, chat IA, export PPTX, batch, priorite P0 |
-| Team (Education) | 99 EUR/mois | 5000/mois | + chapitres, mindmap, flashcards, infographies, API access |
+| Plan | Prix | Minutes incluses | Prix/min | Features |
+|------|------|-----------------|----------|----------|
+| Basic (Solo) | 19 EUR/mois | 500/mois | 0.038 EUR | Transcription, resume, points cles, actions, quiz, export PDF/TXT, dictionnaires |
+| Pro (PME) | 49 EUR/mois | 3000/mois | 0.016 EUR | + tous les profils, chat IA, export PPTX, batch, priorite P0 |
+| Team (Education) | 99 EUR/mois | 10000/mois | 0.0099 EUR | + chapitres, mindmap, flashcards, infographies, API access |
 
 ### 4.2 One-shot (sans abonnement)
 
-| Tier | Duree max | Prix | Inclus |
-|------|-----------|------|--------|
-| S | 30 min | 3 EUR | Transcription + resume + points cles |
-| M | 60 min | 4 EUR | + actions + export |
-| L | 90 min | 5 EUR | + quiz + chat |
+| Tier | Duree max | Prix | Prix/min | Inclus |
+|------|-----------|------|----------|--------|
+| Court | 30 min | 3 EUR | 0.10 EUR | Transcription + resume + points cles |
+| Standard | 60 min | 6 EUR | 0.10 EUR | Transcription + resume + points cles |
+| Long | 90 min | 9 EUR | 0.10 EUR | Transcription + resume + points cles |
+| XLong | 120 min | 12 EUR | 0.10 EUR | Transcription + resume + points cles |
+| XXLong | 150 min | 15 EUR | 0.10 EUR | Transcription + resume + points cles |
+| XXXLong | 180 min | 18 EUR | 0.10 EUR | Transcription + resume + points cles |
 
-### 4.3 Packs de minutes supplementaires
-
-| Pack | Minutes | Prix | Prix/min |
-|------|---------|------|----------|
-| S | 100 | 3 EUR | 0.03 EUR |
-| M | 500 | 12 EUR | 0.024 EUR |
-| L | 2000 | 40 EUR | 0.02 EUR |
-
-### 4.4 Logique de consommation
+### 4.3 Logique de consommation
 - 1 minute audio = 1 minute facturee (arrondi au superieur)
 - Minutes du plan consommees en priorite
-- Minutes extra consommees quand plan epuise
-- Reset mensuel des minutes plan (pas les extras)
+- Reset mensuel des minutes plan
 - Alertes a 75% et 90% du quota
+- Utilisateur sans abonnement : banniere "Aucun abonnement", alerte bloquante, redirection vers /app/plans
+- One-shot fonctionne sans abonnement via le mode Simple
 
 ## 5. Acceptance Criteria
 
@@ -87,7 +82,7 @@ Les professionnels (PME, artisans, professions liberales) et enseignants ont bes
 Given un utilisateur sur la page Plans
 When il selectionne le plan "Pro" et confirme
 Then son abonnement passe a Pro
-And il dispose de 2000 minutes
+And il dispose de 3000 minutes
 And la facturation demarre (stub Stripe)
 ```
 
@@ -104,34 +99,33 @@ And un log d'usage est cree
 ```
 Given un utilisateur Basic avec 10 minutes restantes
 When il uploade un fichier de 30 minutes
-And il a 100 minutes extra
-Then 10 minutes sont prises du plan
-And 20 minutes sont prises des extras
-And un log d'usage detaille est cree
+Then l'upload est refuse (quota insuffisant)
+And une alerte "Quota insuffisant" est affichee avec CTA upgrade
 ```
 
 ### AC-4 : Achat one-shot
 ```
 Given un visiteur sans abonnement
-When il choisit le tier M pour un fichier de 45 min
-Then un order one-shot est cree (4 EUR)
+When il choisit le tier Standard pour un fichier de 45 min
+Then un order one-shot est cree (6 EUR)
 And la transcription est lancee apres paiement (stub)
 And l'order est lie a la transcription
 ```
 
 ### AC-5 : Alertes de consommation
 ```
-Given un utilisateur Basic avec 300 minutes
-When il atteint 225 minutes consommees (75%)
+Given un utilisateur Basic avec 500 minutes
+When il atteint 375 minutes consommees (75%)
 Then une notification d'alerte est affichee
-When il atteint 270 minutes consommees (90%)
+When il atteint 450 minutes consommees (90%)
 Then une notification critique est affichee avec CTA upgrade
 ```
 
-### AC-6 : Achat pack extra
+### AC-6 : Utilisateur sans abonnement
 ```
-Given un utilisateur Basic
-When il achete le pack M (500 min, 12 EUR)
-Then 500 minutes extra sont ajoutees a son compte
-And elles persistent au-dela du cycle mensuel
+Given un nouvel utilisateur apres inscription
+When il accede a /app
+Then il est redirige vers /app/plans
+And la sidebar affiche une banniere "Aucun abonnement" (amber)
+And le QuotaAlert affiche "Aucun abonnement actif. Choisissez un plan pour commencer."
 ```

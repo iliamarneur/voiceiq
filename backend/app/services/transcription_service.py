@@ -263,7 +263,7 @@ async def transcribe_audio(
         # Polish transcription text via LLM (formatting, punctuation, paragraphs)
         try:
             from app.services.llm_service import polish_transcription
-            polished = await polish_transcription(full_text, language=effective_language)
+            polished = await polish_transcription(full_text, language=effective_language, dictionary_entries=dictionary_entries or None)
             if polished and polished != full_text:
                 logger.info(f"Job {job_id}: text polished ({len(full_text)} → {len(polished)} chars)")
                 full_text = polished
@@ -307,6 +307,7 @@ async def transcribe_audio(
             profile=profile,
             audio_type=detected_audio_type,
             job_id=job.id,
+            user_id=job.user_id,
             processing_info=_processing_info,
             oneshot_order_id=oneshot_order_id,
         )
@@ -336,6 +337,7 @@ async def transcribe_audio(
                 whisper_model=whisper_model_name,
                 processing_time_seconds=round(processing_end - _transcription_start, 1),
                 language=info.language,
+                user_id=job.user_id,
             )
         except Exception as usage_err:
             logger.warning(f"Usage logging failed: {usage_err}")
@@ -349,67 +351,22 @@ async def transcribe_audio(
             except Exception as link_err:
                 logger.warning(f"Failed to link oneshot order: {link_err}")
 
-        # For one-shot: auto-generate analyses based on tier includes
+        # For one-shot: auto-generate only summary + keypoints (user can request others on-demand)
         if oneshot_order_id:
             _tid = transcription.id
-            _oid = oneshot_order_id
+            _AUTO_TYPES = ["summary", "keypoints"]
             async def _bg_oneshot_analyses():
                 from app.database import AsyncSessionLocal
                 from app.services.llm_service import regenerate_analysis
-                from app.services.subscription_service import get_oneshot_tiers
-                from app.models import OneshotOrder
-                # Mapping: tier feature name → analysis type (skip non-analysis features like transcription, export_*)
-                _FEATURE_TO_ANALYSIS = {
-                    "summary": "summary",
-                    "keypoints": "keypoints",
-                    "actions": "actions",
-                    "faq": "faq",
-                    "quiz": "quiz",
-                    "flashcards": "flashcards",
-                }
                 try:
                     async with AsyncSessionLocal() as bg_db:
-                        # Look up the tier from the oneshot order
-                        order_result = await bg_db.execute(
-                            select(OneshotOrder).where(OneshotOrder.id == _oid)
-                        )
-                        order = order_result.scalar_one_or_none()
-                        if not order:
-                            logger.warning(f"One-shot order {_oid} not found, falling back to summary only")
-                            await regenerate_analysis(_tid, "summary", bg_db)
-                            return
-
-                        tiers = get_oneshot_tiers()
-                        tier_config = tiers.get(order.tier, {})
-                        includes = tier_config.get("includes", ["transcription", "summary"])
-
-                        # Build list of analysis types allowed by this tier
-                        analysis_types = [
-                            _FEATURE_TO_ANALYSIS[feat]
-                            for feat in includes
-                            if feat in _FEATURE_TO_ANALYSIS
-                        ]
-
-                        # Generate chapters separately (uses generate_chapters, not regenerate_analysis)
-                        if "chapters" in includes:
-                            try:
-                                from app.services.llm_service import generate_chapters
-                                await generate_chapters(_tid, bg_db)
-                                logger.info(f"One-shot: chapters generated for {_tid}")
-                            except Exception as e:
-                                logger.warning(f"One-shot chapters failed for {_tid}: {e}")
-
-                        if not analysis_types:
-                            logger.info(f"One-shot tier '{order.tier}' has no analysis features")
-                            return
-
-                        logger.info(f"One-shot: auto-generating {analysis_types} for {_tid} (tier={order.tier})")
-                        for analysis_type in analysis_types:
+                        logger.info(f"One-shot: auto-generating {_AUTO_TYPES} for {_tid}")
+                        for analysis_type in _AUTO_TYPES:
                             try:
                                 await regenerate_analysis(_tid, analysis_type, bg_db)
                             except Exception as e:
                                 logger.warning(f"One-shot analysis '{analysis_type}' failed for {_tid}: {e}")
-                        logger.info(f"One-shot: all analyses generated for {_tid}")
+                        logger.info(f"One-shot: auto-analyses done for {_tid}")
                 except Exception as analysis_err:
                     logger.warning(f"One-shot auto-analysis failed: {analysis_err}")
             asyncio.create_task(_bg_oneshot_analyses())

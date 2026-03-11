@@ -372,7 +372,7 @@ Le one-shot simple utilise exactement le meme pipeline de transcription que l'up
 - UserPreferences, DictationSession
 
 ### Decisions architecturales v1 (DA-1 a DA-5)
-- DA-1 : Consommation minutes hybride (plan → extra → exceeded)
+- DA-1 : Consommation minutes (plan → exceeded, pas d'extra packs)
 - DA-2 : Stub paiement (auto-validate en dev)
 - DA-3 : Multi-tenant ready (user_id partout)
 - DA-4 : Reset mensuel (check a chaque appel)

@@ -33,6 +33,7 @@ class Transcription(Base):
     status = Column(String, nullable=False, default="completed")
     profile = Column(String, nullable=False, default="generic")
     job_id = Column(String, ForeignKey("jobs.id"), nullable=False)
+    user_id = Column(String, nullable=False, default="default")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     analyses = relationship("Analysis", back_populates="transcription", cascade="all, delete-orphan")
@@ -115,6 +116,7 @@ class SpeakerLabel(Base):
 class UserDictionary(Base):
     __tablename__ = "user_dictionaries"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, nullable=False, default="default")
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
@@ -136,6 +138,7 @@ class DictionaryEntry(Base):
 class AudioPreset(Base):
     __tablename__ = "audio_presets"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, nullable=False, default="default")
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     profile_id = Column(String, nullable=False, default="generic")
@@ -250,6 +253,7 @@ class BillingEvent(Base):
 class DictationSession(Base):
     __tablename__ = "dictation_sessions"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, nullable=False, default="default")
     status = Column(String, nullable=False, default="active")  # active, paused, completed
     profile = Column(String, nullable=False, default="generic")
     language = Column(String, nullable=True)

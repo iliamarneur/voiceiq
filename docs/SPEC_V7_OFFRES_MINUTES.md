@@ -40,9 +40,12 @@ Transcription a l'unite, sans engagement. Upload ou dictee unique.
 ### Paliers de prix
 | Palier | Duree max | Prix | Inclus |
 |--------|-----------|------|--------|
-| S      | 30 min    | 3 EUR   | Transcription + Resume + Points cles |
-| M      | 60 min    | 4 EUR   | Transcription + Resume + Points cles + Actions |
-| L      | 90 min    | 5 EUR   | Transcription + Resume + Points cles + Actions + Quiz |
+| Court      | 30 min    | 3 EUR   | Transcription + Resume + Points cles |
+| Standard   | 60 min    | 6 EUR   | Transcription + Resume + Points cles + Actions |
+| Long       | 90 min    | 9 EUR   | Transcription + Resume + Points cles + Actions + Quiz |
+| XLong      | 120 min   | 12 EUR  | Transcription + Resume + Points cles + Actions + Quiz |
+| XXLong     | 150 min   | 15 EUR  | Transcription + Resume + Points cles + Actions + Quiz |
+| XXXLong    | 180 min   | 18 EUR  | Transcription + Resume + Points cles + Actions + Quiz |
 
 ### Fonctionnement
 1. L'utilisateur choisit "Transcription one-shot"
@@ -64,7 +67,7 @@ Transcription a l'unite, sans engagement. Upload ou dictee unique.
 
 ### 3.1 Plan Basic (Solo) — 19 EUR/mois
 - **Cible** : Freelance, artisan, prof independant
-- **Minutes incluses** : 300 min/mois
+- **Minutes incluses** : 500 min/mois
 - **Fonctionnalites** :
   - Transcription + resumes
   - Profils : Reunion business, Cours, Conference, General
@@ -76,7 +79,7 @@ Transcription a l'unite, sans engagement. Upload ou dictee unique.
 
 ### 3.2 Plan Pro (PME) — 49 EUR/mois
 - **Cible** : TPE/PME, cabinet de formation, agences
-- **Minutes incluses** : 2000 min/mois
+- **Minutes incluses** : 3000 min/mois
 - **Fonctionnalites** :
   - Tout Basic +
   - Dictionnaires illimites
@@ -89,7 +92,7 @@ Transcription a l'unite, sans engagement. Upload ou dictee unique.
 
 ### 3.3 Plan Equipe+ (Education) — 99 EUR/mois
 - **Cible** : Ecoles, organismes, PME grosses consommatrices
-- **Minutes incluses** : 5000 min/mois
+- **Minutes incluses** : 10000 min/mois
 - **Fonctionnalites** :
   - Tout Pro +
   - Multi-workspaces
@@ -100,25 +103,12 @@ Transcription a l'unite, sans engagement. Upload ou dictee unique.
 
 ---
 
-## 4. Minutes supplementaires
+## 4. Logique de consommation
 
-### Principe
-Un utilisateur peut acheter du temps supplementaire sans changer de plan.
-
-### Tarification
-| Pack         | Minutes | Prix   | Prix/min |
-|-------------|---------|--------|----------|
-| Recharge S  | 100     | 3 EUR     | 0.030 EUR   |
-| Recharge M  | 500     | 12 EUR    | 0.024 EUR   |
-| Recharge L  | 2000    | 40 EUR    | 0.020 EUR   |
-
-### Logique de consommation
 1. Chaque transcription consomme `ceil(duree_audio_minutes)` minutes
 2. Les minutes du plan sont consommees en premier
-3. Quand les minutes plan sont epuisees, les minutes extra sont utilisees
-4. Quand tout est epuise : blocage avec proposition d'achat
-5. Les minutes plan se reinitialisent chaque mois (1er du mois)
-6. Les minutes extra n'expirent pas
+3. Quand les minutes plan sont epuisees : blocage avec proposition de changement de plan
+4. Les minutes plan se reinitialisent chaque mois (1er du mois)
 
 ---
 
@@ -127,7 +117,7 @@ Un utilisateur peut acheter du temps supplementaire sans changer de plan.
 ### Table `plans`
 | Colonne | Type | Description |
 |---------|------|-------------|
-| id | VARCHAR PK | "free", "oneshot", "basic", "pro", "team" |
+| id | VARCHAR PK | "basic", "pro", "team" |
 | name | VARCHAR | Nom d'affichage |
 | price_cents | INTEGER | Prix mensuel en centimes |
 | minutes_included | INTEGER | Minutes incluses/mois |
@@ -147,7 +137,6 @@ Un utilisateur peut acheter du temps supplementaire sans changer de plan.
 | current_period_start | DATETIME | Debut periode en cours |
 | current_period_end | DATETIME | Fin periode en cours |
 | minutes_used | INTEGER | Minutes consommees ce mois |
-| extra_minutes_balance | INTEGER | Solde minutes extra |
 | created_at | DATETIME | |
 | updated_at | DATETIME | |
 
@@ -160,7 +149,7 @@ Un utilisateur peut acheter du temps supplementaire sans changer de plan.
 | job_id | VARCHAR FK | |
 | audio_duration_seconds | FLOAT | Duree audio en secondes |
 | minutes_charged | INTEGER | Minutes facturees (ceil) |
-| minute_source | VARCHAR | "plan" ou "extra" ou "oneshot" |
+| minute_source | VARCHAR | "plan" ou "oneshot" |
 | source_type | VARCHAR | upload, recording, dictation |
 | profile_used | VARCHAR | Profil metier utilise |
 | whisper_model | VARCHAR | base, medium, large-v3 |
@@ -173,7 +162,7 @@ Un utilisateur peut acheter du temps supplementaire sans changer de plan.
 |---------|------|-------------|
 | id | VARCHAR PK | UUID |
 | user_id | VARCHAR | |
-| tier | VARCHAR | S, M, L |
+| tier | VARCHAR | Court, Standard, Long, XLong, XXLong, XXXLong |
 | price_cents | INTEGER | Prix en centimes |
 | audio_duration_seconds | FLOAT | Duree audio |
 | payment_status | VARCHAR | pending, paid, failed |
@@ -195,10 +184,10 @@ Un utilisateur peut acheter du temps supplementaire sans changer de plan.
 
 ### Agregees (calculables depuis usage_logs)
 - Minutes totales consommees / jour / mois
-- Cout estime par minute (basé sur infra)
+- Cout estime par minute (base sur infra)
 - Repartition par profil metier
 - Repartition par mode d'entree
-- Taux d'utilisation des minutes plan vs extra
+- Taux d'utilisation des minutes plan
 - Nombre de transcriptions par plan
 
 ---

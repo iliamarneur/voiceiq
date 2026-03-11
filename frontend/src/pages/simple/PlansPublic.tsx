@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, Star, ArrowLeft, Zap, ShoppingBag, Building2, Server, Lock, Shield, HardDrive, Users, KeyRound, Mail } from 'lucide-react';
 import axios from 'axios';
+import { MetaTags, getCanonical, getHreflangAlternates, PAGE_META } from '../../components/SEO';
 
 interface PlanData {
   id: string;
@@ -54,6 +55,14 @@ function PlansPublic() {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8"
     >
+      {/* SEO */}
+      <MetaTags
+        title={PAGE_META.pricing.title}
+        description={PAGE_META.pricing.description}
+        canonical={getCanonical('/plans')}
+        hreflangAlternates={getHreflangAlternates('/plans')}
+      />
+
       <div className="flex items-center gap-4">
         <Link to="/" className="text-slate-400 hover:text-slate-800 transition-colors">
           <ArrowLeft className="w-5 h-5" />

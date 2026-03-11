@@ -304,7 +304,7 @@ async def create_plan_checkout(
             "plan_id": plan_id,
             "user_id": user_id,
         },
-        "success_url": f"{base_url}/payment/success?type=plan&plan_id={plan_id}",
+        "success_url": f"{base_url}/payment/success?type=plan&plan_id={plan_id}&session_id={{CHECKOUT_SESSION_ID}}",
         "cancel_url": f"{base_url}/payment/cancel?type=plan",
     }
 

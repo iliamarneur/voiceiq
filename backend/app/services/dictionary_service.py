@@ -12,9 +12,13 @@ logger = logging.getLogger(__name__)
 ENABLE_CORRECTION_LEARNING = os.environ.get("ENABLE_CORRECTION_LEARNING", "false").lower() == "true"
 
 
-async def get_all_dictionaries(db: AsyncSession) -> list:
-    """Return all user dictionaries with their entries."""
-    result = await db.execute(select(UserDictionary).order_by(UserDictionary.created_at.desc()))
+async def get_all_dictionaries(db: AsyncSession, user_id: str = "default") -> list:
+    """Return all user dictionaries with their entries, filtered by user."""
+    result = await db.execute(
+        select(UserDictionary)
+        .where(UserDictionary.user_id == user_id)
+        .order_by(UserDictionary.created_at.desc())
+    )
     return result.scalars().all()
 
 
@@ -40,7 +44,9 @@ async def check_dictionary_limit(db: AsyncSession, user_id: str = "default") -> 
     if not plan or plan.max_dictionaries == -1:
         return  # Unlimited
 
-    count_result = await db.execute(select(func.count()).select_from(UserDictionary))
+    count_result = await db.execute(
+        select(func.count()).select_from(UserDictionary).where(UserDictionary.user_id == user_id)
+    )
     current_count = count_result.scalar() or 0
 
     if current_count >= plan.max_dictionaries:
@@ -50,9 +56,9 @@ async def check_dictionary_limit(db: AsyncSession, user_id: str = "default") -> 
         )
 
 
-async def create_dictionary(name: str, description: str, db: AsyncSession) -> UserDictionary:
-    await check_dictionary_limit(db)
-    d = UserDictionary(name=name, description=description)
+async def create_dictionary(name: str, description: str, db: AsyncSession, user_id: str = "default") -> UserDictionary:
+    await check_dictionary_limit(db, user_id=user_id)
+    d = UserDictionary(name=name, description=description, user_id=user_id)
     db.add(d)
     await db.commit()
     await db.refresh(d)

@@ -1133,14 +1133,24 @@ function KeyPointsView({ content }: { content: any }) {
 }
 
 function ActionsView({ content }: { content: any }) {
-  const actions = content.actions || [];
-  const decisions = content.decisions || [];
-  const questions = content.questions || [];
+  // LLM may return strings or objects — normalize to strings
+  const toStr = (item: any): string => {
+    if (typeof item === 'string') return item;
+    if (typeof item === 'object' && item !== null) {
+      return item.action || item.description || item.text || item.decision || item.question || item.title || JSON.stringify(item);
+    }
+    return String(item);
+  };
+
+  const actions = (content.actions || content.action_items || []).map(toStr);
+  const decisions = (content.decisions || []).map(toStr);
+  const questions = (content.questions || content.open_questions || []).map(toStr);
+
   return (
     <div className="space-y-6">
       {actions.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold uppercase text-slate-500 mb-3">Action Items</h3>
+          <h3 className="text-sm font-semibold uppercase text-slate-500 mb-3">Actions</h3>
           <div className="space-y-2">
             {actions.map((a: string, i: number) => (
               <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
@@ -1163,7 +1173,7 @@ function ActionsView({ content }: { content: any }) {
       )}
       {questions.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold uppercase text-slate-500 mb-3">Open Questions</h3>
+          <h3 className="text-sm font-semibold uppercase text-slate-500 mb-3">Questions ouvertes</h3>
           <div className="space-y-2">
             {questions.map((q: string, i: number) => (
               <div key={i} className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 text-sm">{q}</div>
@@ -1171,7 +1181,11 @@ function ActionsView({ content }: { content: any }) {
           </div>
         </div>
       )}
-      {!actions.length && !decisions.length && !questions.length && <GenericView content={content} />}
+      {!actions.length && !decisions.length && !questions.length && (
+        <div className="p-4 text-center text-slate-400 text-sm">
+          {content.summary || 'Aucune action, decision ou question identifiee.'}
+        </div>
+      )}
     </div>
   );
 }
@@ -1511,6 +1525,11 @@ function RisksView({ content }: { content: any }) {
 }
 
 function FollowupView({ content }: { content: any }) {
+  // Medical follow-up plan format (next_appointments, monitoring, emergency_criteria...)
+  const isMedical = content.next_appointments || content.monitoring || content.emergency_criteria || content.patient_instructions;
+  if (isMedical) return <MedicalFollowupView content={content} />;
+
+  // Business follow-up email format (subject, body, greeting...)
   return (
     <div className="space-y-4">
       {content.subject && (
@@ -1527,6 +1546,106 @@ function FollowupView({ content }: { content: any }) {
         {content.closing && <p className="text-slate-500">{content.closing}</p>}
       </div>
       {!content.subject && !content.body && <GenericView content={content} />}
+    </div>
+  );
+}
+
+function MedicalFollowupView({ content }: { content: any }) {
+  const appointments = content.next_appointments || [];
+  const monitoring = content.monitoring || [];
+  const emergencyCriteria = content.emergency_criteria || [];
+  const instructions = content.patient_instructions || [];
+  const pendingTests = content.pending_tests || [];
+
+  return (
+    <div className="space-y-5">
+      {/* Prochains RDV */}
+      {appointments.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold uppercase text-slate-500 mb-2">Prochains rendez-vous</h3>
+          <div className="space-y-2">
+            {appointments.map((a: any, i: number) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800">
+                <Calendar className="w-5 h-5 text-indigo-500 flex-shrink-0" />
+                <div>
+                  <span className="font-semibold text-sm">{a.type}</span>
+                  {a.specialist && <span className="text-xs text-slate-500 ml-2">— {a.specialist}</span>}
+                  {a.timeline && <p className="text-xs text-indigo-600 dark:text-indigo-400">{a.timeline}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Examens en attente */}
+      {pendingTests.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold uppercase text-slate-500 mb-2">Examens en attente</h3>
+          <div className="space-y-2">
+            {pendingTests.map((t: any, i: number) => (
+              <div key={i} className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-sm">
+                {typeof t === 'string' ? t : <><strong>{t.test || t.name}</strong>{t.timeline && <span className="text-xs text-slate-500 ml-2">— {t.timeline}</span>}</>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Surveillance */}
+      {monitoring.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold uppercase text-slate-500 mb-2">Surveillance</h3>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead><tr className="bg-slate-50 dark:bg-slate-800">
+                <th className="px-4 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Parametre</th>
+                <th className="px-4 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Frequence</th>
+                <th className="px-4 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Objectif</th>
+              </tr></thead>
+              <tbody>{monitoring.map((m: any, i: number) => (
+                <tr key={i} className="border-b border-slate-100 dark:border-slate-700/50">
+                  <td className="px-4 py-3 font-medium">{m.parameter || m.name || '—'}</td>
+                  <td className="px-4 py-3">{m.frequency || '—'}</td>
+                  <td className="px-4 py-3">{m.target || m.goal || '—'}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Criteres d'urgence */}
+      {emergencyCriteria.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold uppercase text-slate-500 mb-2">Criteres d'urgence</h3>
+          <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700">
+            <ul className="space-y-2">
+              {emergencyCriteria.map((c: string, i: number) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-red-700 dark:text-red-400">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  {c}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Instructions patient */}
+      {instructions.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold uppercase text-slate-500 mb-2">Instructions au patient</h3>
+          <div className="space-y-2">
+            {instructions.map((inst: string, i: number) => (
+              <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-sm">
+                <span className="text-green-600 font-bold">{i + 1}.</span>
+                <span>{inst}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1599,13 +1718,62 @@ function SOAPView({ content }: { content: any }) {
     { key: 'assessment', label: 'A — Evaluation', color: 'from-amber-500 to-amber-600', desc: 'Diagnostic, hypotheses' },
     { key: 'plan', label: 'P — Plan', color: 'from-purple-500 to-purple-600', desc: 'Traitement, suivi' },
   ];
+
+  const renderValue = (val: any): React.ReactNode => {
+    if (!val) return <span className="text-slate-400 italic">Non renseigne</span>;
+    if (typeof val === 'string') return val;
+    if (Array.isArray(val)) return (
+      <ul className="list-disc list-inside space-y-1">
+        {val.map((item, i) => <li key={i}>{typeof item === 'string' ? item : JSON.stringify(item)}</li>)}
+      </ul>
+    );
+    if (typeof val === 'object') return (
+      <div className="space-y-3">
+        {Object.entries(val).map(([k, v]) => (
+          <div key={k}>
+            <span className="font-semibold text-slate-600 dark:text-slate-300 capitalize">{k.replace(/_/g, ' ')} : </span>
+            {typeof v === 'string' ? v : Array.isArray(v) ? (
+              v.length > 0 ? (
+                <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5">
+                  {v.map((item, i) => <li key={i}>{typeof item === 'string' ? item : JSON.stringify(item)}</li>)}
+                </ul>
+              ) : <span className="text-slate-400 italic">Aucun</span>
+            ) : v ? String(v) : <span className="text-slate-400 italic">—</span>}
+          </div>
+        ))}
+      </div>
+    );
+    return String(val);
+  };
+
+  const severityColors: Record<string, string> = {
+    red: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+    orange: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
+    yellow: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+    green: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+  };
+
   return (
     <div className="space-y-4">
-      {content.urgency && (
-        <div className={`p-3 rounded-xl text-center text-sm font-bold ${content.urgency === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : content.urgency === 'medium' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700' : 'bg-green-100 dark:bg-green-900/30 text-green-700'}`}>
-          Urgence : {content.urgency.toUpperCase()}
-        </div>
-      )}
+      {/* Urgency + severity + completeness badges */}
+      <div className="flex flex-wrap gap-3">
+        {content.urgency && (
+          <div className={`px-4 py-2 rounded-xl text-sm font-bold ${content.urgency === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : content.urgency === 'medium' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700' : 'bg-green-100 dark:bg-green-900/30 text-green-700'}`}>
+            Urgence : {content.urgency.toUpperCase()}
+          </div>
+        )}
+        {content.severity && (
+          <div className={`px-4 py-2 rounded-xl text-sm font-bold ${severityColors[content.severity] || 'bg-slate-100 text-slate-600'}`}>
+            Severite : {content.severity.toUpperCase()}
+          </div>
+        )}
+        {content.completeness_score != null && (
+          <div className="px-4 py-2 rounded-xl text-sm font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+            Completude : {content.completeness_score}%
+          </div>
+        )}
+      </div>
+
       {sections.map(({ key, label, color, desc }) => (
         <div key={key} className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
           <div className={`bg-gradient-to-r ${color} px-4 py-2 text-white`}>
@@ -1613,7 +1781,7 @@ function SOAPView({ content }: { content: any }) {
             <p className="text-xs opacity-80">{desc}</p>
           </div>
           <div className="p-4 bg-white dark:bg-slate-800 text-sm leading-relaxed">
-            {content[key] || <span className="text-slate-400 italic">Non renseigne</span>}
+            {renderValue(content[key])}
           </div>
         </div>
       ))}
@@ -1657,10 +1825,19 @@ function PIIView({ content }: { content: any }) {
 }
 
 function PrescriptionsView({ content }: { content: any }) {
-  const prescriptions = content.prescriptions || [];
+  const prescriptions = content.prescriptions || content.medications || [];
+  const patientCtx = content.patient_context;
   return (
     <div className="space-y-4">
-      {prescriptions.length > 0 && (
+      {/* Patient context */}
+      {patientCtx && (patientCtx.age !== 'unknown' || patientCtx.comorbidities?.length > 0) && (
+        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm">
+          {patientCtx.age && patientCtx.age !== 'unknown' && <span className="mr-4"><strong>Age :</strong> {patientCtx.age}</span>}
+          {patientCtx.comorbidities?.length > 0 && <span><strong>Comorbidites :</strong> {patientCtx.comorbidities.join(', ')}</span>}
+        </div>
+      )}
+
+      {prescriptions.length > 0 ? (
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -1673,17 +1850,22 @@ function PrescriptionsView({ content }: { content: any }) {
               </tr></thead>
               <tbody>{prescriptions.map((p: any, i: number) => (
                 <tr key={i} className="border-b border-slate-100 dark:border-slate-700/50">
-                  <td className="px-4 py-3 font-medium">{p.medication}</td>
-                  <td className="px-4 py-3">{p.dosage}</td>
-                  <td className="px-4 py-3">{p.frequency}</td>
-                  <td className="px-4 py-3">{p.duration}</td>
-                  <td className="px-4 py-3">{p.route}</td>
+                  <td className="px-4 py-3 font-medium">{p.medication || p.name || p.drug || '—'}</td>
+                  <td className="px-4 py-3">{p.dosage || p.dose || '—'}</td>
+                  <td className="px-4 py-3">{p.frequency || p.schedule || '—'}</td>
+                  <td className="px-4 py-3">{p.duration || '—'}</td>
+                  <td className="px-4 py-3">{p.route || p.administration || '—'}</td>
                 </tr>
               ))}</tbody>
             </table>
           </div>
         </div>
+      ) : (
+        <div className="text-center py-8 text-slate-400">
+          <p className="text-sm">Aucune prescription ou traitement mentionne dans la transcription.</p>
+        </div>
       )}
+
       {content.allergies_mentioned?.length > 0 && (
         <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 text-sm">
           <strong>Allergies :</strong> {content.allergies_mentioned.join(', ')}
@@ -1694,7 +1876,6 @@ function PrescriptionsView({ content }: { content: any }) {
           {content.non_pharma.map((n: string, i: number) => <div key={i} className="p-2 rounded-lg bg-green-50 dark:bg-green-900/10 text-sm mb-1">{n}</div>)}
         </div>
       )}
-      {!prescriptions.length && <GenericView content={content} />}
     </div>
   );
 }
@@ -1751,30 +1932,73 @@ function ClausesView({ content }: { content: any }) {
 }
 
 function ObligationsView({ content }: { content: any }) {
-  const obligations = content.obligations || [];
+  // Flatten obligations from two possible LLM formats:
+  // Format A (flat): { obligations: [{ debtor, obligation, type, deadline, status }] }
+  // Format B (by party): { parties: [{ name, obligations: [{ obligation, type, deadline, ... }] }] }
+  const flatObligations: any[] = [];
+
+  if (Array.isArray(content.parties)) {
+    for (const party of content.parties) {
+      const partyName = party.name || party.party || 'Inconnu';
+      const obs = party.obligations || [];
+      for (const o of obs) {
+        flatObligations.push({ ...o, debtor: partyName });
+      }
+    }
+  } else if (Array.isArray(content.obligations)) {
+    flatObligations.push(...content.obligations);
+  }
+
+  const statusBadge = (status: string) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'executee' || s === 'confirmed' || s === 'done')
+      return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+    if (s === 'en_cours' || s === 'pending' || s === 'in_progress')
+      return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+    if (s === 'non_executee' || s === 'failed' || s === 'overdue')
+      return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+    return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+  };
+
+  const formatStatus = (s: string) => (s || '-').replace(/_/g, ' ');
+
+  if (!flatObligations.length) {
+    return (
+      <div className="p-6 text-center text-slate-400 text-sm">
+        Aucune obligation identifiée.
+        {content && typeof content === 'object' && Object.keys(content).length > 0 && (
+          <div className="mt-4"><GenericView content={content} /></div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="bg-slate-50 dark:bg-slate-800">
-            <th className="px-3 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Debiteur</th>
+            <th className="px-3 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Partie</th>
             <th className="px-3 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Obligation</th>
             <th className="px-3 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Type</th>
             <th className="px-3 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Echeance</th>
             <th className="px-3 py-3 text-left font-semibold border-b border-slate-200 dark:border-slate-700">Statut</th>
           </tr></thead>
-          <tbody>{obligations.map((o: any, i: number) => (
+          <tbody>{flatObligations.map((o: any, i: number) => (
             <tr key={i} className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-              <td className="px-3 py-3 font-medium">{o.debtor}</td>
-              <td className="px-3 py-3">{o.obligation}</td>
-              <td className="px-3 py-3"><span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700">{o.type}</span></td>
-              <td className="px-3 py-3 text-xs">{o.deadline || '-'}</td>
-              <td className="px-3 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${o.status === 'confirmed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>{o.status}</span></td>
+              <td className="px-3 py-3 font-medium">{o.debtor || o.party || '-'}</td>
+              <td className="px-3 py-3">
+                <div>{o.obligation || o.description || '-'}</div>
+                {o.penalty && <div className="text-xs text-red-500 mt-1">Sanction : {o.penalty}</div>}
+                {o.legal_basis && <div className="text-xs text-slate-400 mt-1">{o.legal_basis}</div>}
+              </td>
+              <td className="px-3 py-3"><span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700">{o.type || '-'}</span></td>
+              <td className="px-3 py-3 text-xs">{o.deadline || o.echeance || '-'}</td>
+              <td className="px-3 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${statusBadge(o.execution_status || o.status || '')}`}>{formatStatus(o.execution_status || o.status || '')}</span></td>
             </tr>
           ))}</tbody>
         </table>
       </div>
-      {!obligations.length && <div className="p-4"><GenericView content={content} /></div>}
     </div>
   );
 }
@@ -1798,7 +2022,7 @@ function DeadlinesView({ content }: { content: any }) {
           {d.legal_basis && <p className="text-xs text-slate-400 mt-1">Base legale : {d.legal_basis}</p>}
         </div>
       ))}
-      {!deadlines.length && <GenericView content={content} />}
+      {!deadlines.length && !content.timeline_summary && <div className="p-4 text-center text-slate-400 text-sm">Aucune echeance identifiee.</div>}
     </div>
   );
 }
@@ -1819,7 +2043,7 @@ function ReferencesView({ content }: { content: any }) {
           {r.cited_by && <p className="text-xs text-slate-400 mt-1">Cite par : {r.cited_by}</p>}
         </div>
       ))}
-      {!references.length && <GenericView content={content} />}
+      {!references.length && <div className="p-4 text-center text-slate-400 text-sm">{content.summary || 'Aucune reference juridique identifiee.'}</div>}
     </div>
   );
 }

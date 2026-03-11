@@ -15,9 +15,19 @@ function PaymentSuccess() {
   const [countdown, setCountdown] = useState(5);
   const [confirming, setConfirming] = useState(false);
 
-  // Confirm payment and start transcription for oneshot
+  // Confirm payment for plan or oneshot
   useEffect(() => {
-    if (type === 'oneshot' && jobId) {
+    if (type === 'plan' && planId && sessionId) {
+      setConfirming(true);
+      axios.post('/api/subscription/confirm-payment', {
+        session_id: sessionId,
+        plan_id: planId,
+      }).then(() => {
+        setConfirming(false);
+      }).catch(() => {
+        setConfirming(false);
+      });
+    } else if (type === 'oneshot' && jobId) {
       setConfirming(true);
       axios.post('/api/oneshot/confirm-payment', {
         job_id: jobId,
@@ -28,7 +38,7 @@ function PaymentSuccess() {
         setConfirming(false);
       });
     }
-  }, [type, jobId, sessionId]);
+  }, [type, planId, jobId, sessionId]);
 
   useEffect(() => {
     if (confirming) return; // wait for confirmation before countdown

@@ -5,15 +5,16 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-# Ensure no premium API keys are set for these tests
-for key in ["OPENAI_API_KEY", "OPENAI_STT_API_KEY", "OPENAI_LLM_API_KEY",
-            "DEEPGRAM_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS", "ANTHROPIC_API_KEY"]:
-    os.environ.pop(key, None)
-
-# Clear config cache (may have been loaded with keys present)
-from app.services import stt_backends, llm_backends
-stt_backends._config_cache = None
-llm_backends._config_cache = None
+@pytest.fixture(autouse=True)
+def clear_api_keys(monkeypatch):
+    """Ensure no premium API keys are present and reset config caches."""
+    for key in ["OPENAI_API_KEY", "OPENAI_STT_API_KEY", "OPENAI_LLM_API_KEY",
+                "DEEPGRAM_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS", "ANTHROPIC_API_KEY"]:
+        monkeypatch.delenv(key, raising=False)
+    # Reset config caches so they reload fresh
+    from app.services import stt_backends, llm_backends
+    stt_backends._config_cache = None
+    llm_backends._config_cache = None
 
 
 class TestSttBackends:

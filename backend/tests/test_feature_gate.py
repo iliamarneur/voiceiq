@@ -28,28 +28,15 @@ class TestFeatureLabels:
 class TestPlanFeatures:
     """Test plan feature definitions."""
 
-    def test_free_plan_limited_features(self):
-        import json
-        config_path = os.path.join(os.path.dirname(__file__), "..", "config", "plans.json")
-        with open(config_path) as f:
-            config = json.load(f)
-        free = next(p for p in config["plans"] if p["id"] == "free")
-        assert "transcription" in free["features"]
-        assert "summary" in free["features"]
-        assert "keypoints" in free["features"]
-        # Free should NOT have these
-        assert "dictation" not in free["features"]
-        assert "chat" not in free["features"]
-        assert "mindmap" not in free["features"]
-        assert "templates" not in free["features"]
-        assert "presets" not in free["features"]
-
-    def test_basic_plan_includes_dictation(self):
+    def test_basic_plan_features(self):
         import json
         config_path = os.path.join(os.path.dirname(__file__), "..", "config", "plans.json")
         with open(config_path) as f:
             config = json.load(f)
         basic = next(p for p in config["plans"] if p["id"] == "basic")
+        assert "transcription" in basic["features"]
+        assert "summary" in basic["features"]
+        assert "keypoints" in basic["features"]
         assert "dictation" in basic["features"]
         assert "chat" in basic["features"]
         assert "actions" in basic["features"]
@@ -87,22 +74,12 @@ class TestPlanFeatures:
         with open(config_path) as f:
             config = json.load(f)
         plans = {p["id"]: set(p["features"]) for p in config["plans"]}
-        assert plans["free"].issubset(plans["basic"])
         assert plans["basic"].issubset(plans["pro"])
         assert plans["pro"].issubset(plans["team"])
 
 
 class TestPlanLimits:
     """Test plan limits (max_dictionaries, max_workspaces)."""
-
-    def test_free_limits(self):
-        import json
-        config_path = os.path.join(os.path.dirname(__file__), "..", "config", "plans.json")
-        with open(config_path) as f:
-            config = json.load(f)
-        free = next(p for p in config["plans"] if p["id"] == "free")
-        assert free["max_dictionaries"] == 3
-        assert free["max_workspaces"] == 1
 
     def test_basic_limits(self):
         import json

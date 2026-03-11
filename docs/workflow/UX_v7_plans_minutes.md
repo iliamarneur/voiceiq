@@ -23,7 +23,7 @@
 **Profil** : Independante, a enregistre un entretien client sur son telephone, veut le texte.
 **Savoir technique** : Sait utiliser Gmail et WhatsApp. Ne sait pas ce qu'est un "profil d'analyse".
 **Besoin** : "Je veux le texte de mon audio, c'est tout."
-**Sensibilite prix** : Prete a payer 3-5 EUR si c'est rapide et clair.
+**Sensibilite prix** : Prete a payer 3-18 EUR si c'est rapide et clair.
 **Friction max toleree** : 2 decisions, 3 clics.
 
 **Flow ideal (6 etapes) :**
@@ -44,12 +44,12 @@
 
 **Flow ideal (8 etapes) :**
 1. Decouvre via one-shot (ou lien direct /plans)
-2. S'inscrit, decouvre le plan Gratuit (60 min)
-3. Upload un premier fichier, profil "Generique"
-4. Voit le resultat — decouvre resume, points cles
-5. 2e fichier → choisit profil "Business" → voit les actions et le plan d'actions
-6. Atteint 75% quota → alerte → decouvre les plans
-7. Passe au Pro (49 EUR/2000 min) — debloquer dictation, templates, exports avances
+2. S'inscrit, redirige vers /app/plans (pas d'abonnement par defaut)
+3. Choisit le plan Basic (19 EUR/500 min) ou Pro
+4. Upload un premier fichier, profil "Generique"
+5. Voit le resultat — decouvre resume, points cles
+6. 2e fichier → choisit profil "Business" → voit les actions et le plan d'actions
+7. Passe au Pro (49 EUR/3000 min) — debloquer dictation, templates, exports avances
 8. Routine : upload hebdo, exports PDF, chat avec la transcription
 
 ### Persona C — Admin (toi)
@@ -126,8 +126,7 @@ MODE APP (sidebar, auth)
 │  ○ Modeles & IA                │
 │                                │
 │  ┌─ Plan Pro ──────────────┐   │
-│  │ ████████░░  1247/2000   │   │
-│  │            +200 extra   │   │
+│  │ ████████░░  1247/3000   │   │
 │  └─────────────────────────┘   │
 └────────────────────────────────┘
 ```
@@ -145,7 +144,7 @@ MODE APP (sidebar, auth)
 | OneShotSimple | Drop zone + prix | — | Rien (pas d'options) |
 | Upload | Drop zone + profil generique | Autres profils, priority, preset, langue | Backend selector (dev) |
 | Dashboard | Liste transcriptions + stats | Filtres par profil/langue | Export batch (Team) |
-| PlansUsage | Plan actuel + jauge | Historique usage, graphique 30j | Packs extra, comparaison |
+| PlansUsage | Plan actuel + jauge | Historique usage, graphique 30j | Comparaison plans |
 | TranscriptionView | Texte + Resume + Points cles | Actions, Chat (si plan) | Mindmap, Slides, Quiz (si Pro) |
 | Preferences | Profil par defaut, langue | — | RGPD (export/suppression) |
 
@@ -210,7 +209,7 @@ MODE APP (sidebar, auth)
 |  +------------------------------------------------------------+   |
 |  |  Votre transcription                                        |   |
 |  |                                                              |   |
-|  |  Prix : 4 EUR                                                |   |
+|  |  Prix : 6 EUR                                                |   |
 |  |  Duree max : 60 minutes                                     |   |
 |  |                                                              |   |
 |  |  Vous recevrez :                                             |   |
@@ -218,7 +217,7 @@ MODE APP (sidebar, auth)
 |  |  ✓ Resume en quelques lignes                                |   |
 |  |  ✓ Points cles et actions a suivre                          |   |
 |  |                                                              |   |
-|  |  [ Transcrire mon fichier — 4 EUR ]                         |   |
+|  |  [ Transcrire mon fichier — 6 EUR ]                         |   |
 |  |                                                              |   |
 |  |  Paiement securise · Resultat en 2-5 min · Sans abonnement  |   |
 |  +------------------------------------------------------------+   |
@@ -230,7 +229,7 @@ MODE APP (sidebar, auth)
 **Info fichier** : nom + taille + duree estimee + bouton "Changer"
 **Prix** : gros, clair, avec "EUR"
 **Ce qu'il recoit** : 3 bullets simples
-**CTA** : "Transcrire mon fichier — 4 EUR"
+**CTA** : "Transcrire mon fichier — X EUR" (prix auto-calcule selon duree)
 **Reassurance** : sous le CTA, petits caracteres
 **Pas de** : selecteur de profil, choix de tier, options avancees
 
@@ -301,7 +300,7 @@ MODE APP (sidebar, auth)
 |  |  Vous avez des fichiers a transcrire regulierement ?         |   |
 |  |                                                              |   |
 |  |  Avec un abonnement VoiceIQ :                               |   |
-|  |  ✓ Des 0.06 EUR/min (7x moins cher que le one-shot)        |   |
+|  |  ✓ Des 0.0099 EUR/min (10x moins cher que le one-shot)     |   |
 |  |  ✓ Profils metiers (reunion, cours, medical, juridique)     |   |
 |  |  ✓ Chat IA pour poser des questions sur vos transcriptions  |   |
 |  |  ✓ Exports avances (PDF, PPTX, SRT)                        |   |
@@ -312,7 +311,7 @@ MODE APP (sidebar, auth)
 +------------------------------------------------------------------+
 ```
 
-**Ce qui est affiche** : transcription + resume + points cles + actions (les 3 analyses gratuites)
+**Ce qui est affiche** : transcription + resume + points cles + actions (les 3 analyses incluses)
 **Export** : PDF et TXT directement accessibles (pas besoin de plan)
 **Upsell** : bandeau en bas, soft, avec 4 arguments concrets + CTA + sortie "C'est tout, merci"
 **Pas de** : popup, obligation de s'inscrire, blocage de fonctionnalite
@@ -322,7 +321,7 @@ MODE APP (sidebar, auth)
 | Element | A (non-tech, /) | B (user connecte, /app/oneshot) |
 |---------|-----------------|----------------------------------|
 | Selecteur profil | Cache (auto: generique) | Visible (5 profils) |
-| Choix de tier | Cache (auto-detecte) | Visible (grille 3 colonnes) |
+| Choix de tier | Cache (auto-detecte) | Visible (grille 6 colonnes) |
 | Recap detaille | Prix + 3 bullets | Fichier + profil + tier + features + prix |
 | Backend selector | Cache | Visible (dev) |
 | Comparaison prix | Apres resultat (bandeau soft) | Avant paiement (section bas) |
@@ -360,7 +359,7 @@ MODE APP (sidebar, auth)
 +------------------------------------------------------------------+
 |  +------------------------------------------------------------+   |
 |  |  Plan Pro                          49 EUR/mois              |   |
-|  |  ████████████░░░░  1247 / 2000 min  (+200 extra)           |   |
+|  |  ████████████░░░░  1247 / 3000 min                         |   |
 |  |  Renouvellement : 1er avril 2026                            |   |
 |  +------------------------------------------------------------+   |
 |                                                                    |
@@ -370,11 +369,8 @@ MODE APP (sidebar, auth)
 |  |  24 transcriptions  |  | Generique   247 min |                |
 |  +---------------------+  +--------------------+                  |
 |                                                                    |
-|  ─── Recharger ───                                                |
-|  [Pack S 100min 3EUR] [Pack M 500min 12EUR] [Pack L 2000min 40EUR]|
-|                                                                    |
 |  ─── Changer de plan ───                                          |
-|  [Gratuit 0EUR] [Basic 19EUR] [Pro ★ actuel] [Equipe+ 99EUR]    |
+|  [Basic 19EUR/500min] [Pro ★ actuel] [Equipe+ 99EUR/10000min]    |
 |                                                                    |
 +------------------------------------------------------------------+
 ```
@@ -421,7 +417,7 @@ MODE APP (sidebar, auth)
 | 1 | Accents francais corriges (~50+ chaines) | Credibilite produit, marche francophone | 12 fichiers frontend |
 | 2 | Feedback erreur export (TranscriptionResult) | L'utilisateur sait pourquoi le telechargement echoue | TranscriptionResult.tsx |
 | 3 | Feedback erreur save (Preferences) | L'utilisateur sait si ses preferences sont enregistrees | Preferences.tsx |
-| 4 | Validation duree one-shot (max 90 min) | Evite des fichiers trop longs qui bloquent le pipeline | main.py |
+| 4 | Validation duree one-shot (max 180 min) | Evite des fichiers trop longs qui bloquent le pipeline | main.py |
 | 5 | Nettoyage sessions anonymes (auto 1h) | Evite l'accumulation de sessions expirees en base | main.py |
 
 ### Recommandations UX restantes (a traiter plus tard)

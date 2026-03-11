@@ -14,7 +14,7 @@ from app.models import (
 )
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from app.services.subscription_service import seed_plans, get_or_create_subscription
+from app.services.subscription_service import seed_plans, create_subscription
 
 
 @pytest_asyncio.fixture
@@ -32,7 +32,7 @@ async def db():
 
 async def _seed_user_data(db: AsyncSession):
     """Populate DB with sample user data for testing."""
-    sub = await get_or_create_subscription(db)
+    sub = await create_subscription(db, "basic")
 
     job = Job(id="test-job-1", status="completed", file_path="/tmp/test.wav", profile="generic")
     db.add(job)
@@ -75,7 +75,7 @@ async def _seed_user_data(db: AsyncSession):
     db.add(dictionary)
     await db.flush()
     entry = DictionaryEntry(
-        dictionary_id=dictionary.id, term="VoiceIQ", replacement="VoiceIQ", category="nom_propre",
+        dictionary_id=dictionary.id, term="ClearRecap", replacement="ClearRecap", category="nom_propre",
     )
     db.add(entry)
 
@@ -94,12 +94,18 @@ class TestAccountExport:
     """Test RGPD export at service level (no HTTP)."""
 
     @pytest.mark.asyncio
-    async def test_export_empty_account_data(self, db):
-        """An empty account should still have a subscription."""
-        sub = await get_or_create_subscription(db)
-        assert sub.plan_id == "free"
+    async def test_export_empty_account_no_subscription(self, db):
+        """An empty account without subscription has no transcriptions."""
+        # No subscription created — verify no transcriptions exist
+        result = await db.execute(select(Transcription))
+        assert result.scalars().all() == []
 
-        # Verify no transcriptions exist
+    @pytest.mark.asyncio
+    async def test_export_with_basic_subscription(self, db):
+        """Creating a subscription gives user a basic plan."""
+        sub = await create_subscription(db, "basic")
+        assert sub.plan_id == "basic"
+
         result = await db.execute(select(Transcription))
         assert result.scalars().all() == []
 

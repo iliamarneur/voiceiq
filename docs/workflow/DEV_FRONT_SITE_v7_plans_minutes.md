@@ -28,9 +28,9 @@ Le site marketing est une landing page multi-sections, deployable en statique (o
 |  Transcription IA locale + analyse automatique.                   |
 |  Vos donnees restent chez vous.                                   |
 |                                                                    |
-|  [Essayer gratuitement]   [Voir une demo]                         |
+|  [Commencer dès 3 EUR]   [Voir une demo]                          |
 |                                                                    |
-|  60 minutes offertes · Pas de carte bancaire                      |
+|  Dès 3 EUR par transcription                                      |
 |                                                                    |
 |  +------------------------------------------------------+         |
 |  |  [Screenshot app : transcription + resume]            |         |
@@ -63,7 +63,7 @@ audio ou video.     + analyse IA contextuelle actions, quiz, export
 +------------------+ +------------------+ +------------------+
 | Gagnez du temps  | | 100% confidentiel| | Prix transparent |
 |                  | |                  | |                  |
-| 2h/semaine en    | | Traitement local | | Des 0 EUR/mois   |
+| 2h/semaine en    | | Traitement local | | Des 3 EUR        |
 | moyenne sur vos  | | sur votre infra. | | Payez ce que     |
 | comptes-rendus.  | | Rien ne sort.    | | vous utilisez.   |
 +------------------+ +------------------+ +------------------+
@@ -80,12 +80,12 @@ audio ou video.     + analyse IA contextuelle actions, quiz, export
 ```
 Choisissez votre formule
 
-[Gratuit]      [Basic - 19EUR]     [Pro - 49EUR]      [Team - 99EUR]
- 60 min          300 min        ★ 2000 min ★          5000 min
+[Basic - 19EUR]     [Pro - 49EUR]      [Équipe+ - 99EUR]
+  500 min        ★ 3000 min ★          10000 min
 
                              [Voir tous les details →]
 
-Besoin ponctuel ? [Essayez le one-shot des 3 EUR →]
+Besoin ponctuel ? [Essayer le one-shot dès 3 EUR →]
 ```
 
 ### Section 6 : Temoignages
@@ -103,7 +103,7 @@ Q: Mes donnees sont-elles envoyees dans le cloud ?
 R: Non. VoiceIQ fonctionne 100% en local sur votre infrastructure.
 
 Q: Puis-je essayer sans m'engager ?
-R: Oui, le plan gratuit offre 60 minutes/mois sans carte bancaire.
+R: Oui, le one-shot permet une transcription ponctuelle dès 3 EUR, sans abonnement.
 
 Q: Quels formats audio sont supportes ?
 R: MP3, WAV, M4A, FLAC, OGG, MP4, MKV et 10+ autres formats.
@@ -116,9 +116,9 @@ R: Abonnement mensuel avec minutes incluses, ou achat ponctuel (one-shot).
 ```
 Pret a gagner du temps ?
 
-[Commencer gratuitement — 60 min offertes]
+[Commencer dès 3 EUR]
 
-Pas de carte bancaire · Annulation a tout moment
+Annulation a tout moment
 ```
 
 ## 3. Landing Education
@@ -138,25 +138,19 @@ Adaptations par rapport a la landing PME :
 |                                                                    |
 |  [Mensuel]  [Annuel (-20%)]                                      |
 |                                                                    |
-|  +-----------+ +-----------+ +--[POPULAIRE]--+ +-----------+     |
-|  | Gratuit   | | Basic     | | Pro           | | Team      |     |
-|  | 0 EUR     | | 19 EUR/mo | | 49 EUR/mo     | | 99 EUR/mo |     |
-|  | 60 min    | | 300 min   | | 2000 min      | | 5000 min  |     |
-|  |           | |           | |               | |           |     |
+|  +-----------+ +--[POPULAIRE]--+ +-----------+                    |
+|  | Basic     | | Pro           | | Équipe+   |                    |
+|  | 19 EUR/mo | | 49 EUR/mo     | | 99 EUR/mo |                    |
+|  | 500 min   | | 3000 min      | | 10000 min |                    |
+|  |           | |               | |           |                    |
 |  | [Feature comparison table - voir COPY pour details]      |     |
-|  |           | |           | |               | |           |     |
-|  | [Actuel]  | | [Choisir] | | [Choisir]     | | [Contacter]|    |
-|  +-----------+ +-----------+ +---------------+ +-----------+     |
-|                                                                    |
-|  PACKS DE MINUTES (pour tous les plans)                           |
-|  +-------------+ +-------------+ +-------------+                  |
-|  | 100 min     | | 500 min     | | 2000 min    |                  |
-|  | 3 EUR       | | 12 EUR      | | 40 EUR      |                  |
-|  | 0.03 EUR/min| | 0.024/min   | | 0.02/min    |                  |
-|  +-------------+ +-------------+ +-------------+                  |
+|  |           | |               | |           |                    |
+|  | [Choisir] | | [Choisir]     | | [Contacter]|                   |
+|  +-----------+ +---------------+ +-----------+                    |
 |                                                                    |
 |  ONE-SHOT (sans abonnement)                                       |
-|  Audio < 30 min : 3 EUR | < 60 min : 4 EUR | < 90 min : 5 EUR   |
+|  Court 3 EUR/30min | Standard 6 EUR/60min | Long 9 EUR/90min     |
+|  XLong 12 EUR/120min | XXLong 15 EUR/150min | XXXLong 18 EUR/180min |
 |                                                                    |
 |  FAQ Tarifs                                                        |
 |  [...]                                                             |
@@ -180,7 +174,7 @@ Option B : Site statique separe (Astro/Next.js)
 ## 6. Responsive design
 
 - Mobile-first : toutes les sections empilees verticalement
-- Grille plans : 1 colonne mobile, 2 colonnes tablette, 4 colonnes desktop
+- Grille plans : 1 colonne mobile, 2 colonnes tablette, 3 colonnes desktop
 - Hero : image sous le texte en mobile
 - Navigation : hamburger menu mobile
 - CTA : boutons full-width en mobile

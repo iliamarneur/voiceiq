@@ -20,7 +20,7 @@ VoiceIQ transforme un fichier audio (reunion, cours, interview) en texte + resum
 ## Scenario 2 : Transcription sans compte (One-shot)
 
 1. Cliquez sur **"One-shot"** dans le menu a gauche.
-2. Regardez les 3 formules affichees (Court, Standard, Long). Comprenez-vous les differences ?
+2. Regardez les 6 formules affichees (Court, Standard, Long, XLong, XXLong, XXXLong). Comprenez-vous les differences ?
 3. Choisissez un profil (par exemple "Business" si c'est une reunion, "Education" si c'est un cours).
 4. Deposez un fichier audio.
 5. Regardez le recapitulatif : fichier, profil, formule, prix. Est-ce clair ?
@@ -32,7 +32,7 @@ VoiceIQ transforme un fichier audio (reunion, cours, interview) en texte + resum
 ## Scenario 3 : Comprendre les plans d'abonnement
 
 1. Cliquez sur **"Plans & Usage"** dans le menu a gauche.
-2. Regardez les 4 plans (Gratuit, Basic, Pro, Equipe+).
+2. Regardez les 3 plans (Basic, Pro, Equipe+).
 3. Regardez votre jauge de minutes en bas a gauche de l'ecran.
 
 **Notez** : comprenez-vous la difference entre les plans ? Savez-vous combien de minutes il vous reste ?
@@ -47,7 +47,7 @@ Repondez en 1-2 phrases, avec vos propres mots.
 
 > _Votre reponse ici_
 
-### 2. Les 3 formules One-shot (Court / Standard / Long) sont-elles faciles a comprendre ? Avez-vous hesite ?
+### 2. Les 6 formules One-shot (Court 3 EUR / Standard 6 EUR / Long 9 EUR / XLong 12 EUR / XXLong 15 EUR / XXXLong 18 EUR) sont-elles faciles a comprendre ? Avez-vous hesite ?
 
 > _Votre reponse ici_
 

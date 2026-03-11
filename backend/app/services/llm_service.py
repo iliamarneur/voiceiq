@@ -55,6 +55,19 @@ ANALYSIS_TYPES = [
     "quiz", "faq", "mindmap", "slides", "infographic", "tables"
 ]
 
+# ── Transcript cleaning instruction (injected into all analysis prompts) ──
+TRANSCRIPT_CLEANING_INSTRUCTION = (
+    "IMPORTANT — Nettoyage chirurgical du texte brut : "
+    "Avant toute analyse, nettoie mentalement la transcription. "
+    "Supprime TOUS les begaiements (ex: 'I, I, I', 'the, the', 'je, je, je'), "
+    "les hesitations ('euh', 'uh', 'um', 'hmm', 'hein', 'ben', 'bah'), "
+    "les faux departs et repetitions inutiles, "
+    "et les bruits parasites transcrits ('[rires]', '[toux]', '[bruit]', '...'). "
+    "Le texte dans ton analyse doit etre fluide et agreable a lire, "
+    "tout en restant fidele au sens et au ton original. "
+    "Ne mentionne jamais ce nettoyage dans ta reponse.\n\n"
+)
+
 PROMPTS = {
     "summary": (
         "Tu es un analyste expert. Produis un resume structure et fidele de cette transcription.\n\n"
@@ -266,7 +279,7 @@ def _call_openai_json(prompt: str, transcript_text: str) -> dict:
             response = client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": "You are an analysis assistant. Always respond with valid JSON only, no extra text. Ensure all strings are properly escaped."},
+                    {"role": "system", "content": f"You are an analysis assistant. Always respond with valid JSON only, no extra text. Ensure all strings are properly escaped.\n\n{TRANSCRIPT_CLEANING_INSTRUCTION}"},
                     {"role": "user", "content": f"{prompt}\n\nTranscript:\n{transcript_text[:MAX_TRANSCRIPT_CHARS]}"},
                 ],
                 temperature=0.3,
@@ -337,7 +350,7 @@ def _call_ollama(prompt: str, transcript_text: str) -> dict:
             response = _ollama.chat(
                 model=OLLAMA_MODEL,
                 messages=[
-                    {"role": "system", "content": "You are an analysis assistant. Always respond with valid JSON only, no extra text. Ensure all strings are properly escaped."},
+                    {"role": "system", "content": f"You are an analysis assistant. Always respond with valid JSON only, no extra text. Ensure all strings are properly escaped.\n\n{TRANSCRIPT_CLEANING_INSTRUCTION}"},
                     {"role": "user", "content": f"{prompt}\n\nTranscript:\n{transcript_text[:MAX_TRANSCRIPT_CHARS]}"},
                 ],
                 options={"num_predict": MAX_RESPONSE_TOKENS},

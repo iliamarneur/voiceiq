@@ -10,6 +10,14 @@ from tests.conftest import create_test_wav
 pytestmark = pytest.mark.asyncio
 
 
+@pytest.fixture(autouse=True)
+def disable_auth(monkeypatch):
+    """Disable auth for upload tests."""
+    monkeypatch.setenv("AUTH_ENABLED", "false")
+    import app.services.auth_service as auth_mod
+    monkeypatch.setattr(auth_mod, "AUTH_ENABLED", False)
+
+
 async def test_upload_rejects_invalid_format(test_client):
     """Non-audio file should be rejected."""
     resp = await test_client.post(

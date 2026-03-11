@@ -111,7 +111,7 @@
       "max_duration_minutes": 30,
       "price_cents": 300,
       "stripe_price_id": "price_1T9EuODTeuYAK0abHiPJ0G2G",
-      "auto": ["transcription", "summary", "keypoints", "chapters"],
+      "auto": ["transcription", "summary", "keypoints"],
       "includes": [
         "transcription",
         "summary",
@@ -129,7 +129,7 @@
       "max_duration_minutes": 60,
       "price_cents": 600,
       "stripe_price_id": "price_1T9EuODTeuYAK0ab4sA9eNau",
-      "auto": ["transcription", "summary", "keypoints", "chapters"],
+      "auto": ["transcription", "summary", "keypoints"],
       "includes": [
         "transcription",
         "summary",
@@ -147,7 +147,7 @@
       "max_duration_minutes": 90,
       "price_cents": 900,
       "stripe_price_id": "price_1T9EuPDTeuYAK0abbYmKF1Tz",
-      "auto": ["transcription", "summary", "keypoints", "chapters"],
+      "auto": ["transcription", "summary", "keypoints"],
       "includes": [
         "transcription",
         "summary",
@@ -165,7 +165,7 @@
       "max_duration_minutes": 120,
       "price_cents": 1200,
       "stripe_price_id": "price_1T9EuPDTeuYAK0abTC36PmkR",
-      "auto": ["transcription", "summary", "keypoints", "chapters"],
+      "auto": ["transcription", "summary", "keypoints"],
       "includes": [
         "transcription",
         "summary",
@@ -183,7 +183,7 @@
       "max_duration_minutes": 150,
       "price_cents": 1500,
       "stripe_price_id": "price_1T9EuQDTeuYAK0abZZ9yDb8e",
-      "auto": ["transcription", "summary", "keypoints", "chapters"],
+      "auto": ["transcription", "summary", "keypoints"],
       "includes": [
         "transcription",
         "summary",
@@ -201,7 +201,7 @@
       "max_duration_minutes": 180,
       "price_cents": 1800,
       "stripe_price_id": "price_1T9EuQDTeuYAK0abFF5YQ6BC",
-      "auto": ["transcription", "summary", "keypoints", "chapters"],
+      "auto": ["transcription", "summary", "keypoints"],
       "includes": [
         "transcription",
         "summary",

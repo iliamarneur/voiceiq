@@ -1,0 +1,19 @@
+{
+  "check_interval_minutes": 30,
+  "blog_directory": "content/blog",
+  "log_file": "scripts/publish_log.jsonl",
+  "timezone": "UTC",
+  "notify_on_publish": true,
+  "crontab_example": "*/30 * * * * cd /app && python scripts/auto_publish.py >> /var/log/clearrecap-publisher.log 2>&1",
+  "email": {
+    "enabled": true,
+    "smtp_host": "smtp.hostinger.com",
+    "smtp_port": 465,
+    "smtp_ssl": true,
+    "smtp_user": "contact@clearrecap.com",
+    "smtp_password_env": "SMTP_PASSWORD",
+    "from_address": "ClearRecap <contact@clearrecap.com>",
+    "admin_email": "contact@clearrecap.com",
+    "subject_template": "Nouvel article publie : {title}"
+  }
+}

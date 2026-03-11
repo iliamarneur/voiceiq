@@ -3,6 +3,13 @@ import { motion, useInView } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
+  MetaTags, StructuredData,
+  getHreflangAlternates, getCanonical,
+  SCHEMA_ORGANIZATION, SCHEMA_SOFTWARE_APPLICATION, SCHEMA_FAQ_HOME,
+  PAGE_META,
+} from '../components/SEO';
+import { SocialProof, TrustBadges, ROICalculator, CTABanner } from '../components/Conversion';
+import {
   Mic2, Shield, Zap, Brain, Upload, Sparkles, FileText,
   Lock, Clock, Globe, ArrowRight, CheckCircle,
   Headphones, BookOpen, Briefcase, GraduationCap,
@@ -65,24 +72,28 @@ const USE_CASES = [
     title: 'Réunions & Business',
     features: ['Compte-rendu structuré', 'Actions assignées avec priorité', 'Email de suivi', 'Indicateurs et risques'],
     color: 'from-blue-500 to-indigo-600',
+    link: '/transcription-reunion',
   },
   {
     icon: GraduationCap,
     title: 'Cours & Formation',
     features: ['Fiches de révision', 'Quiz par section', 'Carte des concepts', 'Support de cours'],
     color: 'from-emerald-500 to-teal-600',
+    link: '/transcription-education',
   },
   {
     icon: Stethoscope,
     title: 'Consultations médicales',
     features: ['Note SOAP structurée', 'Prescriptions extraites', 'Points de vigilance', 'Anonymisation des données (RGPD)'],
     color: 'from-rose-500 to-pink-600',
+    link: '/transcription-medicale',
   },
   {
     icon: Landmark,
     title: 'Juridique & Conformité',
     features: ['Synthèse juridique', 'Obligations par partie', 'Échéances et délais', 'Références légales'],
     color: 'from-amber-500 to-orange-600',
+    link: '/transcription-juridique',
   },
 ];
 
@@ -121,6 +132,14 @@ export default function AboutMarketing() {
 
   return (
     <div className="min-h-screen bg-white text-slate-800 overflow-hidden">
+      {/* ── SEO ──────────────────────────────────────────── */}
+      <MetaTags
+        title={PAGE_META.home.title}
+        description={PAGE_META.home.description}
+        canonical={getCanonical('/')}
+        hreflangAlternates={getHreflangAlternates('/')}
+      />
+      <StructuredData data={[SCHEMA_SOFTWARE_APPLICATION, SCHEMA_ORGANIZATION, SCHEMA_FAQ_HOME]} />
 
       {/* ── NAV ──────────────────────────────────────────── */}
       <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 bg-white/80 backdrop-blur-lg border-b border-slate-200/80">
@@ -140,12 +159,25 @@ export default function AboutMarketing() {
             <Link to={plansLink} className="text-slate-500 hover:text-slate-800 transition-colors">
               Tarifs
             </Link>
+            <Link to="/blog" className="hidden md:inline text-slate-500 hover:text-slate-800 transition-colors">
+              Blog
+            </Link>
+            <Link to="/faq" className="hidden md:inline text-slate-500 hover:text-slate-800 transition-colors">
+              FAQ
+            </Link>
+            <Link
+              to="/oneshot"
+              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-medium hover:opacity-90 transition-opacity shadow-md shadow-indigo-500/20"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              Essayer
+            </Link>
             {user ? (
-              <Link to="/app" className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition-colors">
+              <Link to="/app" className="px-4 py-2 rounded-xl border border-slate-300 text-slate-600 font-medium hover:border-indigo-400 hover:text-indigo-600 transition-colors">
                 Mon espace
               </Link>
             ) : (
-              <Link to="/login" className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition-colors">
+              <Link to="/login" className="px-4 py-2 rounded-xl border border-slate-300 text-slate-600 font-medium hover:border-indigo-400 hover:text-indigo-600 transition-colors">
                 Se connecter
               </Link>
             )}
@@ -270,6 +302,11 @@ export default function AboutMarketing() {
         </div>
       </section>
 
+      {/* ── SOCIAL PROOF / CHIFFRES ──────────────────────── */}
+      <Reveal>
+        <SocialProof className="max-w-4xl mx-auto px-6 pb-12" />
+      </Reveal>
+
       {/* ── HOW IT WORKS ─────────────────────────────────── */}
       <section className="relative py-24 px-6 bg-slate-50">
         <div className="relative max-w-4xl mx-auto">
@@ -331,6 +368,9 @@ export default function AboutMarketing() {
                           </li>
                         ))}
                       </ul>
+                      <Link to={uc.link} className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+                        En savoir plus <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -356,6 +396,22 @@ export default function AboutMarketing() {
               </Reveal>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── TRUST BADGES ──────────────────────────────────── */}
+      <section className="py-12 px-6">
+        <Reveal>
+          <TrustBadges className="max-w-4xl mx-auto" />
+        </Reveal>
+      </section>
+
+      {/* ── ROI CALCULATOR ─────────────────────────────── */}
+      <section className="py-16 px-6 bg-slate-50">
+        <div className="max-w-3xl mx-auto">
+          <Reveal>
+            <ROICalculator />
+          </Reveal>
         </div>
       </section>
 
@@ -537,6 +593,12 @@ export default function AboutMarketing() {
                         <Mail className="w-4 h-4 inline mr-2 -mt-0.5" />
                         Demander un devis
                       </a>
+                      <Link
+                        to="/calculateur-tco"
+                        className="block py-3 mt-2 rounded-xl font-semibold text-sm text-center border border-white/20 text-white/80 hover:bg-white/10 transition-colors"
+                      >
+                        Calculateur TCO Cloud vs Local
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -574,8 +636,52 @@ export default function AboutMarketing() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 py-8 px-6 text-center text-xs text-slate-400">
-        ClearRecap — Transcription et analyse audio intelligente
+      <footer className="border-t border-slate-200 py-10 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-sm mb-8">
+            <div>
+              <h4 className="font-semibold text-slate-700 mb-3">Produit</h4>
+              <ul className="space-y-2 text-slate-400">
+                <li><Link to="/oneshot" className="hover:text-slate-600 transition-colors">Transcription à l'unité</Link></li>
+                <li><Link to={plansLink} className="hover:text-slate-600 transition-colors">Tarifs</Link></li>
+                <li><Link to="/faq" className="hover:text-slate-600 transition-colors">FAQ</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-slate-700 mb-3">Solutions</h4>
+              <ul className="space-y-2 text-slate-400">
+                <li><Link to="/transcription-medicale" className="hover:text-slate-600 transition-colors">Médical</Link></li>
+                <li><Link to="/transcription-juridique" className="hover:text-slate-600 transition-colors">Juridique</Link></li>
+                <li><Link to="/transcription-reunion" className="hover:text-slate-600 transition-colors">Business</Link></li>
+                <li><Link to="/transcription-education" className="hover:text-slate-600 transition-colors">Éducation</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-slate-700 mb-3">Comparatifs</h4>
+              <ul className="space-y-2 text-slate-400">
+                <li><Link to="/comparatif/clearrecap-vs-happyscribe" className="hover:text-slate-600 transition-colors">vs HappyScribe</Link></li>
+                <li><Link to="/comparatif/clearrecap-vs-otter-ai" className="hover:text-slate-600 transition-colors">vs Otter.ai</Link></li>
+                <li><Link to="/comparatif/transcription-cloud-vs-locale" className="hover:text-slate-600 transition-colors">Cloud vs Local</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-slate-700 mb-3">Ressources</h4>
+              <ul className="space-y-2 text-slate-400">
+                <li><Link to="/blog" className="hover:text-slate-600 transition-colors">Blog</Link></li>
+                <li><Link to="/glossaire-transcription" className="hover:text-slate-600 transition-colors">Glossaire</Link></li>
+                <li><Link to="/guide-rgpd-transcription" className="hover:text-slate-600 transition-colors">Guide RGPD</Link></li>
+                <li><Link to="/calculateur-tco" className="hover:text-slate-600 transition-colors">Calculateur TCO</Link></li>
+                <li><Link to="/conformite" className="hover:text-slate-600 transition-colors">Conformité</Link></li>
+                <li><Link to="/integrations" className="hover:text-slate-600 transition-colors">Intégrations</Link></li>
+                <li><Link to="/partenaires" className="hover:text-slate-600 transition-colors">Partenaires</Link></li>
+                <li><a href="mailto:contact@clearrecap.fr" className="hover:text-slate-600 transition-colors">Contact</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-slate-100 pt-6 text-center text-xs text-slate-400">
+            ClearRecap — Transcription et analyse audio 100% locale. Aucune donnée envoyée à l'extérieur.
+          </div>
+        </div>
       </footer>
     </div>
   );

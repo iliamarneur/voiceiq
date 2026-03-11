@@ -1,0 +1,394 @@
+{
+  "seo_checklist": [
+    {
+      "id": "schema-softwareapp",
+      "category": "SEO Technique",
+      "task": "Schema JSON-LD SoftwareApplication",
+      "description": "Schema markup sur la page d'accueil avec pricing et features",
+      "status": "done",
+      "page": "/",
+      "priority": "haute",
+      "notes": "Phase 1 — StructuredData.tsx + seoData.ts"
+    },
+    {
+      "id": "schema-faq",
+      "category": "SEO Technique",
+      "task": "Schema JSON-LD FAQPage",
+      "description": "Schema FAQ sur la page d'accueil (pages verticales en Phase 2)",
+      "status": "done",
+      "page": "/",
+      "priority": "haute",
+      "notes": "Phase 1 — SCHEMA_FAQ_HOME dans seoData.ts"
+    },
+    {
+      "id": "schema-organization",
+      "category": "SEO Technique",
+      "task": "Schema JSON-LD Organization",
+      "description": "Schema Organisation avec logo et liens sociaux",
+      "status": "done",
+      "page": "Global",
+      "priority": "moyenne",
+      "notes": "Phase 1 — SCHEMA_ORGANIZATION dans seoData.ts"
+    },
+    {
+      "id": "meta-tags",
+      "category": "SEO Technique",
+      "task": "Meta Tags & Open Graph par page",
+      "description": "Title, description, OG tags, Twitter cards pour chaque page publique",
+      "status": "done",
+      "page": "Toutes les pages publiques",
+      "priority": "haute",
+      "notes": "Phase 1 — MetaTags.tsx sur AboutMarketing, BlogList, BlogArticle, PlansPublic, OneShotSimple"
+    },
+    {
+      "id": "hreflang",
+      "category": "SEO International",
+      "task": "Balises hreflang (fr-FR, fr-BE, fr-CH, fr-CA)",
+      "description": "Implémentation hreflang sur toutes les pages publiques",
+      "status": "done",
+      "page": "Toutes",
+      "priority": "haute",
+      "notes": "Phase 1 — getHreflangAlternates() dans seoData.ts, utilisé dans MetaTags"
+    },
+    {
+      "id": "sitemap",
+      "category": "SEO Technique",
+      "task": "Sitemap XML avec annotations hreflang",
+      "description": "Sitemap statique + script de génération",
+      "status": "done",
+      "page": "/sitemap.xml",
+      "priority": "haute",
+      "notes": "Phase 1 — public/sitemap.xml + scripts/generate-sitemap.ts"
+    },
+    {
+      "id": "robots-txt",
+      "category": "SEO Technique",
+      "task": "robots.txt optimisé",
+      "description": "Fichier robots.txt avec directives et lien sitemap",
+      "status": "done",
+      "page": "/robots.txt",
+      "priority": "haute",
+      "notes": "Phase 1 — public/robots.txt"
+    },
+    {
+      "id": "canonical-urls",
+      "category": "SEO Technique",
+      "task": "URLs canoniques sur chaque page",
+      "description": "Balise rel=canonical sur toutes les pages publiques",
+      "status": "done",
+      "page": "Toutes",
+      "priority": "haute",
+      "notes": "Phase 1 — getCanonical() dans MetaTags, intégré sur toutes les pages publiques"
+    },
+    {
+      "id": "schema-article-blog",
+      "category": "SEO Technique",
+      "task": "Schema JSON-LD Article + BreadcrumbList sur le blog",
+      "description": "Schema Article et breadcrumbs sur chaque article de blog",
+      "status": "done",
+      "page": "/blog/:slug",
+      "priority": "haute",
+      "notes": "Phase 1 — BlogArticle.tsx avec articleSchema + breadcrumbSchema"
+    },
+    {
+      "id": "landing-medical",
+      "category": "Pages Verticales",
+      "task": "Landing Transcription Médicale",
+      "description": "Page dédiée avec hero, features, FAQ, pricing, CTA",
+      "status": "done",
+      "page": "/transcription-medicale",
+      "priority": "haute",
+      "notes": "Phase 2 — LandingMedical.tsx avec hero, features, FAQ, comparaison, pricing, CTA"
+    },
+    {
+      "id": "landing-juridique",
+      "category": "Pages Verticales",
+      "task": "Landing Transcription Juridique",
+      "description": "Page dédiée avec hero, features, FAQ, pricing, CTA",
+      "status": "done",
+      "page": "/transcription-juridique",
+      "priority": "haute",
+      "notes": "Phase 2 — LandingJuridique.tsx"
+    },
+    {
+      "id": "landing-business",
+      "category": "Pages Verticales",
+      "task": "Landing Transcription Réunions/Business",
+      "description": "Page dédiée avec hero, features, FAQ, pricing, CTA",
+      "status": "done",
+      "page": "/transcription-reunion",
+      "priority": "haute",
+      "notes": "Phase 2 — LandingBusiness.tsx"
+    },
+    {
+      "id": "landing-education",
+      "category": "Pages Verticales",
+      "task": "Landing Transcription Éducation",
+      "description": "Page dédiée avec hero, features, FAQ, pricing, CTA",
+      "status": "done",
+      "page": "/transcription-education",
+      "priority": "haute",
+      "notes": "Phase 2 — LandingEducation.tsx"
+    },
+    {
+      "id": "page-faq",
+      "category": "Pages Conversion",
+      "task": "Page FAQ complète",
+      "description": "FAQ par catégorie avec schema FAQPage et accordéons",
+      "status": "done",
+      "page": "/faq",
+      "priority": "moyenne",
+      "notes": "Phase 2"
+    },
+    {
+      "id": "comparatif-happyscribe",
+      "category": "Pages Comparatives",
+      "task": "ClearRecap vs HappyScribe",
+      "description": "Page comparative détaillée",
+      "status": "done",
+      "page": "/comparatif/clearrecap-vs-happyscribe",
+      "priority": "moyenne",
+      "notes": "Phase 2"
+    },
+    {
+      "id": "comparatif-otter",
+      "category": "Pages Comparatives",
+      "task": "ClearRecap vs Otter.ai",
+      "description": "Page comparative détaillée",
+      "status": "done",
+      "page": "/comparatif/clearrecap-vs-otter-ai",
+      "priority": "moyenne",
+      "notes": "Phase 2"
+    },
+    {
+      "id": "comparatif-cloud-local",
+      "category": "Pages Comparatives",
+      "task": "Transcription Cloud vs Locale",
+      "description": "Page éducative comparant les deux approches",
+      "status": "done",
+      "page": "/comparatif/transcription-cloud-vs-locale",
+      "priority": "moyenne",
+      "notes": "Phase 2"
+    },
+    {
+      "id": "cta-components",
+      "category": "CRO (Conversion)",
+      "task": "Composants CTA réutilisables",
+      "description": "CTABanner, SocialProof, TrustBadges, PricingTable, ROICalculator",
+      "status": "done",
+      "page": "Global",
+      "priority": "haute",
+      "notes": "Phase 3"
+    },
+    {
+      "id": "pricing-optimized",
+      "category": "CRO (Conversion)",
+      "task": "Page pricing optimisée",
+      "description": "Toggle annuel/mensuel, plan recommandé, calculateur ROI",
+      "status": "done",
+      "page": "/pricing",
+      "priority": "haute",
+      "notes": "Phase 3"
+    },
+    {
+      "id": "tco-calculator",
+      "category": "CRO (Conversion)",
+      "task": "Calculateur TCO Cloud vs On-Premise",
+      "description": "Outil interactif comparant le coût total de possession sur 1-3-5 ans",
+      "status": "done",
+      "page": "/calculateur-tco",
+      "priority": "haute",
+      "notes": "Phase 3"
+    },
+    {
+      "id": "blog-architecture",
+      "category": "Content Marketing",
+      "task": "Architecture blog avec SEO",
+      "description": "Schema Article, breadcrumbs, meta tags dynamiques sur BlogArticle",
+      "status": "done",
+      "page": "/blog/*",
+      "priority": "moyenne",
+      "notes": "Phase 1 — BlogArticle.tsx enrichi avec schema + meta"
+    },
+    {
+      "id": "blog-articles-stubs",
+      "category": "Content Marketing",
+      "task": "Articles de blog (30 articles publiés)",
+      "description": "30 articles .md avec frontmatter riche (OG, keywords, tags) sur 9 catégories",
+      "status": "done",
+      "page": "/blog/*",
+      "priority": "basse",
+      "notes": "Phase 4 — 30 articles existants, BlogArticle enrichi (breadcrumbs, CTA contextuel, related articles, schema Article complet)"
+    },
+    {
+      "id": "blog-seo-enrichment",
+      "category": "Content Marketing",
+      "task": "Blog SEO enrichi (Article, Breadcrumbs, CTA, Related)",
+      "description": "BlogArticle: schema Article complet, breadcrumbs visibles + schema, CTA contextuel par catégorie, articles liés, tags, sidebar CTA. BlogList: schema CollectionPage + BreadcrumbList + ItemList.",
+      "status": "done",
+      "page": "/blog/*",
+      "priority": "haute",
+      "notes": "Phase 4"
+    },
+    {
+      "id": "nav-cta-sticky",
+      "category": "CRO (Conversion)",
+      "task": "CTA sticky dans la navbar",
+      "description": "Bouton Essayer toujours visible dans le header",
+      "status": "done",
+      "page": "Global",
+      "priority": "haute",
+      "notes": "Phase 3"
+    },
+    {
+      "id": "seo-admin-dashboard",
+      "category": "SEO Technique",
+      "task": "Dashboard Admin SEO & Stratégie",
+      "description": "Page /app/seo-strategy avec checklist interactive, clusters de contenu, mots-clés cibles, funnel conversion, certifications, ciblage géo",
+      "status": "done",
+      "page": "/app/seo-strategy",
+      "priority": "haute",
+      "notes": "Phase 5 — SEOStrategy.tsx avec 4 onglets (Checklist, Clusters, Keywords, Funnel)"
+    },
+    {
+      "id": "geo-glossaire",
+      "category": "GEO (Generative Engine Optimization)",
+      "task": "Glossaire Transcription — Page citation-ready",
+      "description": "21 termes techniques (Whisper, RGPD, CLOUD Act, faster-whisper, diarisation, WER, VAD, etc.) avec schema DefinedTermSet, recherche, filtres par catégorie, liens croisés",
+      "status": "done",
+      "page": "/glossaire-transcription",
+      "priority": "haute",
+      "notes": "Phase 6 — GlossaireTranscription.tsx"
+    },
+    {
+      "id": "geo-guide-rgpd",
+      "category": "GEO (Generative Engine Optimization)",
+      "task": "Guide RGPD Transcription — Page citation-ready",
+      "description": "Guide complet articles 5/6/9/25/28/35/44-49, CLOUD Act, comparaison cloud vs on-premise (10 critères), AIPD, FAQ schema. 7 sections avec sommaire.",
+      "status": "done",
+      "page": "/guide-rgpd-transcription",
+      "priority": "haute",
+      "notes": "Phase 6 — GuideRGPDTranscription.tsx avec Article + BreadcrumbList + FAQPage schemas"
+    },
+    {
+      "id": "geo-internal-linking",
+      "category": "GEO (Generative Engine Optimization)",
+      "task": "Maillage interne GEO + sitemap enrichi",
+      "description": "Liens Glossaire/Guide RGPD dans tous les footers (homepage, verticales, comparatifs, FAQ, TCO). Sitemap étendu à 16 URLs.",
+      "status": "done",
+      "page": "Global",
+      "priority": "moyenne",
+      "notes": "Phase 6"
+    },
+    {
+      "id": "analytics-setup",
+      "category": "Analytics",
+      "task": "Analytics RGPD-compliant (Matomo/Plausible)",
+      "description": "Setup du tracking sans cookies tiers",
+      "status": "todo",
+      "page": "Global",
+      "priority": "moyenne",
+      "notes": "Phase 5+"
+    },
+    {
+      "id": "index-html-baseline",
+      "category": "SEO Technique",
+      "task": "index.html baseline (lang, meta, OG defaults)",
+      "description": "Attribut lang=fr, meta description, theme-color, OG defaults",
+      "status": "done",
+      "page": "Global",
+      "priority": "haute",
+      "notes": "Phase 1 — index.html mis à jour"
+    },
+    {
+      "id": "page-integrations",
+      "category": "Fonctionnalités Stratégiques",
+      "task": "Page Intégrations avec système de vote",
+      "description": "3 intégrations disponibles + 5 planifiées avec boutons de vote. Export, API REST, Docker, Nextcloud, Rocket.Chat, Mattermost, Notion, Slack.",
+      "status": "done",
+      "page": "/integrations",
+      "priority": "moyenne",
+      "notes": "Phase 7 — Integrations.tsx"
+    },
+    {
+      "id": "page-partenaires",
+      "category": "Acquisition",
+      "task": "Page Programme Partenaires / Affiliation",
+      "description": "2 profils (consultant 20%, intégrateur 30%), avantages, formulaire d'inscription.",
+      "status": "done",
+      "page": "/partenaires",
+      "priority": "moyenne",
+      "notes": "Phase 7 — Partners.tsx"
+    },
+    {
+      "id": "page-conformite",
+      "category": "Confiance & Certifications",
+      "task": "Page Conformité (RGPD, HDS, SecNumCloud, CLOUD Act, IA Responsable)",
+      "description": "5 sections détaillées avec statut, FAQ schema, article schema. Comparaison cloud vs on-premise.",
+      "status": "done",
+      "page": "/conformite",
+      "priority": "haute",
+      "notes": "Phase 7 — Compliance.tsx"
+    },
+    {
+      "id": "geo-paris",
+      "category": "SEO Géographique",
+      "task": "Landing page Paris & Île-de-France",
+      "description": "6 secteurs (sièges sociaux, cabinets, institutions, conseil, défense, startups), 5 pôles, schema LocalBusiness.",
+      "status": "done",
+      "page": "/transcription-paris-ile-de-france",
+      "priority": "moyenne",
+      "notes": "Phase 7 — geo/Paris.tsx"
+    },
+    {
+      "id": "geo-lyon",
+      "category": "SEO Géographique",
+      "task": "Landing page Lyon & Auvergne-Rhône-Alpes",
+      "description": "6 secteurs (CHU, biopharma, industrie, universités, collectivités, services), 5 pôles.",
+      "status": "done",
+      "page": "/transcription-lyon-auvergne-rhone-alpes",
+      "priority": "basse",
+      "notes": "Phase 7 — geo/Lyon.tsx"
+    },
+    {
+      "id": "geo-toulouse",
+      "category": "SEO Géographique",
+      "task": "Landing page Toulouse / Aerospace Valley",
+      "description": "6 secteurs (aéro, défense, spatial, deeptech, recherche, institutions), 5 pôles, features sur mesure.",
+      "status": "done",
+      "page": "/transcription-toulouse-aerospace",
+      "priority": "basse",
+      "notes": "Phase 7 — geo/Toulouse.tsx"
+    },
+    {
+      "id": "geo-lille",
+      "category": "SEO Géographique",
+      "task": "Landing page Lille / Euratechnologies",
+      "description": "6 secteurs (legaltech, numérique, distribution, universités, collectivités, transfrontalier), 5 pôles.",
+      "status": "done",
+      "page": "/transcription-lille-euratechnologies",
+      "priority": "basse",
+      "notes": "Phase 7 — geo/Lille.tsx"
+    },
+    {
+      "id": "geo-sophia",
+      "category": "SEO Géographique",
+      "task": "Landing page Sophia Antipolis",
+      "description": "6 secteurs (IA/ML, télécoms, R&D, international, formation, W3C), 5 pôles, features tech.",
+      "status": "done",
+      "page": "/transcription-sophia-antipolis",
+      "priority": "basse",
+      "notes": "Phase 7 — geo/SophiaAntipolis.tsx"
+    },
+    {
+      "id": "rag-knowledge-base",
+      "category": "Fonctionnalités Stratégiques",
+      "task": "RAG Local — Intelligence Collective (architecture v8)",
+      "description": "Documentation architecture RAG : ChromaDB + sentence-transformers + Ollama. Pipeline indexation/requête, API endpoints, frontend prévu.",
+      "status": "done",
+      "page": "/knowledge-base",
+      "priority": "haute",
+      "notes": "Phase 7 — docs/RAG_ARCHITECTURE.md (documentation, implémentation prévue v8)"
+    }
+  ]
+}

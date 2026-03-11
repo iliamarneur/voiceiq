@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Upload, Plus, Zap, FileText, BookMarked,
   Settings2, CreditCard, SlidersHorizontal, Info, Mic2, Clock,
-  Sun, Moon, BarChart3, Cpu, LogOut, User,
+  Sun, Moon, BarChart3, Cpu, LogOut, User, Search,
 } from 'lucide-react';
 
 interface NavItem {
@@ -49,6 +49,7 @@ const SECTIONS: SidebarSection[] = [
     adminOnly: true,
     items: [
       { to: '/app/admin', icon: BarChart3, label: 'Monitoring' },
+      { to: '/app/seo-strategy', icon: Search, label: 'SEO & Stratégie' },
       { to: '/app/models', icon: Cpu, label: 'Intelligence artificielle' },
     ],
   },

@@ -19,6 +19,7 @@ import PlansUsagePage from './pages/PlansUsage';
 import OneshotPage from './pages/Oneshot';
 import ModelsPage from './pages/Models';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import SEOStrategy from './pages/admin/SEOStrategy';
 import QuotaAlertBanner from './components/QuotaAlert';
 import Sidebar from './components/app/Sidebar';
 import { usePlanFeatures } from './hooks/usePlanFeatures';
@@ -36,6 +37,34 @@ import PlansPublic from './pages/simple/PlansPublic';
 // Payment pages
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancel from './pages/PaymentCancel';
+// Blog pages (public)
+import BlogList from './pages/BlogList';
+import BlogArticle from './pages/BlogArticle';
+// SEO landing pages (public)
+import LandingMedical from './pages/LandingMedical';
+import LandingJuridique from './pages/LandingJuridique';
+import LandingBusiness from './pages/LandingBusiness';
+import LandingEducation from './pages/LandingEducation';
+import FAQ from './pages/FAQ';
+// Comparison pages (public)
+import VsHappyScribe from './pages/comparisons/VsHappyScribe';
+import VsOtterAI from './pages/comparisons/VsOtterAI';
+import CloudVsLocal from './pages/comparisons/CloudVsLocal';
+// TCO Calculator page
+import TCOCalculatorPage from './pages/TCOCalculatorPage';
+// GEO citation-ready pages
+import GlossaireTranscription from './pages/GlossaireTranscription';
+import GuideRGPDTranscription from './pages/GuideRGPDTranscription';
+// Phase 7 — Strategic pages
+import Integrations from './pages/Integrations';
+import Partners from './pages/Partners';
+import Compliance from './pages/Compliance';
+// Geo landing pages
+import GeoParis from './pages/geo/Paris';
+import GeoLyon from './pages/geo/Lyon';
+import GeoToulouse from './pages/geo/Toulouse';
+import GeoLille from './pages/geo/Lille';
+import GeoSophia from './pages/geo/SophiaAntipolis';
 
 /** Route guard — redirects to /login if not authenticated (only when auth is enabled) */
 function RequireAuth({ children }: { children: React.ReactElement }) {
@@ -129,6 +158,7 @@ function AppShell() {
               <Route path="preferences" element={<PreferencesPage />} />
               <Route path="about" element={user?.role === 'admin' ? <About /> : <AboutMarketing />} />
               <Route path="admin" element={<AdminDashboard />} />
+              <Route path="seo-strategy" element={<SEOStrategy />} />
               <Route path="transcription/:id" element={<TranscriptionView />} />
             </Routes>
           </AnimatePresence>
@@ -153,11 +183,44 @@ function App() {
           {/* Landing page — full-width, no SimpleLayout wrapper */}
           <Route index element={<AboutMarketing />} />
 
+          {/* SEO vertical landing pages (full-width, no SimpleLayout) */}
+          <Route path="transcription-medicale" element={<LandingMedical />} />
+          <Route path="transcription-juridique" element={<LandingJuridique />} />
+          <Route path="transcription-reunion" element={<LandingBusiness />} />
+          <Route path="transcription-education" element={<LandingEducation />} />
+          <Route path="faq" element={<FAQ />} />
+
+          {/* Comparison pages (full-width) */}
+          <Route path="comparatif/clearrecap-vs-happyscribe" element={<VsHappyScribe />} />
+          <Route path="comparatif/clearrecap-vs-otter-ai" element={<VsOtterAI />} />
+          <Route path="comparatif/transcription-cloud-vs-locale" element={<CloudVsLocal />} />
+
+          {/* TCO Calculator */}
+          <Route path="calculateur-tco" element={<TCOCalculatorPage />} />
+
+          {/* GEO citation-ready pages */}
+          <Route path="glossaire-transcription" element={<GlossaireTranscription />} />
+          <Route path="guide-rgpd-transcription" element={<GuideRGPDTranscription />} />
+
+          {/* Phase 7 — Strategic pages */}
+          <Route path="integrations" element={<Integrations />} />
+          <Route path="partenaires" element={<Partners />} />
+          <Route path="conformite" element={<Compliance />} />
+
+          {/* Geo landing pages */}
+          <Route path="transcription-paris-ile-de-france" element={<GeoParis />} />
+          <Route path="transcription-lyon-auvergne-rhone-alpes" element={<GeoLyon />} />
+          <Route path="transcription-toulouse-aerospace" element={<GeoToulouse />} />
+          <Route path="transcription-lille-euratechnologies" element={<GeoLille />} />
+          <Route path="transcription-sophia-antipolis" element={<GeoSophia />} />
+
           <Route element={<SimpleLayout />}>
             <Route path="oneshot" element={<OneShotSimple />} />
             <Route path="processing/:jobId" element={<TranscriptionWaiting />} />
             <Route path="result/:id" element={<TranscriptionResult />} />
             <Route path="plans" element={<PlansPublic />} />
+            <Route path="blog" element={<BlogList />} />
+            <Route path="blog/:slug" element={<BlogArticle />} />
           </Route>
 
           {/* ========== Payment callback pages ========== */}

@@ -63,7 +63,7 @@ function PreferencesPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold">Vos préférences</h1>
-          <p className="text-sm text-slate-500">Personnalisez votre expérience VoiceIQ</p>
+          <p className="text-sm text-slate-500">Personnalisez votre expérience ClearRecap</p>
         </div>
       </div>
 
@@ -147,13 +147,13 @@ function PreferencesPage() {
         </Section>
 
         {/* Default Preset */}
-        <Section icon={Mic} title="Preset par défaut" description="Le preset audio appliqué automatiquement">
+        <Section icon={Mic} title="Configuration par défaut" description="La configuration audio appliquée automatiquement">
           <select
             value={prefs.default_preset_id || ''}
             onChange={e => setPrefs({ ...prefs, default_preset_id: e.target.value || null })}
             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="">Aucun preset par défaut</option>
+            <option value="">Aucune configuration par défaut</option>
             {presets.map(p => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
@@ -161,7 +161,7 @@ function PreferencesPage() {
         </Section>
 
         {/* Recap */}
-        <Section icon={BookOpen} title="Vos ressources" description="Récap de vos dictionnaires et presets">
+        <Section icon={BookOpen} title="Vos ressources" description="Récap de vos dictionnaires et configurations">
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
               <p className="text-2xl font-bold text-indigo-600">{dictionaries.length}</p>
@@ -172,7 +172,7 @@ function PreferencesPage() {
             </div>
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
               <p className="text-2xl font-bold text-purple-600">{presets.length}</p>
-              <p className="text-sm text-slate-500">Presets audio</p>
+              <p className="text-sm text-slate-500">Configurations audio</p>
             </div>
           </div>
         </Section>
@@ -220,7 +220,7 @@ function RgpdSection() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `voiceiq-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `clearrecap-export-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch {

@@ -34,7 +34,7 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-const REFRESH_KEY = 'voiceiq_refresh_token';
+const REFRESH_KEY = 'clearrecap_refresh_token';
 
 // Set up axios interceptor for Bearer token
 function setupAxiosAuth(token: string | null) {
@@ -47,7 +47,7 @@ function setupAxiosAuth(token: string | null) {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('voiceiq_token'));
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('clearrecap_token'));
   const [loading, setLoading] = useState(true);
   const [authEnabled, setAuthEnabled] = useState(false);
 
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // 2. Auth enabled — try stored token
-        const stored = localStorage.getItem('voiceiq_token');
+        const stored = localStorage.getItem('clearrecap_token');
         if (stored) {
           setupAxiosAuth(stored);
           try {
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               try {
                 const refreshRes = await axios.post('/api/auth/refresh', { refresh_token: refreshToken });
                 const newToken = refreshRes.data.token;
-                localStorage.setItem('voiceiq_token', newToken);
+                localStorage.setItem('clearrecap_token', newToken);
                 localStorage.setItem(REFRESH_KEY, refreshRes.data.refresh_token);
                 setupAxiosAuth(newToken);
                 setToken(newToken);
@@ -91,13 +91,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUser(meRes.data);
               } catch {
                 // Refresh also failed — clear everything
-                localStorage.removeItem('voiceiq_token');
+                localStorage.removeItem('clearrecap_token');
                 localStorage.removeItem(REFRESH_KEY);
                 setupAxiosAuth(null);
                 setToken(null);
               }
             } else {
-              localStorage.removeItem('voiceiq_token');
+              localStorage.removeItem('clearrecap_token');
               setupAxiosAuth(null);
               setToken(null);
             }
@@ -125,14 +125,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
               const res = await axios.post('/api/auth/refresh', { refresh_token: refreshToken });
               const newToken = res.data.token;
-              localStorage.setItem('voiceiq_token', newToken);
+              localStorage.setItem('clearrecap_token', newToken);
               localStorage.setItem(REFRESH_KEY, res.data.refresh_token);
               setupAxiosAuth(newToken);
               originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
               return axios(originalRequest);
             } catch {
               // Refresh failed — logout
-              localStorage.removeItem('voiceiq_token');
+              localStorage.removeItem('clearrecap_token');
               localStorage.removeItem(REFRESH_KEY);
               setupAxiosAuth(null);
               setUser(null);
@@ -151,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const res = await axios.post('/api/auth/login', { email, password });
     const { token: newToken, refresh_token: newRefresh, user: newUser } = res.data;
-    localStorage.setItem('voiceiq_token', newToken);
+    localStorage.setItem('clearrecap_token', newToken);
     if (newRefresh) localStorage.setItem(REFRESH_KEY, newRefresh);
     setupAxiosAuth(newToken);
     setToken(newToken);
@@ -161,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(async (email: string, password: string, name: string) => {
     const res = await axios.post('/api/auth/register', { email, password, name });
     const { token: newToken, refresh_token: newRefresh, user: newUser } = res.data;
-    localStorage.setItem('voiceiq_token', newToken);
+    localStorage.setItem('clearrecap_token', newToken);
     if (newRefresh) localStorage.setItem(REFRESH_KEY, newRefresh);
     setupAxiosAuth(newToken);
     setToken(newToken);
@@ -169,7 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('voiceiq_token');
+    localStorage.removeItem('clearrecap_token');
     localStorage.removeItem(REFRESH_KEY);
     setupAxiosAuth(null);
     setToken(null);

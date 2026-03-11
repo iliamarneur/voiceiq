@@ -12,15 +12,15 @@ import {
   CreditCard, Timer, ShoppingBag, Activity, Globe2
 } from 'lucide-react';
 
-const VERSION = '7.0.0';
-const LAST_UPDATED = '2026-03-07';
+const VERSION = '7.2.0';
+const LAST_UPDATED = '2026-03-09';
 
 interface Feature {
   icon: any;
   title: string;
   description: string;
   version: string;
-  category: 'core' | 'analysis' | 'v2' | 'v3' | 'v4' | 'v5' | 'v5x' | 'v6' | 'v7' | 'export';
+  category: 'core' | 'analysis' | 'v2' | 'v3' | 'v4' | 'v5' | 'v5x' | 'v6' | 'v7' | 'v7x' | 'export';
 }
 
 const FEATURES: Feature[] = [
@@ -81,8 +81,8 @@ const FEATURES: Feature[] = [
   { icon: ListOrdered, title: 'File d\'attente & Priorites', description: 'File de traitement avec priorites P0 (urgent) / P1 (normal) / P2 (basse). Estimation du temps de traitement par fichier. Vue queue en temps reel.', version: '5.0', category: 'v5' },
   { icon: RotateCcw, title: 'Retry & Robustesse batch', description: 'Un fichier echoue ne bloque pas le reste du batch. Relancez les fichiers en echec d\'un clic. Logs d\'erreur par fichier.', version: '5.0', category: 'v5' },
   { icon: BookMarked, title: 'Dictionnaires personnalises', description: 'Definissez vos termes (noms propres, acronymes, jargon) par dictionnaire. Post-correction de la transcription et injection dans les prompts LLM.', version: '5.0', category: 'v5' },
-  { icon: Settings2, title: 'Presets audio', description: 'Pre-configurez vos parametres d\'upload : profil metier, type audio, sensibilite VAD, dictionnaire associe. Selectionnez un preset en un clic.', version: '5.0', category: 'v5' },
-  { icon: Brain, title: 'Apprentissage des corrections', description: 'Quand vous corrigez la transcription, VoiceIQ apprend (opt-in) et enrichit automatiquement votre dictionnaire pour les futurs fichiers.', version: '5.0', category: 'v5' },
+  { icon: Settings2, title: 'Configurations audio', description: 'Pré-configurez vos paramètres d\'envoi : profil métier, type audio, sensibilité VAD, dictionnaire associé. Sélectionnez une configuration en un clic.', version: '5.0', category: 'v5' },
+  { icon: Brain, title: 'Apprentissage des corrections', description: 'Quand vous corrigez la transcription, ClearRecap apprend (opt-in) et enrichit automatiquement votre dictionnaire pour les futurs fichiers.', version: '5.0', category: 'v5' },
 
   // v5.x — Confort Transcription
   { icon: Star, title: 'Confiance par segment', description: 'Indicateur de confiance (0-100) par segment avec code couleur vert/orange/rouge. Base sur la confidence Whisper, le type audio et des heuristiques.', version: '5.1', category: 'v5x' },
@@ -97,12 +97,20 @@ const FEATURES: Feature[] = [
   { icon: PenTool, title: 'Dictee en direct', description: 'Dictez en temps reel : le texte apparait au fur et a mesure par blocs de 4 secondes. Pause/reprise, copie du texte, sauvegarde comme transcription avec analyses.', version: '6.0', category: 'v6' },
 
   // v7 — Offres & Minutes
-  { icon: CreditCard, title: 'Plans & Abonnements', description: '4 plans adaptes a chaque usage : Free (30 min/mois), Basic (300 min, 19€), Pro (2000 min, 49€), Team (5000 min, 99€). Changement instantane.', version: '7.0', category: 'v7' },
+  { icon: CreditCard, title: 'Plans & Abonnements', description: '3 plans : Basic (500 min, 19 EUR), Pro (3000 min, 49 EUR), Equipe+ (10000 min, 99 EUR). Changement instantane. À la demande disponible sans abonnement.', version: '7.0', category: 'v7' },
   { icon: Timer, title: 'Suivi des minutes', description: 'Consommation en temps reel avec barre de progression dans la sidebar. Chaque transcription deduit la duree audio de votre forfait.', version: '7.0', category: 'v7' },
   { icon: Plus, title: 'Packs minutes supplementaires', description: 'Achetez des packs de minutes a la carte : 100 min (3€), 500 min (12€), 2000 min (40€). Cumul illimite, pas d\'expiration.', version: '7.0', category: 'v7' },
-  { icon: ShoppingBag, title: 'Commandes one-shot', description: 'Transcrivez sans abonnement : paliers S (30 min, 3€), M (60 min, 4€), L (90 min, 5€). Ideal pour un besoin ponctuel.', version: '7.0', category: 'v7' },
+  { icon: ShoppingBag, title: 'Commandes one-shot', description: 'Transcrivez sans abonnement : 6 paliers de 3 a 18 EUR pour des fichiers de 30 min a 3h. Fonctionnalites progressives selon le palier.', version: '7.0', category: 'v7' },
   { icon: Activity, title: 'Metriques d\'usage', description: 'Tableau de bord avec nombre de transcriptions, duree totale, repartition par source (upload/micro/dictee) et par profil metier.', version: '7.0', category: 'v7' },
   { icon: Globe2, title: 'Selection de langue', description: 'Choisissez la langue avant l\'upload parmi 12 langues (FR, EN, ES, DE, IT, PT, NL, RU, ZH, JA, KO, AR) ou laissez la detection automatique.', version: '7.0', category: 'v7' },
+
+  // v7.2 — Auth, Multi-user & Monitoring
+  { icon: Shield, title: 'Authentification JWT', description: 'Inscription/connexion par email + mot de passe. Token JWT HS256 (24h), bcrypt pour les mots de passe. Toggle AUTH_ENABLED pour compatibilite legacy.', version: '7.2', category: 'v7x' },
+  { icon: Users, title: 'Isolation multi-utilisateur', description: 'Chaque utilisateur ne voit que ses propres transcriptions, analyses et statistiques. Verification d\'ownership sur tous les endpoints sensibles.', version: '7.2', category: 'v7x' },
+  { icon: Shield, title: 'Roles admin/user', description: 'Protection des endpoints admin (monitoring, modeles, queue). Les options avancees (priorite, backend STT/LLM) sont reservees a l\'admin dans l\'UI.', version: '7.2', category: 'v7x' },
+  { icon: Activity, title: 'Dashboard monitoring complet', description: 'Revenus (MRR + one-shots + packs), couts API estimes (Whisper + LLM), taux d\'abonnement, top users, usage par source/profil, sante des backends.', version: '7.2', category: 'v7x' },
+  { icon: CreditCard, title: 'Inscription sans abonnement', description: 'A l\'inscription, aucun plan n\'est attribue par defaut. L\'utilisateur choisit son abonnement ou utilise le mode one-shot des 3 EUR.', version: '7.2', category: 'v7x' },
+  { icon: Globe2, title: 'CORS configurable', description: 'Origins autorisees via ALLOWED_ORIGINS en .env. Permissif en dev (*), restrictif en production.', version: '7.2', category: 'v7x' },
 ];
 
 const CATEGORIES = [
@@ -115,6 +123,7 @@ const CATEGORIES = [
   { key: 'v5x', label: 'Nouveautes v5.1 — Confort Transcription', color: 'from-amber-500 to-rose-500' },
   { key: 'v6', label: 'Nouveautes v6 — Multi-Entrees', color: 'from-emerald-500 to-cyan-500' },
   { key: 'v7', label: 'Nouveautes v7 — Offres & Minutes', color: 'from-sky-500 to-indigo-500' },
+  { key: 'v7x', label: 'Nouveautes v7.2 — Auth, Multi-user & Monitoring', color: 'from-red-500 to-rose-500' },
   { key: 'export', label: 'Export', color: 'from-amber-500 to-orange-500' },
 ];
 
@@ -135,7 +144,7 @@ function About() {
           <Mic2 className="w-10 h-10 text-white" />
         </motion.div>
         <h1 className="text-4xl font-bold mb-2">
-          <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">VoiceIQ</span>
+          <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">ClearRecap</span>
         </h1>
         <p className="text-lg text-slate-500 dark:text-slate-400 mb-4">
           Transformez vos fichiers audio en connaissances exploitables
@@ -153,11 +162,11 @@ function About() {
       {/* Description */}
       <div className="mb-12 p-6 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-100 dark:border-indigo-800">
         <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-          <strong>VoiceIQ</strong> est une plateforme 100% locale de transcription et d'analyse audio.
+          <strong>ClearRecap</strong> est une plateforme 100% locale de transcription et d'analyse audio.
           Uploadez un fichier, enregistrez depuis votre micro ou dictez en direct — obtenez une transcription precise via Whisper,
           puis des analyses IA adaptees a votre contexte metier grace aux 5 profils verticaux (Generique, Business, Education, Medical, Juridique).
-          Avec la v7, choisissez votre plan (Free, Basic, Pro, Team), suivez votre consommation de minutes en temps reel
-          et commandez a la carte sans abonnement. Le tout sans aucune donnee envoyee a l'exterieur.
+          Avec la v7, choisissez votre plan (Basic, Pro, Equipe+), suivez votre consommation de minutes en temps reel
+          ou commandez a la carte sans abonnement des 3 EUR. La v7.2 ajoute l'authentification JWT, l'isolation multi-utilisateur et un dashboard de monitoring complet. Le tout sans aucune donnee envoyee a l'exterieur.
         </p>
         <div className="flex items-center gap-6 mt-4 text-xs text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> 100% local</span>
@@ -242,6 +251,11 @@ function About() {
                       {feature.version === '7.0' && (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400">
                           V7
+                        </span>
+                      )}
+                      {feature.version === '7.2' && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                          V7.2
                         </span>
                       )}
                     </div>

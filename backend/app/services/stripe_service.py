@@ -43,7 +43,10 @@ def _get_stripe():
 
 
 def is_stripe_configured() -> bool:
-    """Check if Stripe is configured (non-empty key present and package installed)."""
+    """Check if Stripe is configured (non-empty key present and package installed).
+    Returns False if STRIPE_MODE=dev (bypass payments for local testing)."""
+    if os.environ.get("STRIPE_MODE", "") == "dev":
+        return False
     key = os.environ.get("STRIPE_SECRET_KEY", "")
     if not key or key.startswith("sk_test_...") or key == "":
         return False
@@ -133,7 +136,7 @@ async def get_or_create_customer(
     customer = stripe.Customer.create(
         email=email,
         name=name or "",
-        metadata={"voiceiq_user_id": user_id},
+        metadata={"clearrecap_user_id": user_id},
     )
     return {"customer_id": customer["id"], "mode": "stripe"}
 

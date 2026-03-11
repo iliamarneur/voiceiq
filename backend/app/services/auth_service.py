@@ -24,7 +24,7 @@ from app.models import User
 logger = logging.getLogger(__name__)
 
 # ── Config ────────────────────────────────────────────────
-JWT_SECRET = os.environ.get("JWT_SECRET_KEY", "voiceiq-dev-secret-change-me-in-production-2026")
+JWT_SECRET = os.environ.get("JWT_SECRET_KEY", "clearrecap-dev-secret-change-me-in-production-2026")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_HOURS = 1
 AUTH_ENABLED = os.environ.get("AUTH_ENABLED", "false").lower() == "true"

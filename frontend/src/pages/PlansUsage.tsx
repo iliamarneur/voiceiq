@@ -10,24 +10,24 @@ const FEATURE_LABELS: Record<string, string> = {
   summary: 'Résumé',
   keypoints: 'Points clés',
   actions: 'Plan d\'actions',
-  flashcards: 'Flashcards',
+  flashcards: 'Fiches de révision',
   quiz: 'Quiz',
-  chat: 'Chat IA',
+  chat: 'Discussion IA',
   dictation: 'Dictée vocale',
   mindmap: 'Carte mentale',
-  slides: 'Slides',
+  slides: 'Diapositives',
   infographic: 'Infographie',
   tables: 'Tableaux',
   export_txt: 'Export TXT',
   export_pdf: 'Export PDF',
   export_md: 'Export Markdown',
   export_pptx: 'Export PowerPoint',
-  templates: 'Templates personnalisés',
-  presets: 'Presets audio',
+  templates: 'Modèles personnalisés',
+  presets: 'Configurations audio',
   priority_queue: 'File prioritaire',
   multi_workspace: 'Multi-espaces',
-  shared_presets: 'Presets partagés',
-  batch_export: 'Export groupe',
+  shared_presets: 'Configurations partagées',
+  batch_export: 'Export groupé',
 };
 
 function PlansUsagePage() {
@@ -271,7 +271,7 @@ function PlansUsagePage() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-3">
               <Zap className="w-5 h-5 text-white" />
             </div>
-            <h3 className="font-bold text-lg">One-shot</h3>
+            <h3 className="font-bold text-lg">À la demande</h3>
             <div className="mt-2">
               <span className="text-2xl font-bold">Dès 3</span>
               <span className="text-slate-500 text-sm"> EUR</span>

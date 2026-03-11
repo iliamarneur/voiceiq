@@ -275,77 +275,100 @@ def _stt_whisper_api(file_path: str, vad_params: dict = None, language: str = No
 
 
 def _stt_elevenlabs_api(file_path: str, vad_params: dict = None, language: str = None, model_hint: str = None):
-    """ElevenLabs Scribe v2 API transcription."""
+    """ElevenLabs Scribe v2 API transcription.
+
+    ElevenLabs accepts files up to 3 GB — no compression needed.
+    Returns word-level timestamps; we reassemble into ~30s segments.
+    """
     import httpx
 
     api_key = os.environ["ELEVENLABS_API_KEY"]
+    file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
 
-    # Compress if file exceeds 50MB (ElevenLabs limit is higher but let's be safe)
-    actual_path = _compress_audio_for_api(file_path, max_bytes=50 * 1024 * 1024)
-    compressed = actual_path != file_path
-
-    # Map language codes: ElevenLabs uses ISO-639-3 (3-letter) or ISO-639-1
-    lang_map = {"fr": "fra", "en": "eng", "es": "spa", "de": "deu", "it": "ita", "pt": "por", "nl": "nld", "ja": "jpn", "zh": "cmn", "ko": "kor", "ar": "ara", "ru": "rus"}
+    # Map language codes: ElevenLabs uses ISO-639-1 (2-letter codes work fine)
+    lang_map = {"fr": "fra", "en": "eng", "es": "spa", "de": "deu", "it": "ita",
+                "pt": "por", "nl": "nld", "ja": "jpn", "zh": "cmn", "ko": "kor",
+                "ar": "ara", "ru": "rus"}
     el_lang = lang_map.get(language, language) if language else None
 
-    try:
-        with open(actual_path, "rb") as audio_file:
-            data = {"model_id": "scribe_v2"}
-            if el_lang:
-                data["language_code"] = el_lang
-            data["timestamps_granularity"] = "word"
+    with open(file_path, "rb") as audio_file:
+        data = {"model_id": "scribe_v2", "timestamps_granularity": "word"}
+        if el_lang:
+            data["language_code"] = el_lang
 
-            logger.info(f"ElevenLabs STT: model=scribe_v2, lang={el_lang or 'auto'}")
-            resp = httpx.post(
-                "https://api.elevenlabs.io/v1/speech-to-text",
-                headers={"xi-api-key": api_key},
-                files={"file": (os.path.basename(actual_path), audio_file, "audio/mpeg")},
-                data=data,
-                timeout=600.0,
-            )
-            resp.raise_for_status()
-            result = resp.json()
-    finally:
-        if compressed and os.path.exists(actual_path):
-            _safe_remove(actual_path)
+        logger.info(f"ElevenLabs STT: model=scribe_v2, lang={el_lang or 'auto'}, size={file_size_mb:.1f}MB")
+        resp = httpx.post(
+            "https://api.elevenlabs.io/v1/speech-to-text",
+            headers={"xi-api-key": api_key},
+            files={"file": (os.path.basename(file_path), audio_file, "audio/mpeg")},
+            data=data,
+            timeout=1800.0,  # 30 min timeout for long files
+        )
+        resp.raise_for_status()
+        result = resp.json()
 
-    # Parse response — ElevenLabs returns {text, words: [{text, start, end, type, speaker_id}], language_code}
+    # Use the full text directly from ElevenLabs (already well-formatted)
     full_text = result.get("text", "")
     words = result.get("words", [])
     detected_lang = result.get("language_code", language or "unknown")
 
-    # Build segments from words (group into ~30s segments)
+    logger.info(f"ElevenLabs response: {len(full_text)} chars, {len(words)} words, lang={detected_lang}")
+
+    # Build segments from words — reconstruct text with proper spacing
     segments = []
     if words:
-        seg_words = []
-        seg_start = words[0].get("start", 0.0)
+        seg_parts = []  # list of text pieces (words + punctuation)
+        seg_start = None
+        seg_end = 0.0
+
         for w in words:
-            if w.get("type") == "spacing":
+            w_type = w.get("type", "word")
+            w_text = w.get("text", "")
+
+            if w_type == "spacing":
+                seg_parts.append(w_text)  # preserve natural spacing
                 continue
-            seg_words.append(w.get("text", ""))
-            seg_end = w.get("end", seg_start)
-            # Create a new segment every ~30 seconds or at sentence boundaries
-            if seg_end - seg_start >= 30.0 or (w.get("text", "").rstrip().endswith((".", "!", "?")) and seg_end - seg_start >= 5.0):
-                segments.append({
-                    "start": round(seg_start, 2),
-                    "end": round(seg_end, 2),
-                    "text": " ".join(seg_words).strip(),
-                })
-                seg_words = []
-                seg_start = seg_end
+
+            # Track timing from actual words (not spacing/punctuation)
+            if w.get("start") is not None and seg_start is None:
+                seg_start = w["start"]
+            if w.get("end") is not None:
+                seg_end = w["end"]
+
+            seg_parts.append(w_text)
+
+            # Cut segment at sentence boundaries (after 5s+) or at ~30s
+            is_sentence_end = w_type == "punctuation" and w_text in (".", "!", "?")
+            if seg_start is not None and (
+                (is_sentence_end and seg_end - seg_start >= 5.0)
+                or seg_end - seg_start >= 30.0
+            ):
+                seg_text = "".join(seg_parts).strip()
+                if seg_text:
+                    segments.append({
+                        "start": round(seg_start, 2),
+                        "end": round(seg_end, 2),
+                        "text": seg_text,
+                    })
+                seg_parts = []
+                seg_start = None
+
         # Remaining words
-        if seg_words:
-            segments.append({
-                "start": round(seg_start, 2),
-                "end": round(words[-1].get("end", seg_start), 2),
-                "text": " ".join(seg_words).strip(),
-            })
+        if seg_parts:
+            seg_text = "".join(seg_parts).strip()
+            if seg_text:
+                segments.append({
+                    "start": round(seg_start or 0.0, 2),
+                    "end": round(seg_end, 2),
+                    "text": seg_text,
+                })
     elif full_text.strip():
         segments = [{"start": 0.0, "end": 0.0, "text": full_text.strip()}]
 
-    duration = words[-1].get("end", 0.0) if words else 0.0
-    info = _Info(lang=detected_lang, dur=duration)
+    duration = seg_end if words else 0.0
+    logger.info(f"ElevenLabs parsed: {len(segments)} segments, duration={duration:.0f}s")
 
+    info = _Info(lang=detected_lang, dur=duration)
     return segments, full_text, info
 
 

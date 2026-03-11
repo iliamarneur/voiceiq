@@ -3,8 +3,10 @@ import shutil
 import asyncio
 import logging
 import time
+import yaml
 from collections import defaultdict
 from datetime import datetime
+from pathlib import Path
 
 # Load .env file if present (for OPENAI_API_KEY, STRIPE keys, etc.)
 from dotenv import load_dotenv
@@ -86,9 +88,12 @@ from app.services.stripe_service import (
     extract_subscription_event, extract_invoice_event,
     get_or_create_customer, create_billing_portal_session, cancel_subscription,
 )
-from app.services.stt_backends import get_stt_backends, resolve_stt_backend
+from app.services.stt_backends import get_stt_backends, resolve_stt_backend, transcribe_audio_via_backend
 from app.services.llm_backends import get_llm_backends, resolve_llm_backend
 from app.services.auth_service import get_current_user, get_current_user_id, get_optional_user_id, require_admin, AUTH_ENABLED
+from app.services.email_service import (
+    send_payment_success, send_payment_failed, send_subscription_cancelled,
+)
 from app.services.dictation_service import (
     start_session as dictation_start,
     transcribe_chunk as dictation_chunk,
@@ -178,21 +183,60 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Rate limiter (billing endpoints) ─────────────────────
+# ── Rate limiter ─────────────────────────────────────────
 _rate_limits: dict[str, list[float]] = defaultdict(list)
 RATE_LIMIT_WINDOW = 60  # seconds
-RATE_LIMIT_MAX = 10  # max requests per window per IP
+RATE_LIMIT_MAX = 10  # max requests per window per IP (billing/webhook)
+RATE_LIMIT_MAX_AUTH = 5  # auth endpoints (login/register) — stricter
+RATE_LIMIT_MAX_GENERAL = 30  # general mutating endpoints (POST/PUT/DELETE)
+
+# Endpoints with specific rate limits
+_RATE_LIMIT_AUTH_PREFIXES = ("/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/reset-password")
+_RATE_LIMIT_BILLING_PREFIXES = ("/api/stripe/webhook", "/api/subscription/plan", "/api/subscription/add-minutes",
+                                 "/api/subscription/cancel", "/api/oneshot/order", "/api/billing/portal")
+_RATE_LIMIT_SENSITIVE_PREFIXES = ("/api/upload", "/api/account", "/api/oneshot/upload")
 
 
-def _check_rate_limit(client_ip: str, endpoint: str) -> bool:
+def _check_rate_limit(client_ip: str, endpoint: str, max_requests: int = RATE_LIMIT_MAX) -> bool:
     """Return True if rate limit exceeded."""
     key = f"{client_ip}:{endpoint}"
     now = time.time()
     _rate_limits[key] = [t for t in _rate_limits[key] if now - t < RATE_LIMIT_WINDOW]
-    if len(_rate_limits[key]) >= RATE_LIMIT_MAX:
+    if len(_rate_limits[key]) >= max_requests:
         return True
     _rate_limits[key].append(now)
     return False
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """Apply rate limiting on mutating endpoints."""
+    if request.method in ("POST", "PUT", "DELETE"):
+        client_ip = request.client.host if request.client else "unknown"
+        path = request.url.path
+
+        # Skip webhook — handled inline with its own check
+        if path == "/api/stripe/webhook":
+            return await call_next(request)
+
+        # Auth endpoints: strict limit
+        if any(path.startswith(p) for p in _RATE_LIMIT_AUTH_PREFIXES):
+            if _check_rate_limit(client_ip, "auth", RATE_LIMIT_MAX_AUTH):
+                return JSONResponse(status_code=429, content={"detail": "Trop de tentatives. Réessayez dans une minute."})
+        # Billing endpoints
+        elif any(path.startswith(p) for p in _RATE_LIMIT_BILLING_PREFIXES):
+            if _check_rate_limit(client_ip, "billing", RATE_LIMIT_MAX):
+                return JSONResponse(status_code=429, content={"detail": "Trop de requêtes. Réessayez dans une minute."})
+        # Sensitive endpoints (upload, account)
+        elif any(path.startswith(p) for p in _RATE_LIMIT_SENSITIVE_PREFIXES):
+            if _check_rate_limit(client_ip, "sensitive", RATE_LIMIT_MAX):
+                return JSONResponse(status_code=429, content={"detail": "Trop de requêtes. Réessayez dans une minute."})
+        # General mutating endpoints
+        elif path.startswith("/api/"):
+            if _check_rate_limit(client_ip, "general", RATE_LIMIT_MAX_GENERAL):
+                return JSONResponse(status_code=429, content={"detail": "Trop de requêtes. Réessayez dans une minute."})
+
+    return await call_next(request)
 
 
 async def get_db():
@@ -948,14 +992,16 @@ async def update_speakers(id: str, body: SpeakerLabelUpdate, db: AsyncSession = 
 # ── Dictionaries ──────────────────────────────────────────
 
 @app.get("/api/dictionaries", response_model=list[DictionaryOut])
-async def list_dictionaries(db: AsyncSession = Depends(get_db)):
-    """List all user dictionaries."""
-    return await get_all_dictionaries(db)
+async def list_dictionaries(request: Request, db: AsyncSession = Depends(get_db)):
+    """List all user dictionaries (filtered by user)."""
+    user_id = await get_current_user_id(request)
+    return await get_all_dictionaries(db, user_id=user_id)
 
 
 @app.post("/api/dictionaries", response_model=DictionaryOut, status_code=201)
-async def create_dict(body: DictionaryCreate, db: AsyncSession = Depends(get_db)):
-    return await create_dictionary(body.name, body.description, db)
+async def create_dict(body: DictionaryCreate, request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = await get_current_user_id(request)
+    return await create_dictionary(body.name, body.description, db, user_id=user_id)
 
 
 @app.get("/api/dictionaries/{dictionary_id}", response_model=DictionaryOut)
@@ -996,8 +1042,13 @@ async def remove_entry(dictionary_id: str, entry_id: str, db: AsyncSession = Dep
 # ── Audio Presets ─────────────────────────────────────────
 
 @app.get("/api/presets", response_model=list[AudioPresetOut])
-async def list_presets(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(AudioPreset).order_by(AudioPreset.created_at.desc()))
+async def list_presets(request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = await get_current_user_id(request)
+    result = await db.execute(
+        select(AudioPreset)
+        .where(AudioPreset.user_id == user_id)
+        .order_by(AudioPreset.created_at.desc())
+    )
     return result.scalars().all()
 
 
@@ -1006,6 +1057,7 @@ async def create_preset(body: AudioPresetCreate, request: Request, db: AsyncSess
     user_id = await get_current_user_id(request)
     await require_feature_check(db, "presets", user_id=user_id)
     preset = AudioPreset(
+        user_id=user_id,
         name=body.name, description=body.description,
         profile_id=body.profile_id, audio_type=body.audio_type,
         vad_sensitivity=body.vad_sensitivity, min_silence_ms=body.min_silence_ms,
@@ -1340,8 +1392,103 @@ async def start_dictation(data: DictationStartRequest, request: Request, db: Asy
     if sub is None:
         raise HTTPException(status_code=403, detail="Aucun abonnement actif. Veuillez choisir un plan.")
     await require_feature_check(db, "dictation", user_id=user_id)
-    session = await dictation_start(db, profile=data.profile)
+    session = await dictation_start(db, profile=data.profile, user_id=user_id)
     return session
+
+
+@app.put("/api/dictation/{session_id}/text")
+async def update_dictation_text(
+    session_id: str,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update dictation session text (user edit before saving)."""
+    text = body.get("text", "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Le texte ne peut pas être vide.")
+    result = await db.execute(
+        select(DictationSession).where(DictationSession.id == session_id)
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session introuvable")
+    session.current_text = text
+    await db.commit()
+    return {"status": "updated", "length": len(text)}
+
+
+@app.post("/api/dictation/{session_id}/finalize")
+async def finalize_dictation(
+    session_id: str,
+    audio: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Finalize dictation: transcribe full audio with high-quality STT backend."""
+    audio_data = await audio.read()
+    if len(audio_data) < 500:
+        return {"full_text": "", "status": "empty"}
+    if len(audio_data) > 500 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Fichier audio trop volumineux (max 500 Mo)")
+
+    result = await db.execute(
+        select(DictationSession).where(DictationSession.id == session_id)
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session introuvable")
+
+    import tempfile
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".webm", dir="uploads") as tmp:
+        tmp.write(audio_data)
+        tmp_path = tmp.name
+
+    try:
+        stt_backend = resolve_stt_backend("file_upload")
+        effective_lang = session.language or os.environ.get("DEFAULT_STT_LANGUAGE", "fr")
+        segments, full_text, info = await transcribe_audio_via_backend(
+            tmp_path, language=effective_lang, backend_id=stt_backend,
+        )
+        if full_text.strip():
+            session.current_text = full_text.strip()
+            if info and hasattr(info, "duration") and info.duration:
+                session.total_duration = info.duration
+            if info and hasattr(info, "language") and info.language:
+                session.language = info.language
+            await db.commit()
+
+        # v7: consume minutes immediately on finalize (audio was transcribed)
+        audio_duration = info.duration if info and hasattr(info, "duration") and info.duration else 0
+        if audio_duration > 0:
+            try:
+                from app.services.subscription_service import consume_minutes
+                from app.services.transcription_service import get_dictation_model_name
+                await consume_minutes(
+                    db,
+                    audio_duration_seconds=audio_duration,
+                    source_type="dictation",
+                    profile_used=session.profile,
+                    whisper_model=get_dictation_model_name(),
+                    language=session.language or effective_lang,
+                    user_id=session.user_id,
+                )
+            except Exception as usage_err:
+                logger.warning(f"Usage logging failed for dictation finalize {session_id}: {usage_err}")
+
+        return {
+            "full_text": full_text.strip(),
+            "duration": audio_duration,
+            "language": info.language if info and hasattr(info, "language") else None,
+            "status": "refined",
+        }
+    except Exception as e:
+        logger.error(f"Dictation finalize error: {e}")
+        return {"full_text": session.current_text, "status": "fallback", "error": str(e)}
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
 
 
 @app.get("/api/dictation/{session_id}", response_model=DictationSessionOut)
@@ -1496,6 +1643,64 @@ async def subscription_features(request: Request, db: AsyncSession = Depends(get
     """Get features available for the current plan."""
     user_id = await get_current_user_id(request)
     return await get_plan_features(db, user_id=user_id)
+
+
+@app.post("/api/subscription/confirm-payment")
+async def confirm_plan_payment(body: dict, db: AsyncSession = Depends(get_db)):
+    """Confirm a plan payment via Stripe session ID (fallback when webhook can't reach us)."""
+    session_id = body.get("session_id")
+    plan_id = body.get("plan_id")
+    if not session_id or not plan_id:
+        raise HTTPException(status_code=400, detail="Missing session_id or plan_id")
+
+    try:
+        import stripe as stripe_mod
+        stripe_key = os.environ.get("STRIPE_SECRET_KEY", "")
+        if not stripe_key or stripe_key.startswith("sk_test_xxx"):
+            raise HTTPException(status_code=400, detail="Stripe not configured")
+        stripe_mod.api_key = stripe_key
+
+        checkout_session = stripe_mod.checkout.Session.retrieve(session_id)
+        if checkout_session.payment_status != "paid":
+            raise HTTPException(status_code=402, detail="Payment not completed")
+
+        meta = checkout_session.metadata or {}
+        user_id = meta.get("user_id", "default")
+        confirmed_plan = meta.get("plan_id", plan_id)
+
+        # Check if already activated (idempotent)
+        existing = await db.execute(
+            select(UserSubscription).where(
+                UserSubscription.user_id == user_id,
+                UserSubscription.status == "active",
+            )
+        )
+        existing_sub = existing.scalar_one_or_none()
+        if existing_sub and existing_sub.plan_id == confirmed_plan:
+            return {"status": "already_active", "plan_id": confirmed_plan}
+
+        await change_plan(db, confirmed_plan, user_id=user_id)
+
+        # Store Stripe IDs
+        sub_result = await db.execute(
+            select(UserSubscription).where(UserSubscription.user_id == user_id)
+        )
+        sub = sub_result.scalar_one_or_none()
+        if sub:
+            if checkout_session.customer:
+                sub.stripe_customer_id = checkout_session.customer
+            if checkout_session.subscription:
+                sub.stripe_subscription_id = checkout_session.subscription
+            await db.commit()
+
+        logger.info(f"Plan {confirmed_plan} confirmed via checkout session for user {user_id}")
+        return {"status": "activated", "plan_id": confirmed_plan}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"confirm-payment error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── v7: One-Shot ─────────────────────────────────────────
@@ -2004,6 +2209,23 @@ async def cancel_subscription_endpoint(request: Request, db: AsyncSession = Depe
     return {"status": "cancelled", "message": "Abonnement annulé."}
 
 
+async def _get_user_for_email(db: AsyncSession, user_id: str = None, stripe_sub_id: str = None):
+    """Resolve user name/email for transactional emails."""
+    user = None
+    if user_id and user_id != "default":
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+    if not user and stripe_sub_id:
+        sub_result = await db.execute(
+            select(UserSubscription).where(UserSubscription.stripe_subscription_id == stripe_sub_id)
+        )
+        sub = sub_result.scalar_one_or_none()
+        if sub and sub.user_id:
+            result = await db.execute(select(User).where(User.id == sub.user_id))
+            user = result.scalar_one_or_none()
+    return user
+
+
 @app.post("/api/stripe/webhook")
 async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     """Handle Stripe webhook events (idempotent)."""
@@ -2092,6 +2314,18 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                 await add_extra_minutes(db, pack_id, user_id=user_id)
                 logger.info(f"Pack {pack_id} added for user {user_id}")
 
+        # Send payment success email
+        try:
+            _checkout_user_id = meta.get("user_id", "default")
+            _checkout_user = await _get_user_for_email(db, user_id=_checkout_user_id)
+            if _checkout_user and _checkout_user.email:
+                amount_total = checkout_data.get("amount_total") or 0
+                amount_display = f"{amount_total / 100:.2f} €"
+                desc_map = {"oneshot": "Transcription one-shot", "plan_upgrade": f"Abonnement {meta.get('plan_id', '')}", "extra_pack": f"Pack minutes {meta.get('pack_id', '')}"}
+                send_payment_success(_checkout_user.name or _checkout_user.email, _checkout_user.email, amount_display, desc_map.get(checkout_type, checkout_type))
+        except Exception as e:
+            logger.warning(f"Failed to send payment success email: {e}")
+
         await _log_billing_event(
             db, f"webhook.{event_type}",
             stripe_event_id=event_id,
@@ -2142,6 +2376,20 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                 await db.commit()
                 logger.warning(f"Payment failed for sub {stripe_sub_id}")
 
+        # Send payment failed email
+        try:
+            _fail_user = await _get_user_for_email(db, stripe_sub_id=stripe_sub_id)
+            if _fail_user and _fail_user.email:
+                # Get plan name from subscription
+                _fail_sub_result = await db.execute(
+                    select(UserSubscription).where(UserSubscription.stripe_subscription_id == stripe_sub_id)
+                )
+                _fail_sub = _fail_sub_result.scalar_one_or_none()
+                _fail_plan_name = _fail_sub.plan_id if _fail_sub else "inconnu"
+                send_payment_failed(_fail_user.name or _fail_user.email, _fail_user.email, _fail_plan_name)
+        except Exception as e:
+            logger.warning(f"Failed to send payment failed email: {e}")
+
         await _log_billing_event(
             db, f"webhook.{event_type}",
             stripe_event_id=event_id,
@@ -2189,6 +2437,13 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                 sub.status = "cancelled"
                 await db.commit()
                 logger.info(f"Subscription {stripe_sub_id} cancelled")
+                # Send cancellation email
+                try:
+                    _cancel_user = await _get_user_for_email(db, user_id=sub.user_id)
+                    if _cancel_user and _cancel_user.email:
+                        send_subscription_cancelled(_cancel_user.name or _cancel_user.email, _cancel_user.email, sub.plan_id)
+                except Exception as e:
+                    logger.warning(f"Failed to send cancellation email: {e}")
 
         await _log_billing_event(
             db, f"webhook.{event_type}",
@@ -2444,9 +2699,10 @@ async def auth_forgot_password(body: ForgotPasswordRequest, db: AsyncSession = D
         base_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
         reset_link = f"{base_url}/reset-password?token={token}"
         try:
-            send_password_reset(user.email, reset_link)
-        except Exception:
-            pass  # Don't fail if email service is down
+            ok = send_password_reset(user.email, reset_link)
+            logger.info(f"Password reset email to {user.email}: {'sent' if ok else 'failed (stub mode?)'}")
+        except Exception as e:
+            logger.error(f"Password reset email error for {user.email}: {e}")
     return {"message": "Si un compte existe avec cet email, un lien de réinitialisation a été envoyé."}
 
 
@@ -2583,6 +2839,115 @@ async def health_check():
 
 
 # ── SPA Static Files ────────────────────────────────────
+# ── Blog endpoints ──────────────────────────────────────
+
+BLOG_DIR = Path(__file__).parent.parent / "content" / "blog"
+
+
+def _parse_blog_article(filepath: Path) -> dict | None:
+    """Parse a .md blog article and return frontmatter + content."""
+    try:
+        text = filepath.read_text(encoding="utf-8")
+    except Exception:
+        return None
+    if not text.startswith("---"):
+        return None
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return None
+    try:
+        meta = yaml.safe_load(parts[1])
+    except yaml.YAMLError:
+        return None
+    if not isinstance(meta, dict):
+        return None
+    meta["_content"] = parts[2].strip()
+    meta["_filepath"] = str(filepath)
+    return meta
+
+
+def _get_published_articles(category: str | None = None) -> list[dict]:
+    """Scan blog dir and return published articles sorted by publishDate desc.
+
+    Articles are shown if status=published OR if publishDate is in the past.
+    """
+    if not BLOG_DIR.is_dir():
+        return []
+    from datetime import datetime
+    now = datetime.now().isoformat()
+    articles = []
+    for md_file in BLOG_DIR.rglob("*.md"):
+        if md_file.name == "GENERATION_REPORT.md":
+            continue
+        article = _parse_blog_article(md_file)
+        if article is None:
+            continue
+        # Show if explicitly published OR if publishDate has passed
+        is_published = article.get("status") == "published"
+        publish_date = article.get("publishDate", "")
+        is_scheduled_past = publish_date and publish_date <= now
+        if not (is_published or is_scheduled_past):
+            continue
+        if category and article.get("category") != category:
+            continue
+        articles.append(article)
+    # Sort by publishDate descending
+    articles.sort(key=lambda a: a.get("publishDate", ""), reverse=True)
+    return articles
+
+
+@app.get("/api/blog/articles")
+async def list_blog_articles(category: Optional[str] = None):
+    """List published blog articles, optionally filtered by category."""
+    articles = _get_published_articles(category=category)
+    result = []
+    for a in articles:
+        result.append({
+            "title": a.get("title"),
+            "slug": a.get("slug"),
+            "description": a.get("description"),
+            "category": a.get("category"),
+            "tags": a.get("tags", []),
+            "author": a.get("author"),
+            "publishDate": a.get("publishDate"),
+            "readingTime": a.get("readingTime"),
+            "ogImage": a.get("ogImage"),
+        })
+    return result
+
+
+@app.get("/api/blog/categories")
+async def list_blog_categories():
+    """List categories with count of published articles."""
+    articles = _get_published_articles()
+    counts: dict[str, int] = {}
+    for a in articles:
+        cat = a.get("category", "uncategorized")
+        counts[cat] = counts.get(cat, 0) + 1
+    return [{"category": cat, "count": count} for cat, count in sorted(counts.items())]
+
+
+@app.get("/api/blog/articles/{slug}")
+async def get_blog_article(slug: str):
+    """Get a single published blog article by slug."""
+    if not BLOG_DIR.is_dir():
+        raise HTTPException(status_code=404, detail="Blog not found")
+    for md_file in BLOG_DIR.rglob("*.md"):
+        if md_file.name == "GENERATION_REPORT.md":
+            continue
+        article = _parse_blog_article(md_file)
+        if article is None:
+            continue
+        if article.get("slug") != slug:
+            continue
+        if article.get("status") != "published":
+            raise HTTPException(status_code=404, detail="Article not found")
+        content = article.pop("_content", "")
+        article.pop("_filepath", None)
+        return {**article, "content": content}
+    raise HTTPException(status_code=404, detail="Article not found")
+
+
 # Serve the built frontend from ../frontend/dist
 # Must be LAST — catch-all for SPA client-side routing.
 

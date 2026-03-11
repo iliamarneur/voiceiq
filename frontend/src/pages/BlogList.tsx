@@ -10,8 +10,8 @@ interface Article {
   title: string;
   description: string;
   category: string;
-  published_at: string;
-  reading_time: number;
+  publishDate: string;
+  readingTime: string;
   author?: string;
 }
 
@@ -34,11 +34,11 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
 
 const TABS = [
   { id: 'all', label: 'Tous' },
-  { id: 'souverainete', label: 'Souverainet\u00e9' },
-  { id: 'medical', label: 'M\u00e9dical' },
+  { id: 'souverainete', label: 'Souveraineté' },
+  { id: 'medical', label: 'Médical' },
   { id: 'juridique', label: 'Juridique' },
   { id: 'business', label: 'Business' },
-  { id: 'education', label: '\u00c9ducation' },
+  { id: 'education', label: 'Éducation' },
   { id: 'technique', label: 'Technique' },
   { id: 'comparatif', label: 'Comparatif' },
   { id: 'grand-public', label: 'Grand Public' },
@@ -167,7 +167,7 @@ function BlogList() {
       {!loading && filtered.length === 0 && (
         <div className="text-center py-20">
           <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-400">Aucun article dans cette cat\u00e9gorie.</p>
+          <p className="text-slate-400">Aucun article dans cette catégorie.</p>
         </div>
       )}
 
@@ -206,11 +206,11 @@ function BlogList() {
                   <div className="flex items-center gap-3 text-xs text-slate-400 mt-auto">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5" />
-                      {formatDate(article.published_at)}
+                      {formatDate(article.publishDate)}
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5" />
-                      {article.reading_time} min
+                      {article.readingTime}
                     </span>
                   </div>
                 </Link>

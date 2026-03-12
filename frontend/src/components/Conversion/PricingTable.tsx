@@ -36,7 +36,7 @@ const PLANS = [
       'Export PowerPoint',
       'Modèles et profils custom',
       'File de traitement prioritaire',
-      'Diarisation avancée',
+      'Dictionnaires illimités',
     ],
     highlight: true,
     badge: 'Recommandé',

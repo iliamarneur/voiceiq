@@ -180,7 +180,7 @@ Réunion RH sur un plan de restructuration. Comité d'audit. Négociation commer
 
 Ces réunions-là, vous n'avez probablement pas envie de les envoyer sur un serveur tiers pour transcription. Et vous avez raison.
 
-Avec ClearRecap, le traitement se fait **sur votre propre machine**. L'enregistrement ne quitte jamais votre ordinateur. Aucune donnée n'est envoyée à l'extérieur. Zéro stockage distant.
+Avec ClearRecap en mode auto-hébergé, le traitement se fait **sur votre propre machine** — aucune donnée n'est envoyée à l'extérieur. En mode cloud, l'audio est traité en France et supprimé après transcription, le texte reste hébergé en France.
 
 Pour une direction juridique ou un cabinet de conseil, cette garantie n'est pas accessoire -- c'est souvent la condition qui débloque l'adoption de l'outil. J'ai conçu ClearRecap avec cette contrainte comme point de départ, pas comme une fonctionnalité ajoutée après coup.
 

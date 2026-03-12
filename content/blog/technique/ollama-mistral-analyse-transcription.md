@@ -596,4 +596,4 @@ Au-delà du résumé classique, Ollama + Mistral permettent des analyses spécia
 
 Chacune de ces analyses est un prompt spécifique + un post-traitement adapté. Le moteur est le même. La valeur est dans la spécialisation du prompt et la qualité du pipeline autour.
 
-Tout le code de ce guide est fonctionnel tel quel. Clonez, adaptez, déployez. Et si vous préférez une solution prête à l'emploi qui intègre tout ça dans une interface propre, [ClearRecap](https://clearrecap.com) fait exactement cela — pipeline Whisper + Ollama + Mistral, 100 % local, résultat en quelques minutes.
+Tout le code de ce guide est fonctionnel tel quel. Clonez, adaptez, déployez. Et si vous préférez une solution prête à l'emploi qui intègre tout ça dans une interface propre, [ClearRecap](https://clearrecap.com) fait exactement cela — pipeline Whisper + Ollama + Mistral, disponible en mode auto-hébergé (100% local) ou en mode cloud (hébergé en France), résultat en quelques minutes.

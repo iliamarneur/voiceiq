@@ -83,8 +83,6 @@ Ce format a un avantage majeur : il sépare les faits rapportés par le patient,
 
 Le problème ? Rédiger une note SOAP correcte prend du temps. Beaucoup de praticiens se rabattent sur des notes libres ("patient vu ce jour, céphalées, prescrit ibuprofène") qui perdent toute la richesse de la consultation.
 
-*Les quatre composantes d'une note SOAP et ce qu'elles contiennent*
-
 ## Le pipeline technique : de l'audio brut à la note structurée
 
 Générer une note SOAP automatique à partir d'un enregistrement audio, ce n'est pas juste "transcrire puis reformater". C'est un pipeline en quatre étapes, chacune avec ses propres défis.
@@ -124,8 +122,6 @@ Un détail technique qui a pris trois semaines à résoudre : le prompt engineer
 La note SOAP générée n'est pas directement injectée dans le dossier patient. Jamais. Le médecin la relit, la corrige si nécessaire, la valide. Ce n'est pas une limitation technique : c'est une obligation déontologique et légale. L'article R.4127-69 du Code de la santé publique dispose que le médecin est personnellement responsable de la tenue du dossier médical.
 
 ClearRecap génère la note dans un format compatible HL7 FHIR R4, exportable en JSON ou en texte structuré pour copier-coller dans le logiciel métier. L'intégration directe avec les principaux logiciels de gestion de cabinet (Doctolib Pro, Weda, Crossway) est sur notre feuille de route — elle nécessite des partenariats que nous sommes en train de construire.
-
-*Le pipeline ClearRecap de l'audio brut à la note SOAP validée*
 
 ## La dictée médicale IA en local : contraintes matérielles réelles
 
@@ -206,8 +202,6 @@ Le Ségur du numérique en santé a accéléré l'interopérabilité des systèm
 Le AI Act européen classe les dispositifs médicaux logiciels (SaMD) utilisant l'IA comme "à haut risque" (Annexe III, point 5). Un outil qui génère des notes SOAP sera probablement concerné. Nous anticipons les obligations de documentation technique, de gestion des risques (ISO 14971), et de surveillance post-commercialisation. Ce travail de conformité réglementaire est en cours.
 
 Mon point de vue personnel : dans cinq ans, la dictée médicale IA sera aussi banale que le stéthoscope numérique. La question n'est pas si les médecins adopteront ces outils, mais quels outils respecteront le secret médical. Les solutions locales ont un avantage structurel sur ce terrain.
-
-*L'environnement réglementaire de la transcription médicale en 2026-2027*
 
 ## Pour les médecins qui veulent tester
 

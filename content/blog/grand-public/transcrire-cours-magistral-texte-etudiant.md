@@ -186,7 +186,7 @@ Si votre prof met ses cours sur YouTube, consultez aussi notre guide pour [trans
 
 Certains cours abordent des sujets sensibles. Études de cas médicaux avec données patients (anonymisées, mais quand même). Analyses juridiques de dossiers réels. Discussions en séminaire qui impliquent des opinions personnelles.
 
-ClearRecap traite tout **sur votre ordinateur**. Votre enregistrement ne quitte jamais votre machine. Aucun serveur externe n'accède à vos fichiers. C'est un engagement que j'ai pris dès la conception de l'outil -- parce que la confidentialité n'est pas négociable, surtout quand on manipule du contenu académique ou personnel.
+ClearRecap propose deux modes. En mode auto-hébergé, tout est traité **sur votre ordinateur** — votre enregistrement ne quitte jamais votre machine. En mode cloud, l'audio est traité en France et supprimé immédiatement après transcription. Dans les deux cas, la confidentialité est au cœur de l'architecture.
 
 ## Passez à l'action
 

@@ -99,7 +99,7 @@ Le revers : chaque mot prononcé traverse l'Atlantique. Chaque fichier audio est
 
 ### ClearRecap : le local radical
 
-ClearRecap prend le contre-pied total. Le moteur de transcription (faster-whisper / CTranslate2) s'exécute sur la machine de l'utilisateur. L'audio ne quitte jamais le réseau local. Pas de serveur distant. Pas d'upload. Pas de compte cloud.
+ClearRecap prend le contre-pied total. Le moteur de transcription (faster-whisper / CTranslate2) s'exécute sur la machine de l'utilisateur. En mode auto-hébergé, l'audio ne quitte jamais le réseau local — pas de serveur distant, pas d'upload. En mode cloud, l'audio est traité sur nos serveurs en France puis supprimé immédiatement après traitement.
 
 Le prix de cette architecture : une installation plus technique et un matériel local suffisant. Le gain : une confidentialité que le cloud ne peut structurellement pas offrir.
 
@@ -181,7 +181,7 @@ Le Conseil National des Barreaux a émis des recommandations claires depuis 2022
 
 ### ClearRecap fait mieux
 
-**La confidentialité absolue.** Aucune donnée ne quitte la machine. Aucun tiers n'a accès. Aucune juridiction étrangère ne s'applique. Pour les secteurs réglementés, c'est un avantage décisif que le cloud ne peut pas reproduire.
+**La confidentialité absolue.** En mode auto-hébergé, aucune donnée ne quitte la machine. En mode cloud, l'audio est supprimé après traitement et le texte reste hébergé en France. Aucune juridiction étrangère ne s'applique. Pour les secteurs réglementés, c'est un avantage décisif que le cloud ne peut pas reproduire.
 
 **Le coût à l'usage.** Après l'investissement initial (matériel + éventuellement licence), le coût marginal de chaque transcription est quasi nul — c'est de l'électricité et du temps GPU. Pas de facturation à la minute. Pas de plafond mensuel. Un cabinet qui transcrit 200 heures par mois ne paie pas plus qu'un qui transcrit 10 heures.
 

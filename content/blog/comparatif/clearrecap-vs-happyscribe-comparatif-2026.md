@@ -78,7 +78,7 @@ Quand vous uploadez un fichier sur HappyScribe, voici ce qui se passe techniquem
 
 Le mot clé est « temporairement ». Pendant le traitement, votre audio existe sur un serveur que vous ne contrôlez pas. Les employés de HappyScribe n'y accèdent probablement pas. Leur politique de confidentialité est claire. Mais « probablement » et « politique » ne sont pas des garanties techniques.
 
-Avec ClearRecap, le traitement se fait sur votre machine. Ou sur un serveur que vous administrez. L'audio ne quitte jamais votre périmètre réseau. Ce n'est pas une promesse contractuelle — c'est une impossibilité architecturale. Le code tourne localement. Le modèle Whisper est téléchargé une fois, puis tout est offline.
+Avec ClearRecap, le traitement se fait sur votre machine. Ou sur un serveur que vous administrez. En mode auto-hébergé, l'audio ne quitte jamais votre périmètre réseau — c'est une impossibilité architecturale. En mode cloud, l'audio est traité en France et supprimé automatiquement après transcription. Le code tourne localement. Le modèle Whisper est téléchargé une fois, puis tout est offline.
 
 Pour les professions réglementées — avocats soumis au secret professionnel, médecins liés par le secret médical, entreprises traitant des données classifiées — cette distinction n'est pas un détail. C'est un critère éliminatoire. Le [guide RGPD de la transcription audio](/blog/transcription-audio-rgpd-guide-2026) détaille les obligations légales par secteur.
 
@@ -155,7 +155,7 @@ Plutôt qu'un tableau exhaustif (vous en trouverez partout), je vais me concentr
 
 ### Ce que ClearRecap a et pas HappyScribe
 
-**Traitement 100% local.** Je l'ai dit, mais c'est le différenciateur fondamental. Aucun fichier ne quitte votre réseau. Aucun.
+**Deux modes au choix.** Mode auto-hébergé : traitement 100% local, aucun fichier ne quitte votre réseau. Mode cloud : traitement en France, audio supprimé après usage, texte hébergé en France.
 
 **Glossaire technique personnalisable.** Ajoutez vos termes métier (noms de médicaments, jargon juridique, acronymes internes) et le modèle les priorise pendant la transcription. HappyScribe a un système de vocabulaire, mais il fonctionne en post-traitement — pas pendant l'inférence.
 

@@ -400,7 +400,6 @@ Automatisez ça avec un cron. Pas demain. Maintenant.
 
 Les modèles Whisper ne nécessitent pas de backup — ils sont téléchargés depuis le registre au besoin. La configuration non plus si vous versionnez votre `docker-compose.yml` et votre `.env` dans Git (sans le mot de passe, évidemment — utilisez un `.env.example`).
 
-
 ## Mise à jour de ClearRecap : zéro downtime
 
 ```bash
@@ -479,4 +478,4 @@ Ce guide couvre le déploiement standard. Pour aller plus loin, trois ressources
 
 Le repo GitHub de ClearRecap contient des `docker-compose.yml` préconfigurés pour différents scénarios (dev, production, multi-GPU, air-gapped). Les issues sont ouvertes si vous rencontrez un problème spécifique à votre configuration.
 
-Et si vous voulez simplement tester sans rien installer — [clearrecap.com](https://clearrecap.com) propose un essai gratuit avec traitement 100% local via votre navigateur.
+Et si vous voulez simplement tester sans rien installer — [clearrecap.com](https://clearrecap.com) propose un essai à partir de 3€ avec traitement en France et suppression automatique de l'audio après transcription.

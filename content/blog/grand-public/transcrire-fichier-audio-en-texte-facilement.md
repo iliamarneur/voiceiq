@@ -97,7 +97,6 @@ Bonne question. Votre fichier est probablement dans l'un de ces formats :
 
 Vous ne savez pas quel format c'est ? Regardez l'extension du fichier — les lettres après le point dans le nom. `reunion_lundi.mp3` = format MP3. Si le fichier n'a pas d'extension visible, ne vous inquiétez pas. ClearRecap détecte automatiquement le format.
 
-
 ## Comment transcrire un fichier audio en texte avec ClearRecap
 
 Trois étapes. Vraiment trois.
@@ -143,7 +142,6 @@ Pour ceux qui veulent aller encore plus loin, ClearRecap existe aussi en version
 Pourquoi ce prix ? Parce que la transcription consomme des ressources de calcul (des processeurs spécialisés qui coûtent cher en énergie). Les services concurrents facturent entre 6 et 25 euros pour la même chose, souvent avec un abonnement obligatoire.
 
 Si vous avez beaucoup de fichiers à transcrire régulièrement — disons plus de 10 heures par mois — le mode local devient plus avantageux. Vous investissez une fois dans le matériel, et ensuite c'est gratuit à chaque utilisation. Le [comparatif avec d'autres solutions](/blog/clearrecap-vs-happyscribe-comparatif-2026) détaille les calculs.
-
 
 ## Les utilisations les plus courantes (et quelques surprises)
 

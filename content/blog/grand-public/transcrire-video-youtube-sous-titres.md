@@ -221,7 +221,7 @@ Bien sûr, un sous-titreur professionnel apporte une relecture humaine. Pour du 
 
 Un point qui préoccupe particulièrement les formateurs et les entreprises. Vous ne voulez pas que le contenu de vos formations ou de vos vidéos internes se retrouve sur un serveur tiers.
 
-ClearRecap traite tout **localement sur votre machine**. Votre fichier audio ne quitte jamais votre ordinateur. Pas de transfert vers le cloud, pas de stockage distant, pas de données réutilisées.
+En mode auto-hébergé, ClearRecap traite tout **localement sur votre machine** — pas de transfert, pas de stockage distant. En mode cloud, l'audio est traité en France et supprimé immédiatement. Dans les deux cas, aucune donnée n'est réutilisée pour entraîner des modèles.
 
 Pour une entreprise qui transcrit ses vidéos de formation interne, ses présentations confidentielles ou ses webinaires privés, cette garantie fait toute la différence.
 

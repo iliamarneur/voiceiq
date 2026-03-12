@@ -129,7 +129,7 @@ Ce que vous gagnez en passant du gratuit au payant accessible :
 
 **De la qualité.** Identification des locuteurs, timestamps, ponctuation contextuelle, découpage en paragraphes — ces fonctions transforment un mur de texte en document exploitable. [Transcrire un fichier audio en texte facilement](/blog/transcrire-fichier-audio-en-texte-facilement), c'est aussi une question de résultat utilisable directement.
 
-**De la confidentialité.** ClearRecap traite tout en local. Votre fichier ne quitte jamais votre machine. Aucune solution cloud gratuite ne peut offrir cette garantie.
+**De la confidentialité.** En mode auto-hébergé, ClearRecap traite tout en local — votre fichier ne quitte jamais votre machine. En mode cloud, l'audio est traité en France et supprimé automatiquement après transcription. Aucune solution cloud gratuite ne peut offrir cette garantie.
 
 **Du support.** Quand ça ne marche pas — et ça arrive, les fichiers audio sont capricieux — avoir quelqu'un à qui écrire fait la différence.
 

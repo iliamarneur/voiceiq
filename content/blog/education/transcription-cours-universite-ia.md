@@ -218,4 +218,4 @@ Si vous êtes enseignant ou responsable numérique dans une université, voici c
 
 Pas besoin de grand déploiement. Pas besoin de comité de pilotage. Un test sur un cours, avec des retours réels. C'est comme ça qu'on a commencé — et c'est comme ça que les meilleurs projets numériques universitaires démarrent.
 
-Testez ClearRecap gratuitement sur [clearrecap.com](https://clearrecap.com) — le traitement est 100% local, vos données restent sur votre machine.
+Testez ClearRecap gratuitement sur [clearrecap.com](https://clearrecap.com) — en mode auto-hébergé, vos données restent sur votre machine ; en mode cloud, l'audio est traité en France et supprimé après transcription.

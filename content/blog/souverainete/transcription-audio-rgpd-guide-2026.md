@@ -60,8 +60,6 @@ status: "published"
 
 Le traitement 100 % local n'est pas un choix anodin. Le scénario suivant est courant : un service hospitalier utilise un outil de transcription « gratuit » en ligne pendant des mois sans que personne ne lise les CGU. Les fichiers audio des consultations partent sur des serveurs à l'étranger. Le jour où un patient dépose une plainte ou que le DPO audite les flux de données, c'est la panique.
 
-*Parcours type d'un fichier audio envoyé vers un service cloud de transcription*
-
 ## Ce que dit réellement le RGPD sur les données vocales
 
 On réduit trop souvent le RGPD à un formulaire de consentement. Le texte va beaucoup plus loin quand on parle d'audio.
@@ -70,7 +68,7 @@ L'article 4 du Règlement (UE) 2016/679 définit les données personnelles comme
 
 Concrètement, un fichier audio d'une réunion d'équipe contient potentiellement : des voix identifiables (données biométriques), des noms prononcés (données d'identification), des informations sur l'état de santé mentionné en passant ("je reviens d'arrêt maladie"), des opinions syndicales ou politiques (données sensibles au sens de l'article 9). Un seul fichier .wav de quarante minutes peut cocher quatre catégories de données sensibles.
 
-Quand nous avons développé le moteur de transcription de ClearRecap, cette réalité a dicté un choix d'architecture fondamental. Le fichier audio ne quitte jamais la machine. Pas de "transfert temporaire". Pas d'API distante. Whisper tourne sur le GPU local, point final.
+Quand nous avons développé le moteur de transcription de ClearRecap, cette réalité a dicté un choix d'architecture fondamental. En mode auto-hébergé, le fichier audio ne quitte jamais la machine. Whisper tourne sur le GPU local, point final. En mode cloud, l'audio est traité sur nos serveurs en France et supprimé immédiatement après transcription — aucune conservation, aucune réutilisation.
 
 ### La base légale : un piège pour les outils cloud
 
@@ -83,8 +81,6 @@ Pour transcrire audio RGPD de manière conforme, il faut une base légale parmi 
 Voici le point que beaucoup de DPO sous-estiment : l'article 28 impose un contrat de sous-traitance formalisé avec tout prestataire traitant des données personnelles pour votre compte. Combien d'entreprises utilisant des outils de transcription en ligne ont vérifié que ce contrat existe, qu'il est conforme, qu'il prévoit les audits ? Nos échanges avec des DSI nous montrent un taux proche de zéro.
 
 ## Le vrai problème : les transferts hors UE après Schrems II
-
-*Les transferts internationaux de données dans une architecture cloud classique*
 
 Schrems II a invalidé le Privacy Shield en juillet 2020. Le Data Privacy Framework (DPF) adopté en juillet 2023 reste fragile. Max Schrems a déjà annoncé qu'il le contesterait — et l'homme a un historique assez convaincant en la matière.
 
@@ -138,8 +134,6 @@ Un aspect que j'aimerais creuser parce qu'il génère beaucoup de confusion. La 
 **Le stockage des fichiers audio** constitue un traitement distinct. Un fichier .wav d'une heure en 16 kHz mono pèse environ 112 Mo. Où est-il stocké ? Sur un NAS partagé ? Dans un dossier OneDrive synchronisé avec le cloud Microsoft ? Chaque copie est un traitement supplémentaire avec ses propres obligations.
 
 **L'analyse par IA** — détection d'émotions, identification du locuteur, extraction de sentiments — relève potentiellement de l'article 22 sur les décisions automatisées. Si la transcription alimente un outil qui évalue la performance d'un collaborateur en réunion, vous entrez dans le champ du profilage.
-
-*Les quatre couches de traitement de données dans une chaîne de transcription audio*
 
 ## La CNIL et les données audio : décisions récentes à connaître
 
@@ -198,8 +192,6 @@ La directive NIS2 (transposée en droit français fin 2024) impose aux entités 
 Mon sentiment — et c'est un avis personnel, pas une prédiction — est que la transcription locale va devenir la norme pour les organisations qui traitent des données sensibles. Non pas par idéologie souverainiste, mais par pragmatisme réglementaire. Le coût de conformité d'un outil cloud va devenir prohibitif quand on additionne RGPD, AI Act, NIS2 et les réglementations sectorielles.
 
 C'est exactement le raisonnement qui a guidé la conception de ClearRecap. Nous n'avons pas choisi le traitement local pour en faire un argument marketing. Nous l'avons choisi parce qu'un DPO qui évalue notre outil peut cocher "conforme" en trente minutes au lieu de trois mois.
-
-*L'empilement réglementaire qui pèse sur la transcription audio en entreprise*
 
 ## Pour aller plus loin
 

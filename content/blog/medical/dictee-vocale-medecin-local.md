@@ -82,8 +82,6 @@ Notre [guide RGPD complet](/blog/transcription-audio-rgpd-guide-2026) détaille 
 
 ## L'architecture d'une dictée vocale médecin entièrement locale
 
-*Architecture complète d'une dictée vocale médicale locale : du micro au dossier patient, rien ne sort du réseau local*
-
 Le workflow complet comprend cinq étapes, toutes exécutées localement.
 
 **Étape 1 : la captation audio.** Un micro-cravate ou un micro de bureau USB suffit. Le Rode NT-USB Mini à 99 € offre une qualité largement suffisante pour de la dictée. Le micro intégré d'un MacBook Pro est acceptable dans un bureau calme. En revanche, les micros intégrés aux PC portables d'entrée de gamme produisent un signal trop bruité — nous avons mesuré une dégradation du WER de 3.2 points avec un micro intégré de laptop HP versus un micro USB dédié.

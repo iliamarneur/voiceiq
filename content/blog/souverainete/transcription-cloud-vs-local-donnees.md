@@ -66,8 +66,6 @@ Cinq minutes d'audio. Trois services. Zéro transparence complète.
 
 Quand vous appuyez sur "Transcrire" dans un service cloud, voici ce qui se passe réellement. Le fichier quitte votre navigateur, chiffré en TLS 1.3 si le service est sérieux. Il arrive sur un load balancer. De là, il est routé vers un worker de traitement — souvent dans une autre région que celle affichée. Le worker décode l'audio, le découpe en segments de 30 secondes, et envoie chaque segment au modèle d'inférence. Parfois ce modèle tourne sur le même serveur. Souvent non.
 
-*Le trajet réel d'un fichier audio dans une architecture cloud classique de transcription*
-
 Le résultat textuel revient par le chemin inverse. Mais le fichier audio, lui ? Il reste quelque part. Combien de temps ? Ça dépend. Des CGU que personne ne lit.
 
 Pendant le développement de ClearRecap, nous avons documenté les politiques de rétention de neuf services concurrents. Les résultats sont édifiants. Un service supprime le fichier "immédiatement après traitement" — mais conserve le texte transcrit 30 jours "pour le support technique". Un autre garde l'audio 7 jours par défaut, extensible à 90 jours si vous activez l'historique. Un troisième n'a aucune mention de durée de rétention dans ses CGU — ce qui, techniquement, signifie qu'il peut conserver vos fichiers indéfiniment.
@@ -105,8 +103,6 @@ Changement de décor. Voici le parcours d'un fichier audio dans ClearRecap.
 Le fichier est sélectionné depuis votre disque local. Il n'est pas copié — ClearRecap lit le fichier à son emplacement d'origine. Le modèle Whisper v3-large (1,55 Go, déjà présent sur votre disque après l'installation) est chargé en VRAM. L'audio est décodé et traité segment par segment directement en mémoire GPU. Le texte résultant est écrit sur votre disque local, dans le dossier que vous avez choisi. Le fichier audio original n'a pas bougé. Aucune connexion réseau n'a été ouverte.
 
 Fin du parcours. Pas d'escale. Pas de copie. Pas de log chez un tiers.
-
-*Transcription cloud vs local : la différence de complexité du parcours des données*
 
 ### Le benchmark honnête : performance cloud vs local
 
@@ -179,7 +175,5 @@ Avec un outil local, pas de licence. Le fichier est sur votre disque. Vous le po
 Pour aller plus loin sur les aspects réglementaires, notre [guide RGPD complet pour la transcription audio](/blog/transcription-audio-rgpd-guide-2026) détaille les obligations légales point par point.
 
 Si vous cherchez une solution de transcription pour un usage professionnel spécifique, consultez aussi nos guides sectoriels : [transcription juridique et secret professionnel](/blog/transcription-juridique-confidentielle) pour les avocats, ou [automatisation des comptes rendus de réunion](/blog/automatiser-comptes-rendus-reunion-ia) pour les équipes business.
-
-*Résumé : transcription cloud vs locale sur les critères qui comptent*
 
 La prochaine fois que vous utiliserez un outil de transcription, posez-vous une question simple. Où est mon fichier audio en ce moment ? Si vous ne pouvez pas répondre avec certitude, vous avez un problème. Et ce problème a une solution.

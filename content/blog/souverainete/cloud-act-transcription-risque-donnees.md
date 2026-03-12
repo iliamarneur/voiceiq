@@ -197,7 +197,7 @@ Pour les outils de transcription audio, cette instabilité réglementaire signif
 
 Je ne suis pas juriste. Je suis développeur. Ma réponse au CLOUD Act a été technique avant d'être juridique.
 
-L'architecture de ClearRecap repose sur un principe simple : le modèle d'IA tourne là où se trouvent les données, pas l'inverse. Concrètement, le moteur faster-whisper s'exécute dans un conteneur Docker sur la machine de l'utilisateur. L'audio ne quitte jamais le filesystem local. La transcription est générée localement et stockée localement.
+L'architecture de ClearRecap repose sur un principe simple : le modèle d'IA tourne là où se trouvent les données, pas l'inverse. Concrètement, le moteur faster-whisper s'exécute dans un conteneur Docker sur la machine de l'utilisateur. En mode auto-hébergé, l'audio ne quitte jamais le filesystem local. La transcription est générée et stockée localement. En mode cloud, l'hébergement est en France (hors juridiction CLOUD Act) et l'audio est supprimé après traitement.
 
 Nous avons poussé cette logique jusqu'à couper toute télémétrie. Pas de ping vers un serveur de mises à jour. Pas de vérification de licence en ligne. Pas de "phone home" caché dans une dépendance Python. Le [guide de déploiement Docker Compose](/blog/deployer-clearrecap-docker-compose-guide) détaille cette configuration air-gapped.
 

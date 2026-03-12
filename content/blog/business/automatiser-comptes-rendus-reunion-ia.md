@@ -92,8 +92,6 @@ La diarization (identification des locuteurs) tourne en parallèle via pyannote.
 
 Un point important : la qualité du CR final dépend en grande partie de la qualité audio d'entrée. Pas du modèle IA. Pas du prompt. Du micro. Un bon micro de conférence à 150 euros améliore plus la qualité du CR qu'un GPU deux fois plus puissant.
 
-*Setup recommandé pour capturer une réunion en présentiel avec ClearRecap*
-
 ### Extraction des éléments structurants
 
 Une fois la transcription brute obtenue, un LLM local (Mistral 8B, quantifié Q5_K_M, 5,5 Go VRAM) analyse le texte et extrait :
@@ -208,8 +206,6 @@ output:
 ```
 
 La capture audio système fonctionne sous Windows (WASAPI loopback) et macOS (BlackHole ou intégration native). Sous Linux, PulseAudio monitor. Pas besoin de bot qui rejoint la visio.
-
-*Interface ClearRecap pendant la capture d'une réunion — transcription en temps réel à gauche, résumé en cours à droite*
 
 ## Ce qui arrive dans les prochaines versions
 

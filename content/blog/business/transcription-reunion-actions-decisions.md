@@ -86,8 +86,6 @@ La solution : un LLM local qui comprend le contexte conversationnel. Pas de l'ex
 
 ## Comment fonctionne l'extraction par LLM local
 
-*Pipeline complet : de l'enregistrement audio aux actions et décisions structurées*
-
 Le pipeline technique se décompose en quatre phases.
 
 **Phase 1 — Transcription diarisée.** L'audio est transcrit par faster-whisper et la diarisation (identification des locuteurs) est assurée par pyannote-audio. Le résultat : un transcript où chaque intervention est attribuée à un locuteur identifié (Locuteur A, Locuteur B, etc.). Si les participants sont connus à l'avance (liste fournie par l'organisateur), un algorithme de matching associe les voix aux noms réels.

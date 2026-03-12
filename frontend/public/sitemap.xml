@@ -8,11 +8,7 @@
     <lastmod>2026-03-11</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://clearrecap.com/fr/" />
-    <xhtml:link rel="alternate" hreflang="fr-FR" href="https://clearrecap.com/fr-fr/" />
-    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://clearrecap.com/fr-be/" />
-    <xhtml:link rel="alternate" hreflang="fr-CH" href="https://clearrecap.com/fr-ch/" />
-    <xhtml:link rel="alternate" hreflang="fr-CA" href="https://clearrecap.com/fr-ca/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://clearrecap.com/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://clearrecap.com/" />
   </url>
 
@@ -22,11 +18,7 @@
     <lastmod>2026-03-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://clearrecap.com/fr/oneshot" />
-    <xhtml:link rel="alternate" hreflang="fr-FR" href="https://clearrecap.com/fr-fr/oneshot" />
-    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://clearrecap.com/fr-be/oneshot" />
-    <xhtml:link rel="alternate" hreflang="fr-CH" href="https://clearrecap.com/fr-ch/oneshot" />
-    <xhtml:link rel="alternate" hreflang="fr-CA" href="https://clearrecap.com/fr-ca/oneshot" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://clearrecap.com/oneshot" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://clearrecap.com/oneshot" />
   </url>
 
@@ -36,11 +28,7 @@
     <lastmod>2026-03-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://clearrecap.com/fr/plans" />
-    <xhtml:link rel="alternate" hreflang="fr-FR" href="https://clearrecap.com/fr-fr/plans" />
-    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://clearrecap.com/fr-be/plans" />
-    <xhtml:link rel="alternate" hreflang="fr-CH" href="https://clearrecap.com/fr-ch/plans" />
-    <xhtml:link rel="alternate" hreflang="fr-CA" href="https://clearrecap.com/fr-ca/plans" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://clearrecap.com/plans" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://clearrecap.com/plans" />
   </url>
 
@@ -50,11 +38,7 @@
     <lastmod>2026-03-11</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://clearrecap.com/fr/blog" />
-    <xhtml:link rel="alternate" hreflang="fr-FR" href="https://clearrecap.com/fr-fr/blog" />
-    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://clearrecap.com/fr-be/blog" />
-    <xhtml:link rel="alternate" hreflang="fr-CH" href="https://clearrecap.com/fr-ch/blog" />
-    <xhtml:link rel="alternate" hreflang="fr-CA" href="https://clearrecap.com/fr-ca/blog" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://clearrecap.com/blog" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://clearrecap.com/blog" />
   </url>
 
@@ -90,6 +74,14 @@
     <lastmod>2026-03-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+  </url>
+
+  <!-- Contact -->
+  <url>
+    <loc>https://clearrecap.com/contact</loc>
+    <lastmod>2026-03-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
 
   <!-- Comparison Pages -->

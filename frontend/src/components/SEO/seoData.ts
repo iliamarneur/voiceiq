@@ -9,13 +9,10 @@ const BASE_URL = 'https://clearrecap.com';
 // ──────────────────────────────────────────
 
 export function getHreflangAlternates(path: string) {
+  const canonical = `${BASE_URL}${path}`;
   return [
-    { lang: 'fr', href: `${BASE_URL}/fr${path}` },
-    { lang: 'fr-FR', href: `${BASE_URL}/fr-fr${path}` },
-    { lang: 'fr-BE', href: `${BASE_URL}/fr-be${path}` },
-    { lang: 'fr-CH', href: `${BASE_URL}/fr-ch${path}` },
-    { lang: 'fr-CA', href: `${BASE_URL}/fr-ca${path}` },
-    { lang: 'x-default', href: `${BASE_URL}${path}` },
+    { lang: 'fr', href: canonical },
+    { lang: 'x-default', href: canonical },
   ];
 }
 

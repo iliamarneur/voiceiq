@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
     User, UserSubscription, Plan, UsageLog, Job, Transcription, Analysis,
-    BillingEvent, OneshotOrder, AnonymousSession,
+    BillingEvent, OneshotOrder, AnonymousSession, ContactMessage,
 )
 
 UTC = timezone.utc
@@ -420,4 +420,327 @@ async def get_admin_stats(db: AsyncSession) -> dict:
         "queue_size": len(queue),
         "queue_preview": queue[:5],
         "backends": backends,
+    }
+
+
+# ── Funnel Analytics ─────────────────────────────────────
+
+def _date_range(days: int = 30) -> list[str]:
+    """Return list of date strings for the last N days (inclusive of today)."""
+    today = _now().date()
+    return [(today - timedelta(days=i)).isoformat() for i in range(days - 1, -1, -1)]
+
+
+def _week_start(dt):
+    """Return the Monday of the week containing dt."""
+    return (dt - timedelta(days=dt.weekday())).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+
+
+async def get_funnel_analytics(db: AsyncSession) -> dict:
+    """Comprehensive funnel analytics for the admin dashboard."""
+    now = _now()
+    thirty_days_ago = now - timedelta(days=30)
+    dates_30d = _date_range(30)
+
+    # ── 1. daily_signups ─────────────────────────────────
+    date_expr = func.date(User.created_at)
+    result = await db.execute(
+        select(date_expr.label("d"), func.count(User.id))
+        .where(User.created_at >= thirty_days_ago)
+        .group_by("d")
+    )
+    signups_map = {str(row[0]): row[1] for row in result.all()}
+    daily_signups = [
+        {"date": d, "count": signups_map.get(d, 0)} for d in dates_30d
+    ]
+
+    # ── 2. daily_transcriptions ──────────────────────────
+    date_expr_u = func.date(UsageLog.created_at)
+    result = await db.execute(
+        select(
+            date_expr_u.label("d"),
+            func.count(UsageLog.id),
+            func.coalesce(func.sum(UsageLog.minutes_charged), 0),
+        )
+        .where(UsageLog.created_at >= thirty_days_ago)
+        .group_by("d")
+    )
+    tx_map = {str(row[0]): (row[1], row[2]) for row in result.all()}
+    daily_transcriptions = [
+        {
+            "date": d,
+            "count": tx_map.get(d, (0, 0))[0],
+            "minutes": float(tx_map.get(d, (0, 0.0))[1]),
+        }
+        for d in dates_30d
+    ]
+
+    # ── 3. daily_revenue ─────────────────────────────────
+    # One-shot revenue by day
+    date_expr_o = func.date(OneshotOrder.created_at)
+    result = await db.execute(
+        select(
+            date_expr_o.label("d"),
+            func.coalesce(func.sum(OneshotOrder.price_cents), 0),
+        )
+        .where(
+            OneshotOrder.payment_status == "paid",
+            OneshotOrder.created_at >= thirty_days_ago,
+        )
+        .group_by("d")
+    )
+    oneshot_map = {str(row[0]): row[1] for row in result.all()}
+
+    # Pack revenue by day
+    date_expr_b = func.date(BillingEvent.created_at)
+    result = await db.execute(
+        select(
+            date_expr_b.label("d"),
+            func.coalesce(func.sum(BillingEvent.amount_cents), 0),
+        )
+        .where(
+            BillingEvent.event_type == "pack.purchased",
+            BillingEvent.status == "success",
+            BillingEvent.created_at >= thirty_days_ago,
+        )
+        .group_by("d")
+    )
+    pack_map = {str(row[0]): row[1] for row in result.all()}
+
+    daily_revenue = []
+    for d in dates_30d:
+        o = oneshot_map.get(d, 0)
+        p = pack_map.get(d, 0)
+        daily_revenue.append({
+            "date": d,
+            "oneshot_eur": round(o / 100, 2),
+            "pack_eur": round(p / 100, 2),
+            "total_eur": round((o + p) / 100, 2),
+        })
+
+    # ── 4. funnel_steps ──────────────────────────────────
+    # anonymous_sessions
+    r = await db.execute(select(func.count()).select_from(AnonymousSession))
+    anon_count = r.scalar_one()
+
+    # registered
+    r = await db.execute(select(func.count()).select_from(User))
+    registered_count = r.scalar_one()
+
+    # first_transcription (users who did at least 1)
+    r = await db.execute(
+        select(func.count(distinct(UsageLog.user_id)))
+    )
+    first_tx_count = r.scalar_one()
+
+    # active_7d
+    seven_days_ago = now - timedelta(days=7)
+    r = await db.execute(
+        select(func.count(distinct(UsageLog.user_id)))
+        .where(UsageLog.created_at >= seven_days_ago)
+    )
+    active_7d_count = r.scalar_one()
+
+    # subscribed (active)
+    r = await db.execute(
+        select(func.count(distinct(UserSubscription.user_id)))
+        .where(UserSubscription.status == "active")
+    )
+    subscribed_count = r.scalar_one()
+
+    # power_users: users with >= 60 minutes this month
+    month_start = _month_start()
+    power_sub = (
+        select(UsageLog.user_id)
+        .where(UsageLog.created_at >= month_start)
+        .group_by(UsageLog.user_id)
+        .having(func.sum(UsageLog.minutes_charged) >= 60)
+        .subquery()
+    )
+    r = await db.execute(select(func.count()).select_from(power_sub))
+    power_count = r.scalar_one()
+
+    funnel_steps = [
+        {"step": "anonymous_sessions", "label": "Sessions anonymes", "count": anon_count},
+        {"step": "registered", "label": "Inscrits", "count": registered_count},
+        {"step": "first_transcription", "label": "1re transcription", "count": first_tx_count},
+        {"step": "active_7d", "label": "Actifs 7j", "count": active_7d_count},
+        {"step": "subscribed", "label": "Abonnés", "count": subscribed_count},
+        {"step": "power_users", "label": "Power users (>1h/mois)", "count": power_count},
+    ]
+
+    # ── 5. cohort_retention ──────────────────────────────
+    today_ws = _week_start(now)
+    cohorts = []
+    for i in range(3, -1, -1):  # 4 cohorts: 3 weeks ago .. this week
+        cohort_start = today_ws - timedelta(weeks=i)
+        cohort_end = cohort_start + timedelta(days=7)
+
+        # Users registered in this cohort week
+        r = await db.execute(
+            select(User.id).where(
+                User.created_at >= cohort_start,
+                User.created_at < cohort_end,
+            )
+        )
+        cohort_user_ids = [row[0] for row in r.all()]
+        cohort_size = len(cohort_user_ids)
+
+        retention = {"cohort": cohort_start.date().isoformat(), "registered": cohort_size}
+        for w in range(1, 5):
+            if cohort_size == 0:
+                retention[f"week_{w}"] = 0
+                continue
+            week_check_start = cohort_start + timedelta(weeks=w)
+            week_check_end = week_check_start + timedelta(days=7)
+            # Only count if the retention week is not in the future
+            if week_check_start > now:
+                retention[f"week_{w}"] = 0
+                continue
+            r = await db.execute(
+                select(func.count(distinct(UsageLog.user_id)))
+                .where(
+                    UsageLog.user_id.in_(cohort_user_ids),
+                    UsageLog.created_at >= week_check_start,
+                    UsageLog.created_at < week_check_end,
+                )
+            )
+            retention[f"week_{w}"] = r.scalar_one()
+
+        cohorts.append(retention)
+
+    # ── 6. plan_distribution ─────────────────────────────
+    r = await db.execute(
+        select(
+            UserSubscription.plan_id,
+            Plan.name,
+            func.count(UserSubscription.id).label("users"),
+            func.coalesce(func.sum(Plan.price_cents), 0).label("mrr_cents"),
+        )
+        .join(Plan, Plan.id == UserSubscription.plan_id)
+        .where(UserSubscription.status == "active")
+        .group_by(UserSubscription.plan_id, Plan.name)
+    )
+    plan_distribution = [
+        {
+            "plan_id": row[0],
+            "plan_name": row[1],
+            "users": row[2],
+            "mrr_eur": round(row[3] / 100, 2),
+        }
+        for row in r.all()
+    ]
+
+    # ── 7. oneshot_stats ─────────────────────────────────
+    r = await db.execute(select(func.count()).select_from(OneshotOrder))
+    total_orders = r.scalar_one()
+
+    r = await db.execute(
+        select(func.count()).select_from(OneshotOrder)
+        .where(OneshotOrder.payment_status == "paid")
+    )
+    paid_orders = r.scalar_one()
+
+    conversion_rate = round(paid_orders / max(total_orders, 1) * 100, 1)
+
+    r = await db.execute(
+        select(
+            OneshotOrder.tier,
+            func.count(OneshotOrder.id),
+            func.coalesce(func.sum(OneshotOrder.price_cents), 0),
+        )
+        .where(OneshotOrder.payment_status == "paid")
+        .group_by(OneshotOrder.tier)
+    )
+    by_tier = [
+        {"tier": row[0], "count": row[1], "revenue_eur": round(row[2] / 100, 2)}
+        for row in r.all()
+    ]
+
+    oneshot_stats = {
+        "total_orders": total_orders,
+        "paid_orders": paid_orders,
+        "conversion_rate": conversion_rate,
+        "by_tier": by_tier,
+    }
+
+    # ── 8. contact_stats ─────────────────────────────────
+    r = await db.execute(select(func.count()).select_from(ContactMessage))
+    contact_total = r.scalar_one()
+
+    r = await db.execute(
+        select(ContactMessage.category, func.count(ContactMessage.id))
+        .group_by(ContactMessage.category)
+    )
+    by_category = {row[0]: row[1] for row in r.all()}
+
+    r = await db.execute(
+        select(func.count()).select_from(ContactMessage)
+        .where(ContactMessage.status == "new")
+    )
+    new_unread = r.scalar_one()
+
+    contact_stats = {
+        "total": contact_total,
+        "by_category": by_category,
+        "new_unread": new_unread,
+    }
+
+    # ── 9. churn_indicators ──────────────────────────────
+    # inactive_30d: registered > 30 days ago, no usage in last 30 days
+    old_users_sub = (
+        select(User.id)
+        .where(User.created_at < thirty_days_ago)
+        .subquery()
+    )
+    recent_active_sub = (
+        select(distinct(UsageLog.user_id))
+        .where(UsageLog.created_at >= thirty_days_ago)
+        .subquery()
+    )
+    r = await db.execute(
+        select(func.count())
+        .select_from(old_users_sub)
+        .where(old_users_sub.c.id.notin_(select(recent_active_sub)))
+    )
+    inactive_30d = r.scalar_one()
+
+    # cancelled_subscriptions
+    r = await db.execute(
+        select(func.count()).select_from(UserSubscription)
+        .where(UserSubscription.status == "cancelled")
+    )
+    cancelled_subs = r.scalar_one()
+
+    # quota_exceeded: active subs where minutes_used >= plan minutes
+    r = await db.execute(
+        select(func.count())
+        .select_from(UserSubscription)
+        .join(Plan, Plan.id == UserSubscription.plan_id)
+        .where(
+            UserSubscription.status == "active",
+            UserSubscription.minutes_used >= Plan.minutes_included,
+            Plan.minutes_included > 0,
+        )
+    )
+    quota_exceeded = r.scalar_one()
+
+    churn_indicators = {
+        "inactive_30d": inactive_30d,
+        "cancelled_subscriptions": cancelled_subs,
+        "quota_exceeded": quota_exceeded,
+    }
+
+    return {
+        "daily_signups": daily_signups,
+        "daily_transcriptions": daily_transcriptions,
+        "daily_revenue": daily_revenue,
+        "funnel_steps": funnel_steps,
+        "cohort_retention": cohorts,
+        "plan_distribution": plan_distribution,
+        "oneshot_stats": oneshot_stats,
+        "contact_stats": contact_stats,
+        "churn_indicators": churn_indicators,
     }

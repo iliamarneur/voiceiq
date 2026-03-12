@@ -2831,6 +2831,14 @@ async def admin_users(request: Request, limit: int = 20, db: AsyncSession = Depe
     return await get_recent_users(db, limit=limit)
 
 
+@app.get("/api/admin/funnel")
+async def admin_funnel(request: Request, db: AsyncSession = Depends(get_db)):
+    """Admin — funnel analytics."""
+    await require_admin(request)
+    from app.services.admin_service import get_funnel_analytics
+    return await get_funnel_analytics(db)
+
+
 # ── Health ───────────────────────────────────────────────
 
 @app.get("/api/health")

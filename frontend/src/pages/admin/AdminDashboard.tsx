@@ -5,6 +5,7 @@ import {
   CheckCircle, XCircle, CreditCard, RefreshCw,
   Users, TrendingUp, DollarSign, Zap, Activity,
   ArrowUpRight, ArrowDownRight, Eye, Crown,
+  Filter, Mail, UserMinus, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -93,6 +94,23 @@ interface AdminUser {
   created_at: string | null;
 }
 
+interface FunnelData {
+  daily_signups: { date: string; count: number }[];
+  daily_transcriptions: { date: string; count: number; minutes: number }[];
+  daily_revenue: { date: string; oneshot_eur: number; pack_eur: number; total_eur: number }[];
+  funnel_steps: { step: string; label: string; count: number }[];
+  cohort_retention: { cohort: string; registered: number; week_1: number; week_2: number; week_3: number; week_4: number }[];
+  plan_distribution: { plan_id: string; plan_name: string; users: number; mrr_eur: number }[];
+  oneshot_stats: {
+    total_orders: number;
+    paid_orders: number;
+    conversion_rate: number;
+    by_tier: { tier: string; count: number; revenue_eur: number }[];
+  };
+  contact_stats: { total: number; by_category: Record<string, number>; new_unread: number };
+  churn_indicators: { inactive_30d: number; cancelled_subscriptions: number; quota_exceeded: number };
+}
+
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-slate-400',
   queued: 'bg-slate-400',
@@ -118,20 +136,23 @@ function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [billing, setBilling] = useState<BillingEvent[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [funnel, setFunnel] = useState<FunnelData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'usage' | 'billing'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'usage' | 'billing' | 'funnel'>('overview');
 
   const fetchData = async () => {
     try {
-      const [statsResp, billingResp, usersResp] = await Promise.all([
+      const [statsResp, billingResp, usersResp, funnelResp] = await Promise.all([
         axios.get('/api/admin/stats'),
         axios.get('/api/admin/billing?limit=20'),
         axios.get('/api/admin/users?limit=30'),
+        axios.get('/api/admin/funnel'),
       ]);
       setStats(statsResp.data);
       setBilling(billingResp.data);
       setUsers(usersResp.data);
+      setFunnel(funnelResp.data);
     } catch (err: any) {
       console.error('Admin stats error:', err?.response?.status, err?.response?.data);
     }
@@ -173,6 +194,7 @@ function AdminDashboard() {
 
   const tabs = [
     { id: 'overview' as const, label: 'Vue globale' },
+    { id: 'funnel' as const, label: 'Funnel' },
     { id: 'users' as const, label: 'Utilisateurs' },
     { id: 'usage' as const, label: 'Usage' },
     { id: 'billing' as const, label: 'Billing' },
@@ -221,6 +243,9 @@ function AdminDashboard() {
 
       {activeTab === 'overview' && (
         <OverviewTab stats={stats} margin={margin} marginPercent={marginPercent} />
+      )}
+      {activeTab === 'funnel' && funnel && (
+        <FunnelTab funnel={funnel} />
       )}
       {activeTab === 'users' && (
         <UsersTab stats={stats} users={users} />
@@ -637,6 +662,340 @@ function BillingTab({ stats, billing }: { stats: AdminStats; billing: BillingEve
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+
+/* ─── Funnel Tab ────────────────────────────────────────── */
+
+const FUNNEL_COLORS = [
+  'bg-indigo-500', 'bg-blue-500', 'bg-cyan-500',
+  'bg-emerald-500', 'bg-amber-500', 'bg-purple-500',
+];
+
+function SparkBar({ data, valueKey, maxOverride }: {
+  data: { date: string;[k: string]: any }[];
+  valueKey: string;
+  maxOverride?: number;
+}) {
+  const values = data.map(d => d[valueKey] as number);
+  const max = maxOverride ?? Math.max(...values, 1);
+  const last7 = data.slice(-7);
+  const sum7 = last7.reduce((s, d) => s + (d[valueKey] as number), 0);
+  const prev7 = data.slice(-14, -7);
+  const sumPrev = prev7.reduce((s, d) => s + (d[valueKey] as number), 0);
+  const trend = sumPrev > 0 ? Math.round(((sum7 - sumPrev) / sumPrev) * 100) : 0;
+
+  return (
+    <div>
+      <div className="flex items-end gap-[2px] h-16">
+        {data.map((d, i) => (
+          <div
+            key={d.date}
+            className="flex-1 bg-indigo-500/80 hover:bg-indigo-400 rounded-t transition-all cursor-default group relative"
+            style={{ height: `${Math.max((d[valueKey] as number) / max * 100, 2)}%` }}
+            title={`${d.date}: ${d[valueKey]}`}
+          />
+        ))}
+      </div>
+      <div className="flex justify-between mt-1 text-xs text-slate-400">
+        <span>{data[0]?.date?.slice(5)}</span>
+        <span className={trend > 0 ? 'text-emerald-500' : trend < 0 ? 'text-red-400' : ''}>
+          {trend > 0 ? '+' : ''}{trend}% vs sem. prec.
+        </span>
+        <span>{data[data.length - 1]?.date?.slice(5)}</span>
+      </div>
+    </div>
+  );
+}
+
+function FunnelTab({ funnel }: { funnel: FunnelData }) {
+  const maxFunnel = Math.max(...funnel.funnel_steps.map(s => s.count), 1);
+
+  const totalRev7d = funnel.daily_revenue.slice(-7).reduce((s, d) => s + d.total_eur, 0);
+  const totalTx7d = funnel.daily_transcriptions.slice(-7).reduce((s, d) => s + d.count, 0);
+  const totalSignups7d = funnel.daily_signups.slice(-7).reduce((s, d) => s + d.count, 0);
+
+  return (
+    <div className="space-y-6">
+      {/* KPI Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Inscriptions 7j"
+          value={`${totalSignups7d}`}
+          sub="derniers 7 jours"
+          icon={Users}
+          color="text-indigo-500"
+        />
+        <StatCard
+          label="Transcriptions 7j"
+          value={`${totalTx7d}`}
+          sub="derniers 7 jours"
+          icon={Activity}
+          color="text-blue-500"
+        />
+        <StatCard
+          label="Revenu 7j"
+          value={`${totalRev7d.toFixed(0)} EUR`}
+          sub="one-shots + packs"
+          icon={DollarSign}
+          color="text-emerald-500"
+        />
+        <StatCard
+          label="Churn risk"
+          value={`${funnel.churn_indicators.inactive_30d}`}
+          sub={`${funnel.churn_indicators.cancelled_subscriptions} resil. | ${funnel.churn_indicators.quota_exceeded} quota`}
+          icon={UserMinus}
+          color={funnel.churn_indicators.inactive_30d > 5 ? 'text-red-500' : 'text-slate-500'}
+        />
+      </div>
+
+      {/* Conversion Funnel */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+        <h2 className="font-semibold mb-4 flex items-center gap-2">
+          <Filter className="w-4 h-4 text-indigo-500" /> Entonnoir de conversion
+        </h2>
+        <div className="space-y-3">
+          {funnel.funnel_steps.map((step, i) => {
+            const pct = Math.max((step.count / maxFunnel) * 100, 3);
+            const dropoff = i > 0 && funnel.funnel_steps[i - 1].count > 0
+              ? Math.round((1 - step.count / funnel.funnel_steps[i - 1].count) * 100)
+              : 0;
+            return (
+              <div key={step.step} className="flex items-center gap-3">
+                <div className="w-36 text-sm text-slate-600 dark:text-slate-400 flex-shrink-0 text-right">
+                  {step.label}
+                </div>
+                <div className="flex-1 relative">
+                  <div
+                    className={`h-8 rounded-lg ${FUNNEL_COLORS[i % FUNNEL_COLORS.length]} flex items-center px-3 transition-all`}
+                    style={{ width: `${pct}%`, minWidth: '60px' }}
+                  >
+                    <span className="text-white text-sm font-bold">{step.count}</span>
+                  </div>
+                </div>
+                {dropoff > 0 && (
+                  <div className="w-16 text-xs text-red-400 flex-shrink-0">
+                    -{dropoff}%
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Sparkline Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Daily Signups */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <h3 className="text-sm font-medium text-slate-500 mb-3">Inscriptions / jour (30j)</h3>
+          <SparkBar data={funnel.daily_signups} valueKey="count" />
+        </div>
+        {/* Daily Transcriptions */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <h3 className="text-sm font-medium text-slate-500 mb-3">Transcriptions / jour (30j)</h3>
+          <SparkBar data={funnel.daily_transcriptions} valueKey="count" />
+        </div>
+        {/* Daily Revenue */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <h3 className="text-sm font-medium text-slate-500 mb-3">Revenu / jour (30j)</h3>
+          <SparkBar data={funnel.daily_revenue} valueKey="total_eur" />
+        </div>
+      </div>
+
+      {/* Cohort Retention + Plan Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Cohort Retention */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+          <div className="p-5 border-b border-slate-200 dark:border-slate-700">
+            <h2 className="font-semibold flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-emerald-500" /> Retention par cohorte
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-700/50 text-left">
+                  <th className="px-4 py-3 font-medium text-slate-500">Cohorte</th>
+                  <th className="px-4 py-3 font-medium text-slate-500 text-center">Inscrits</th>
+                  <th className="px-4 py-3 font-medium text-slate-500 text-center">S+1</th>
+                  <th className="px-4 py-3 font-medium text-slate-500 text-center">S+2</th>
+                  <th className="px-4 py-3 font-medium text-slate-500 text-center">S+3</th>
+                  <th className="px-4 py-3 font-medium text-slate-500 text-center">S+4</th>
+                </tr>
+              </thead>
+              <tbody>
+                {funnel.cohort_retention.map(c => (
+                  <tr key={c.cohort} className="border-t border-slate-100 dark:border-slate-700/50">
+                    <td className="px-4 py-3 font-medium text-xs">{c.cohort}</td>
+                    <td className="px-4 py-3 text-center font-bold">{c.registered}</td>
+                    {[c.week_1, c.week_2, c.week_3, c.week_4].map((val, wi) => {
+                      const pct = c.registered > 0 ? Math.round((val / c.registered) * 100) : 0;
+                      const intensity = pct === 0 ? '' : pct >= 60 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : pct >= 30 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
+                      return (
+                        <td key={wi} className={`px-4 py-3 text-center text-xs font-medium ${intensity}`}>
+                          {c.registered > 0 ? `${val} (${pct}%)` : '-'}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+                {funnel.cohort_retention.length === 0 && (
+                  <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-400">Pas de donnees</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Plan Distribution */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <h2 className="font-semibold mb-4 flex items-center gap-2">
+            <Crown className="w-4 h-4 text-amber-500" /> Distribution des plans
+          </h2>
+          {funnel.plan_distribution.length === 0 ? (
+            <p className="text-sm text-slate-400">Aucun abonnement actif</p>
+          ) : (
+            <div className="space-y-4">
+              {funnel.plan_distribution.map(p => {
+                const totalUsers = funnel.plan_distribution.reduce((s, x) => s + x.users, 0);
+                const pct = totalUsers > 0 ? Math.round((p.users / totalUsers) * 100) : 0;
+                return (
+                  <div key={p.plan_id}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className={`font-medium px-2 py-0.5 rounded ${PLAN_COLORS[p.plan_id] || 'bg-slate-100 text-slate-700'}`}>
+                        {p.plan_name}
+                      </span>
+                      <span className="text-slate-500">{p.users} users ({pct}%) &middot; {p.mrr_eur} EUR/mois</span>
+                    </div>
+                    <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${p.plan_id === 'team' ? 'bg-amber-500' : p.plan_id === 'pro' ? 'bg-purple-500' : 'bg-blue-500'}`}
+                        style={{ width: `${Math.max(pct, 3)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-3 flex justify-between text-sm font-semibold">
+                <span>MRR total</span>
+                <span>{funnel.plan_distribution.reduce((s, p) => s + p.mrr_eur, 0).toFixed(0)} EUR</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* One-shot Stats + Contact + Churn */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* One-shot Funnel */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <h2 className="font-semibold mb-3 flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-purple-500" /> One-shot
+          </h2>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold">{funnel.oneshot_stats.total_orders}</p>
+              <p className="text-xs text-slate-400">Commandes</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-emerald-600">{funnel.oneshot_stats.paid_orders}</p>
+              <p className="text-xs text-slate-400">Payees</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold">{funnel.oneshot_stats.conversion_rate}%</p>
+              <p className="text-xs text-slate-400">Conversion</p>
+            </div>
+          </div>
+          {funnel.oneshot_stats.by_tier.length > 0 && (
+            <div className="space-y-2 border-t border-slate-200 dark:border-slate-700 pt-3">
+              {funnel.oneshot_stats.by_tier.map(t => (
+                <div key={t.tier} className="flex justify-between text-sm">
+                  <span className="text-slate-500">{t.tier}</span>
+                  <span>{t.count} &middot; <span className="font-medium">{t.revenue_eur} EUR</span></span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Contact Stats */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <h2 className="font-semibold mb-3 flex items-center gap-2">
+            <Mail className="w-4 h-4 text-blue-500" /> Contacts
+          </h2>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold">{funnel.contact_stats.total}</p>
+              <p className="text-xs text-slate-400">Total</p>
+            </div>
+            <div className="text-center">
+              <p className={`text-2xl font-bold ${funnel.contact_stats.new_unread > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                {funnel.contact_stats.new_unread}
+              </p>
+              <p className="text-xs text-slate-400">Non lus</p>
+            </div>
+          </div>
+          {Object.keys(funnel.contact_stats.by_category).length > 0 && (
+            <div className="space-y-2 border-t border-slate-200 dark:border-slate-700 pt-3">
+              {Object.entries(funnel.contact_stats.by_category).map(([cat, count]) => (
+                <div key={cat} className="flex justify-between text-sm">
+                  <span className="text-slate-500 capitalize">{cat}</span>
+                  <span className="font-medium">{count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Churn Indicators */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <h2 className="font-semibold mb-3 flex items-center gap-2">
+            <UserMinus className="w-4 h-4 text-red-500" /> Risques churn
+          </h2>
+          <div className="space-y-4">
+            <ChurnRow
+              label="Inactifs 30j"
+              value={funnel.churn_indicators.inactive_30d}
+              desc="Inscrits depuis >30j, aucune activite"
+              severity={funnel.churn_indicators.inactive_30d > 10 ? 'high' : funnel.churn_indicators.inactive_30d > 3 ? 'medium' : 'low'}
+            />
+            <ChurnRow
+              label="Resiliations"
+              value={funnel.churn_indicators.cancelled_subscriptions}
+              desc="Abonnements annules"
+              severity={funnel.churn_indicators.cancelled_subscriptions > 5 ? 'high' : funnel.churn_indicators.cancelled_subscriptions > 0 ? 'medium' : 'low'}
+            />
+            <ChurnRow
+              label="Quota depasse"
+              value={funnel.churn_indicators.quota_exceeded}
+              desc="Abonnes ayant consume 100% du forfait"
+              severity={funnel.churn_indicators.quota_exceeded > 3 ? 'high' : funnel.churn_indicators.quota_exceeded > 0 ? 'medium' : 'low'}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChurnRow({ label, value, desc, severity }: {
+  label: string; value: number; desc: string; severity: 'low' | 'medium' | 'high';
+}) {
+  const colors = {
+    low: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20',
+    medium: 'text-amber-500 bg-amber-50 dark:bg-amber-900/20',
+    high: 'text-red-500 bg-red-50 dark:bg-red-900/20',
+  };
+  return (
+    <div className={`p-3 rounded-lg ${colors[severity]}`}>
+      <div className="flex justify-between items-center">
+        <span className="font-medium text-sm">{label}</span>
+        <span className="text-xl font-bold">{value}</span>
+      </div>
+      <p className="text-xs opacity-70 mt-0.5">{desc}</p>
     </div>
   );
 }

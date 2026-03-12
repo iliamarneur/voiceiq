@@ -378,12 +378,12 @@ def _call_ollama(prompt: str, transcript_text: str) -> dict:
     return {"error": str(last_error)}
 
 
-def _call_ollama_text(system_prompt: str, user_prompt: str, num_predict: int = None) -> str:
+def _call_ollama_text(system_prompt: str, user_prompt: str, max_tokens: int = None) -> str:
     """Call Ollama and return raw text response. Retries on failure."""
     last_error = None
     options = {}
-    if num_predict:
-        options["num_predict"] = num_predict
+    if max_tokens:
+        options["num_predict"] = max_tokens
     for attempt in range(1 + LLM_MAX_RETRIES):
         t0 = time.time()
         try:
@@ -688,7 +688,7 @@ async def polish_transcription(raw_text: str, language: str = "fr", dictionary_e
         )
         # num_predict: allow output roughly 1.5x input token count (chars/3 ≈ tokens)
         estimated_tokens = max(2048, int(len(chunk) / 2))
-        result = await _call_ollama_text_async(system_prompt, user_prompt, num_predict=estimated_tokens)
+        result = await _call_ollama_text_async(system_prompt, user_prompt, max_tokens=estimated_tokens)
 
         if result.startswith("Error:"):
             logger.warning(f"Polish chunk {i+1} error: {result}, using raw chunk")

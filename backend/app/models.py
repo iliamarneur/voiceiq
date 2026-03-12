@@ -279,6 +279,19 @@ class User(Base):
 
 # ── v7.1 Models (Simple mode / Anonymous sessions) ─────
 
+class ContactMessage(Base):
+    __tablename__ = "contact_messages"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    category = Column(String, nullable=False)  # devis, technique, support, partenariat, rgpd
+    name = Column(String, nullable=False)
+    email = Column(String, nullable=False)
+    subject = Column(String, nullable=False)
+    message = Column(Text, nullable=False)
+    ip_address = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="new")  # new, read, replied, archived
+    created_at = Column(DateTime, server_default=func.now())
+
+
 class AnonymousSession(Base):
     __tablename__ = "anonymous_sessions"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))

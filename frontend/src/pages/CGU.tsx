@@ -299,6 +299,7 @@ export default function CGU() {
           <Link to="/securite-donnees" className="hover:text-slate-700 transition-colors">Sécurité des données</Link>
           <Link to="/conformite" className="hover:text-slate-700 transition-colors">Conformité</Link>
           <Link to="/" className="hover:text-slate-700 transition-colors">Accueil</Link>
+          <Link to="/contact" className="hover:text-slate-700 transition-colors">Contact</Link>
         </div>
       </div>
     </div>

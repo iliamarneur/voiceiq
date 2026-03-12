@@ -388,6 +388,7 @@ export default function VerticalLanding({
           <Link to="/faq" className="hover:text-slate-600 transition-colors">FAQ</Link>
           <Link to="/glossaire-transcription" className="hover:text-slate-600 transition-colors">Glossaire</Link>
           <Link to="/guide-rgpd-transcription" className="hover:text-slate-600 transition-colors">Guide RGPD</Link>
+          <Link to="/contact" className="hover:text-slate-600 transition-colors">Contact</Link>
           <span>ClearRecap — Transcription et analyse audio 100% locale</span>
         </div>
       </footer>

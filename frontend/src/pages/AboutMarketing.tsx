@@ -683,6 +683,7 @@ export default function AboutMarketing() {
               <Link to="/cgu" className="hover:text-slate-600 transition-colors">CGU</Link>
               <Link to="/confidentialite" className="hover:text-slate-600 transition-colors">Politique de confidentialité</Link>
               <Link to="/securite-donnees" className="hover:text-slate-600 transition-colors">Sécurité & Données</Link>
+              <Link to="/contact" className="hover:text-slate-600 transition-colors">Contact</Link>
             </div>
             <p>ClearRecap — Transcription et analyse audio. Hébergement France. Audio supprimé après traitement.</p>
           </div>

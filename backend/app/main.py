@@ -27,7 +27,7 @@ from app.models import (
     SpeakerLabel, UserDictionary, DictionaryEntry, AudioPreset, UserCorrection,
     UserPreferences, DictationSession,
     Plan, UserSubscription, UsageLog, OneshotOrder, BillingEvent,
-    User,
+    User, ContactMessage,
 )
 from app.schemas import (
     JobOut, TranscriptionOut, AnalysisOut, StatsOut,
@@ -45,6 +45,7 @@ from app.schemas import (
     OneshotOrderOut, OneshotEstimate,
     RegisterRequest, LoginRequest, AuthResponse, UserOut,
     ForgotPasswordRequest, ResetPasswordRequest,
+    ContactRequest, ContactOut,
 )
 from app.services.transcription_service import transcribe_audio
 from app.services.llm_service import (
@@ -191,7 +192,7 @@ RATE_LIMIT_MAX_AUTH = 5  # auth endpoints (login/register) — stricter
 RATE_LIMIT_MAX_GENERAL = 30  # general mutating endpoints (POST/PUT/DELETE)
 
 # Endpoints with specific rate limits
-_RATE_LIMIT_AUTH_PREFIXES = ("/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/reset-password")
+_RATE_LIMIT_AUTH_PREFIXES = ("/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/contact")
 _RATE_LIMIT_BILLING_PREFIXES = ("/api/stripe/webhook", "/api/subscription/plan", "/api/subscription/add-minutes",
                                  "/api/subscription/cancel", "/api/oneshot/order", "/api/billing/portal")
 _RATE_LIMIT_SENSITIVE_PREFIXES = ("/api/upload", "/api/account", "/api/oneshot/upload")
@@ -2950,6 +2951,65 @@ async def get_blog_article(slug: str):
         article.pop("_filepath", None)
         return {**article, "content": content}
     raise HTTPException(status_code=404, detail="Article not found")
+
+
+# ── Contact form ─────────────────────────────────────────
+CONTACT_CATEGORIES = {"devis", "technique", "support", "partenariat", "rgpd"}
+CONTACT_ADMIN_EMAIL = os.environ.get("CONTACT_ADMIN_EMAIL", "contact@clearrecap.com")
+
+@app.post("/api/contact", response_model=ContactOut)
+async def submit_contact(req: ContactRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    """Public contact form — rate-limited to 5/min via middleware."""
+    # Validate category
+    if req.category not in CONTACT_CATEGORIES:
+        raise HTTPException(status_code=400, detail="Catégorie invalide.")
+    # Validate lengths
+    if len(req.name.strip()) < 2 or len(req.name) > 100:
+        raise HTTPException(status_code=400, detail="Nom invalide.")
+    if len(req.email) > 200 or "@" not in req.email:
+        raise HTTPException(status_code=400, detail="Email invalide.")
+    if len(req.subject.strip()) < 3 or len(req.subject) > 200:
+        raise HTTPException(status_code=400, detail="Objet trop court ou trop long.")
+    if len(req.message.strip()) < 10 or len(req.message) > 5000:
+        raise HTTPException(status_code=400, detail="Message trop court (min 10 car.) ou trop long (max 5000 car.).")
+
+    client_ip = request.client.host if request.client else None
+
+    msg = ContactMessage(
+        category=req.category,
+        name=req.name.strip(),
+        email=req.email.strip(),
+        subject=req.subject.strip(),
+        message=req.message.strip(),
+        ip_address=client_ip,
+    )
+    db.add(msg)
+    await db.commit()
+    await db.refresh(msg)
+
+    # Send notification email to admin
+    try:
+        from app.services.email_service import send_email, EmailMessage, _wrap_html
+        cat_label = {"devis": "Devis", "technique": "Problème technique", "support": "Support",
+                     "partenariat": "Partenariat", "rgpd": "RGPD & données"}.get(req.category, req.category)
+        body = f"""<h1>Nouveau message de contact</h1>
+<p><strong>Catégorie :</strong> {cat_label}</p>
+<p><strong>De :</strong> {msg.name} &lt;{msg.email}&gt;</p>
+<p><strong>Objet :</strong> {msg.subject}</p>
+<p><strong>Message :</strong></p>
+<div style="background:#f1f5f9;padding:16px;border-radius:8px;white-space:pre-wrap;">{msg.message}</div>
+<p style="margin-top:16px;color:#94a3b8;font-size:12px;">IP: {client_ip} — ID: {msg.id}</p>"""
+        email_msg = EmailMessage(
+            to=CONTACT_ADMIN_EMAIL,
+            subject=f"[ClearRecap Contact] [{cat_label}] {msg.subject}",
+            html=_wrap_html("Nouveau contact", body),
+            text=f"[{cat_label}] De: {msg.name} <{msg.email}>\nObjet: {msg.subject}\n\n{msg.message}",
+        )
+        send_email(email_msg)
+    except Exception as e:
+        logger.warning(f"Failed to send contact notification: {e}")
+
+    return msg
 
 
 # Serve the built frontend from ../frontend/dist

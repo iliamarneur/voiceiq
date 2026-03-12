@@ -521,6 +521,7 @@ export default function SecurityData() {
           <Link to="/confidentialite" className="hover:text-slate-600 transition-colors">Politique de confidentialité</Link>
           <Link to="/conformite" className="hover:text-slate-600 transition-colors">Conformité</Link>
           <Link to="/plans" className="hover:text-slate-600 transition-colors">Tarifs</Link>
+          <Link to="/contact" className="hover:text-slate-600 transition-colors">Contact</Link>
           <span>ClearRecap — Transcription et analyse audio sécurisées</span>
         </div>
       </footer>

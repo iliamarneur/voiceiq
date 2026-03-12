@@ -406,6 +406,26 @@ class ResetPasswordRequest(BaseModel):
     password: str
 
 
+class ContactRequest(BaseModel):
+    category: str
+    name: str
+    email: str
+    subject: str
+    message: str
+
+
+class ContactOut(BaseModel):
+    id: str
+    category: str
+    name: str
+    email: str
+    subject: str
+    message: str
+    status: str = "new"
+    created_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
+
+
 class DictationStartRequest(BaseModel):
     profile: str = "generic"
 

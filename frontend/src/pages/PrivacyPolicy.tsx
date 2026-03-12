@@ -393,6 +393,9 @@ export default function PrivacyPolicy() {
             <Link to="/conformite" className="hover:text-indigo-600 transition-colors">
               Conformité & Certifications
             </Link>
+            <Link to="/contact" className="hover:text-indigo-600 transition-colors">
+              Contact
+            </Link>
           </div>
 
         </div>

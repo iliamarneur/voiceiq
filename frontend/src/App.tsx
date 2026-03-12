@@ -63,6 +63,8 @@ import Compliance from './pages/Compliance';
 import CGU from './pages/CGU';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import SecurityData from './pages/SecurityData';
+// Contact page
+import Contact from './pages/Contact';
 // Geo landing pages
 import GeoParis from './pages/geo/Paris';
 import GeoLyon from './pages/geo/Lyon';
@@ -215,6 +217,7 @@ function App() {
           <Route path="cgu" element={<CGU />} />
           <Route path="confidentialite" element={<PrivacyPolicy />} />
           <Route path="securite-donnees" element={<SecurityData />} />
+          <Route path="contact" element={<Contact />} />
 
           {/* Geo landing pages */}
           <Route path="transcription-paris-ile-de-france" element={<GeoParis />} />

@@ -32,6 +32,11 @@ function SimpleLayout() {
 
       {/* Footer */}
       <footer className="text-center text-xs text-slate-400 py-6 border-t border-slate-100">
+        <div className="flex flex-wrap justify-center gap-4 mb-2">
+          <Link to="/cgu" className="hover:text-slate-600 transition-colors">CGU</Link>
+          <Link to="/confidentialite" className="hover:text-slate-600 transition-colors">Confidentialité</Link>
+          <Link to="/contact" className="hover:text-slate-600 transition-colors">Contact</Link>
+        </div>
         ClearRecap — Vos fichiers ne sont jamais conservés sur nos serveurs.
       </footer>
     </div>

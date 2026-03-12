@@ -261,6 +261,7 @@ async def transcribe_audio(
             logger.info(f"Applied {len(dictionary_entries)} dictionary corrections")
 
         # Polish transcription text via LLM (formatting, punctuation, paragraphs)
+        raw_text = full_text  # Keep raw version before polishing
         try:
             from app.services.llm_service import polish_transcription
             polished = await polish_transcription(full_text, language=effective_language, dictionary_entries=dictionary_entries or None)
@@ -296,6 +297,7 @@ async def transcribe_audio(
             ),
             "processing_seconds": _processing_seconds,
             "mode": mode_id,
+            "raw_text": raw_text if raw_text != full_text else None,
         }
 
         transcription = Transcription(

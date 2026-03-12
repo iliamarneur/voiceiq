@@ -200,7 +200,7 @@ def export_to_pdf(transcription, analyses, output_path: str):
     pdf.cell(0, 6, _sanitize_latin1(f"Langue : {lang}  |  Duree : {dur}"), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(6)
 
-    # Transcription text — render paragraphs with spacing
+    # Transcription text (polished version) — render paragraphs with spacing
     pdf.set_font("Helvetica", "B", 13)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 8, "Transcription", new_x="LMARGIN", new_y="NEXT")
@@ -215,6 +215,32 @@ def export_to_pdf(transcription, analyses, output_path: str):
         if i < len(paragraphs) - 1:
             pdf.ln(3)
     pdf.ln(6)
+
+    # Raw transcription (verbatim, before AI polish)
+    raw_text = None
+    if transcription.processing_info and isinstance(transcription.processing_info, dict):
+        raw_text = transcription.processing_info.get("raw_text")
+    if raw_text:
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(0, 8, "Transcription brute (verbatim)", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
+        pdf.set_font("Helvetica", "I", 9)
+        pdf.set_text_color(120, 120, 120)
+        pdf.cell(0, 5, "Version non retravaillee, telle que produite par le moteur de reconnaissance vocale.", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(0, 0, 0)
+        pdf.ln(3)
+        pdf.set_font("Helvetica", "", 10)
+        raw_paragraphs = raw_text.split("\n\n")
+        for i, para in enumerate(raw_paragraphs):
+            para = para.strip()
+            if not para:
+                continue
+            pdf.multi_cell(0, 5.5, _sanitize_latin1(para))
+            if i < len(raw_paragraphs) - 1:
+                pdf.ln(3)
+        pdf.ln(6)
 
     # Analyses — formatted by type
     for a in analyses:

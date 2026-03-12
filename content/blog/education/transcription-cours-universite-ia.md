@@ -60,8 +60,6 @@ status: "published"
 
 Ce message m'a hanté pendant des semaines — parce qu'il décrivait exactement le problème que je tentais de résoudre avec ClearRecap depuis le prototype de 2024.
 
-![Étudiant en amphithéâtre enregistrant un cours sur son téléphone](/blog/images/etudiant-amphi-enregistrement-cours.webp "Un étudiant capture l'audio d'un cours magistral — mais va-t-il un jour le réécouter ?")
-
 ## Le paradoxe de l'enregistrement : tout capturer, rien exploiter
 
 Prenez une seconde pour y réfléchir. Un fichier audio de 90 minutes pèse environ 80 Mo en MP3 128 kbps. En texte brut, le même contenu tient dans 400 Ko. Soit 200 fois moins lourd, et surtout — cherchable, découpable, transformable.
@@ -77,8 +75,6 @@ Quand on a commencé à développer le module éducation de ClearRecap, j'ai dem
 Premier constat brutal : **la qualité audio en amphithéâtre est catastrophique.** Écho, brouhaha, micro-cravate qui frotte sur la chemise. Le modèle Whisper large-v3 gère ça correctement en mode standard, mais les résultats chutent dès que le professeur s'éloigne du micro. On a mesuré un WER (Word Error Rate) de 8,2% en conditions idéales contre 23,7% quand l'enseignant se promène dans la salle.
 
 Deuxième surprise — et celle-ci était positive. Les cours magistraux ont une structure rhétorique assez prévisible. Introductions, transitions, récapitulations. Le professeur dit souvent « revenons à », « le point central ici », « ce qu'il faut retenir ». Ces marqueurs discursifs deviennent des ancres naturelles pour le découpage automatique.
-
-![Schéma montrant le pipeline de traitement : audio → transcription → segmentation → fiches](/blog/images/pipeline-transcription-cours-fiches.webp "Le parcours d'un enregistrement de cours, de l'audio brut aux fiches de révision structurées")
 
 ### La segmentation, c'est là que tout se joue
 
@@ -128,8 +124,6 @@ Le LLM local reçoit la fiche et un prompt structuré. Pour chaque concept, il p
 Le point technique délicat : les distracteurs dans les QCM. Un mauvais distracteur (trop évidemment faux) rend le quiz inutile. Un bon distracteur teste la compréhension fine. On a dû itérer sur le prompt pendant deux semaines pour obtenir des distracteurs crédibles. La version actuelle utilise une technique de « perturbation sémantique » — le LLM modifie un élément factuel du concept pour créer une option plausible mais incorrecte.
 
 Résultat mesuré sur 200 QCM générés à partir de cours de L2 : **84% des questions ont été jugées « pertinentes » ou « très pertinentes »** par un panel de 8 enseignants. Les 16% restants souffraient principalement de formulations ambiguës — un problème qu'on continue d'adresser.
-
-![Capture d'écran d'un quiz généré automatiquement à partir d'un cours de biochimie](/blog/images/quiz-automatique-biochimie-clearrecap.webp "Quiz QCM généré par ClearRecap à partir d'un cours de biochimie — les distracteurs testent la compréhension fine, pas la mémoire brute")
 
 ## Pourquoi le traitement local change la donne pour les universités
 
@@ -209,8 +203,6 @@ En une décennie, on est passé de « écrire vite en espérant ne rien rater »
 Mais — et c'est un « mais » que je considère fondamental — la technologie doit rester un outil au service de l'apprentissage, pas un substitut à l'effort cognitif. Générer des fiches automatiques ne sert à rien si l'étudiant ne les retravaille pas. Les quiz n'ont de valeur que s'ils sont réellement utilisés pour se tester.
 
 C'est pour ça qu'on a intégré dans ClearRecap un tableau de bord étudiant qui suit la [progression d'apprentissage](/blog/automatiser-comptes-rendus-reunion-ia) — nombre de quiz complétés, taux de réussite par concept, temps passé sur chaque fiche. Non pas pour surveiller, mais pour rendre visible l'effort (ou l'absence d'effort).
-
-![Dashboard étudiant montrant la progression sur les quiz par concept](/blog/images/dashboard-etudiant-quiz-progression.webp "Le tableau de bord étudiant de ClearRecap — chaque concept est suivi individuellement, avec un taux de maîtrise calculé sur les quiz")
 
 ## Aller plus loin : transcription en temps réel pendant le cours
 

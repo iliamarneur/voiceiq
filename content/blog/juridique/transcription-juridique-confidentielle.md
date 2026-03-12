@@ -80,9 +80,6 @@ Aujourd'hui, un avocat dicte dans une app sur son smartphone. L'audio part vers 
 
 Je dramatise ? Pas tant que ça. Le Cloud Act (2018) autorise les autorités américaines à exiger de toute entreprise américaine la communication de données stockées, y compris à l'étranger. Un avocat qui utilise un service de transcription exploité par une entreprise américaine expose potentiellement les données de son client à une demande d'accès du gouvernement américain. C'est incompatible avec le secret professionnel tel que le droit français le conçoit.
 
-![Schéma : parcours d'une dictée d'avocat via un service cloud, avec les points de rupture du secret](https://clearrecap.com/blog/images/parcours-dictee-avocat-cloud.png)
-*Le parcours d'une dictée d'avocat via un service cloud : chaque flèche est un point de rupture potentiel du secret professionnel*
-
 ## Le cas concret des audiences et consultations
 
 Au-delà de la dictée, deux usages montent en puissance chez les avocats : la transcription de consultations client et la prise de notes en audience.
@@ -132,9 +129,6 @@ Le profil juridique ajoute des fonctionnalités spécifiques :
 **Mode "conclusions".** Un mode spécifique pour la dictée de conclusions et mémoires, avec une structuration automatique en paragraphes numérotés et une détection des références (articles de loi, jurisprudence citée). "Article 1240 du Code civil" est automatiquement formaté et peut être lié à Légifrance.
 
 **Suppression sécurisée.** La suppression d'un fichier audio n'est pas un simple `rm`. Le fichier est écrasé (overwrite avec des données aléatoires) avant suppression. Sur un SSD, le TRIM peut laisser des résidus, mais c'est le maximum réalisable au niveau logiciel sans contrôle du firmware.
-
-![Interface ClearRecap en mode juridique : transcription avec horodatage et dictionnaire spécialisé](https://clearrecap.com/blog/images/interface-clearrecap-juridique.png)
-*Le profil juridique de ClearRecap : dictionnaire spécialisé, horodatage segment par segment, chiffrement au repos*
 
 ## Le problème spécifique de la sous-traitance dans les cabinets
 
@@ -211,8 +205,5 @@ Je résume les points clés pour un avocat qui cherche à utiliser la transcript
 Pour le cadre RGPD général applicable à la transcription, notre [guide complet](/blog/transcription-audio-rgpd-guide-2026) couvre les obligations point par point. Et si vous voulez comprendre les différences techniques entre cloud et local, le [comparatif dédié](/blog/transcription-cloud-vs-local-donnees) vous donnera les éléments factuels.
 
 Notre [page tarifs](/pricing) propose une licence adaptée aux cabinets d'avocats — poste par poste, sans abonnement, sans transfert de données. Parce que le secret professionnel n'a pas de prix, mais l'outil qui le protège devrait en avoir un raisonnable.
-
-![Tableau récapitulatif : conformité secret professionnel — cloud vs local](https://clearrecap.com/blog/images/conformite-secret-professionnel-cloud-local.png)
-*Conformité au secret professionnel : la différence entre cloud et local est structurelle, pas marginale*
 
 La technologie devrait servir les avocats, pas les exposer. Un outil de transcription qui compromet le secret professionnel est un outil qui retourne contre le praticien le bénéfice qu'il prétend apporter. La question n'est pas technique — elle est déontologique. Et la réponse, en 2026, est sans ambiguïté.

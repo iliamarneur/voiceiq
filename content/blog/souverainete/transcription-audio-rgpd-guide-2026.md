@@ -60,7 +60,6 @@ status: "published"
 
 Le traitement 100 % local n'est pas un choix anodin. Le scénario suivant est courant : un service hospitalier utilise un outil de transcription « gratuit » en ligne pendant des mois sans que personne ne lise les CGU. Les fichiers audio des consultations partent sur des serveurs à l'étranger. Le jour où un patient dépose une plainte ou que le DPO audite les flux de données, c'est la panique.
 
-![Illustration : parcours d'un fichier audio entre un poste utilisateur et un serveur cloud distant, avec les points de vulnérabilité RGPD](https://clearrecap.com/blog/images/transcription-audio-rgpd-parcours-donnees.png)
 *Parcours type d'un fichier audio envoyé vers un service cloud de transcription*
 
 ## Ce que dit réellement le RGPD sur les données vocales
@@ -85,7 +84,6 @@ Voici le point que beaucoup de DPO sous-estiment : l'article 28 impose un contra
 
 ## Le vrai problème : les transferts hors UE après Schrems II
 
-![Schéma : les flux de données d'une transcription cloud avec les points de transfert international](https://clearrecap.com/blog/images/transfert-donnees-schrems-ii.png)
 *Les transferts internationaux de données dans une architecture cloud classique*
 
 Schrems II a invalidé le Privacy Shield en juillet 2020. Le Data Privacy Framework (DPF) adopté en juillet 2023 reste fragile. Max Schrems a déjà annoncé qu'il le contesterait — et l'homme a un historique assez convaincant en la matière.
@@ -141,7 +139,6 @@ Un aspect que j'aimerais creuser parce qu'il génère beaucoup de confusion. La 
 
 **L'analyse par IA** — détection d'émotions, identification du locuteur, extraction de sentiments — relève potentiellement de l'article 22 sur les décisions automatisées. Si la transcription alimente un outil qui évalue la performance d'un collaborateur en réunion, vous entrez dans le champ du profilage.
 
-![Représentation des couches de traitement RGPD : enregistrement, stockage, transcription, analyse](https://clearrecap.com/blog/images/couches-traitement-rgpd-audio.png)
 *Les quatre couches de traitement de données dans une chaîne de transcription audio*
 
 ## La CNIL et les données audio : décisions récentes à connaître
@@ -202,7 +199,6 @@ Mon sentiment — et c'est un avis personnel, pas une prédiction — est que la
 
 C'est exactement le raisonnement qui a guidé la conception de ClearRecap. Nous n'avons pas choisi le traitement local pour en faire un argument marketing. Nous l'avons choisi parce qu'un DPO qui évalue notre outil peut cocher "conforme" en trente minutes au lieu de trois mois.
 
-![Chronologie réglementaire : RGPD 2018, Schrems II 2020, DPF 2023, AI Act 2024, NIS2 2024](https://clearrecap.com/blog/images/chronologie-reglementaire-transcription.png)
 *L'empilement réglementaire qui pèse sur la transcription audio en entreprise*
 
 ## Pour aller plus loin

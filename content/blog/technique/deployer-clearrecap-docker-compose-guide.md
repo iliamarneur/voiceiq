@@ -78,8 +78,6 @@ Pas de surprise ici, mais je préfère être exhaustif plutôt que de vous laiss
 
 Un point que beaucoup de guides omettent : **la version du driver NVIDIA compte autant que la version de CUDA**. Whisper large-v3 via CTranslate2 nécessite CUDA 12.x, ce qui exige un driver >= 525. Mais pour les optimisations Flash Attention 2, il faut le driver 535+. Vérifiez avec `nvidia-smi` avant d'aller plus loin.
 
-![Architecture de déploiement ClearRecap avec Docker Compose](/blog/images/architecture-clearrecap-docker-compose.webp "Vue d'ensemble : Traefik en reverse proxy, ClearRecap en backend avec accès GPU, PostgreSQL pour les métadonnées, Redis pour le cache")
-
 ## Étape 1 — Installer le NVIDIA Container Toolkit
 
 Si Docker ne voit pas votre GPU, rien ne fonctionnera. C'est la première chose à vérifier, et c'est la source de 60% des tickets de support qu'on reçoit.
@@ -246,8 +244,6 @@ Et ajoutez les labels sur le service `clearrecap` :
 
 Retirez la section `ports: - "8080:8080"` du service clearrecap — Traefik s'en charge désormais.
 
-![Terminal montrant le déploiement Docker Compose en cours avec les logs de démarrage](/blog/images/terminal-docker-compose-clearrecap-deploy.webp "docker compose up -d : les trois services démarrent, le GPU est détecté, Whisper charge le modèle large-v3")
-
 ## Étape 5 — Premier lancement et vérification
 
 ```bash
@@ -404,7 +400,6 @@ Automatisez ça avec un cron. Pas demain. Maintenant.
 
 Les modèles Whisper ne nécessitent pas de backup — ils sont téléchargés depuis le registre au besoin. La configuration non plus si vous versionnez votre `docker-compose.yml` et votre `.env` dans Git (sans le mot de passe, évidemment — utilisez un `.env.example`).
 
-![Dashboard Grafana montrant les métriques GPU et transcription de ClearRecap](/blog/images/grafana-clearrecap-monitoring-gpu.webp "Monitoring Grafana : VRAM à 62%, 47 transcriptions traitées dans l'heure, temps moyen de 8.3 minutes par fichier")
 
 ## Mise à jour de ClearRecap : zéro downtime
 

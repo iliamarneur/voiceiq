@@ -62,7 +62,6 @@ Ce genre de situation, je l'observe de plus en plus souvent chez les organisatio
 
 Cet article propose un tour d'horizon complet des alternatives locales crédibles en 2026. Pas un classement marketing. Un comparatif technique honnête, basé sur des tests réels que j'ai conduits avec mon équipe chez ClearRecap.
 
-![Illustration : schéma comparant le flux de données d'une transcription cloud vs locale](https://clearrecap.com/blog/images/transcription-cloud-vs-locale-flux.png)
 *Flux de données : cloud (gauche) vs local (droite). Le fichier audio ne quitte jamais votre machine dans l'approche locale.*
 
 ## Pourquoi chercher une alternative transcription cloud maintenant

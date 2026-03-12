@@ -97,7 +97,6 @@ Bonne question. Votre fichier est probablement dans l'un de ces formats :
 
 Vous ne savez pas quel format c'est ? Regardez l'extension du fichier — les lettres après le point dans le nom. `reunion_lundi.mp3` = format MP3. Si le fichier n'a pas d'extension visible, ne vous inquiétez pas. ClearRecap détecte automatiquement le format.
 
-![Illustration montrant différents formats audio (MP3, WAV, M4A) convergeant vers un document texte](/blog/images/formats-audio-acceptes-transcription.webp "MP3, WAV, M4A, OGG... tous ces formats deviennent du texte en quelques minutes")
 
 ## Comment transcrire un fichier audio en texte avec ClearRecap
 
@@ -145,7 +144,6 @@ Pourquoi ce prix ? Parce que la transcription consomme des ressources de calcul 
 
 Si vous avez beaucoup de fichiers à transcrire régulièrement — disons plus de 10 heures par mois — le mode local devient plus avantageux. Vous investissez une fois dans le matériel, et ensuite c'est gratuit à chaque utilisation. Le [comparatif avec d'autres solutions](/blog/clearrecap-vs-happyscribe-comparatif-2026) détaille les calculs.
 
-![Capture d'écran de l'interface ClearRecap montrant un fichier audio en cours de transcription](/blog/images/interface-clearrecap-transcription-en-cours.webp "L'interface de ClearRecap : glissez un fichier, attendez quelques minutes, récupérez le texte")
 
 ## Les utilisations les plus courantes (et quelques surprises)
 

@@ -82,7 +82,6 @@ Notre [guide RGPD complet](/blog/transcription-audio-rgpd-guide-2026) détaille 
 
 ## L'architecture d'une dictée vocale médecin entièrement locale
 
-![Schéma d'architecture : micro → poste local → Whisper → LLM → note SOAP → logiciel médical](https://clearrecap.com/blog/images/architecture-dictee-vocale-medicale-locale.png)
 *Architecture complète d'une dictée vocale médicale locale : du micro au dossier patient, rien ne sort du réseau local*
 
 Le workflow complet comprend cinq étapes, toutes exécutées localement.

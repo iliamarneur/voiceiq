@@ -96,8 +96,6 @@ Pour un podcast ou un cours filmé, ce n'est pas un problème. Pour un enregistr
 
 On a écrit un [article détaillé sur la comparaison entre ClearRecap et HappyScribe](/blog/clearrecap-vs-happyscribe-comparatif-2026) si vous voulez creuser les différences entre services.
 
-![Schéma simple montrant les 3 méthodes : manuelle (clavier), en ligne (cloud), locale (ordinateur)](/blog/images/trois-methodes-convertir-enregistrement-texte.webp "Trois chemins pour le même résultat — chacun avec ses avantages")
-
 ## Méthode 3 : la transcription locale (sur votre propre machine)
 
 Celle-ci est plus récente. Au lieu d'envoyer votre fichier sur internet, vous utilisez un logiciel installé sur votre ordinateur qui fait tout le travail en local. Le fichier ne quitte jamais votre machine.
@@ -143,8 +141,6 @@ Les chiffres que je donne viennent de nos tests internes. Ils varient selon les 
 Un détail que j'ai découvert en travaillant sur ClearRecap : les outils de transcription sont généralement meilleurs en anglais qu'en français. Normal — les modèles d'IA sont entraînés sur beaucoup plus de données anglophones.
 
 La différence se réduit d'année en année. En 2024, l'écart était d'environ 3-4 points de pourcentage. En 2026, on est à moins de 1,5 point. Mais si vous transcrivez du français avec des termes techniques, des noms propres inhabituels, ou des expressions régionales, attendez-vous à quelques erreurs de plus qu'en anglais standard.
-
-![Personne tenant un smartphone avec l'application d'enregistrement vocal ouverte](/blog/images/enregistrement-vocal-smartphone-transcription.webp "Le smartphone que vous avez dans la poche est le meilleur outil d'enregistrement que l'humanité ait jamais eu à disposition")
 
 ## Astuces pour de meilleurs résultats (quelle que soit la méthode)
 

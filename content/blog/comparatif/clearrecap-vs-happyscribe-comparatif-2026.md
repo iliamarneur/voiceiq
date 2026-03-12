@@ -72,8 +72,6 @@ Leur couverture linguistique est impressionnante : plus de 120 langues revendiqu
 
 Je dis tout ça pour qu'on parte sur des bases honnêtes. Ce comparatif n'a aucune valeur si je caricature la concurrence.
 
-![Tableau comparatif synthétique ClearRecap vs HappyScribe sur 6 critères clés](/blog/images/clearrecap-vs-happyscribe-tableau-comparatif.webp "Les 6 axes de comparaison : prix, précision, confidentialité, vitesse, intégrations, support linguistique")
-
 ## La question que personne ne pose : où vont vos fichiers audio ?
 
 Quand vous uploadez un fichier sur HappyScribe, voici ce qui se passe techniquement. Le fichier est transmis via HTTPS (chiffré en transit) vers leur infrastructure cloud. HappyScribe utilise Google Cloud Platform, avec des serveurs principalement en Europe (Pays-Bas, Belgique). Le fichier est stocké temporairement pour le traitement, puis — selon leur politique — supprimé après un délai configurable.
@@ -174,8 +172,6 @@ Chez HappyScribe : vous créez un compte, vous uploadez un fichier, vous récup�
 Chez ClearRecap en local : vous installez Docker, vous configurez le GPU, vous lancez le conteneur, vous accédez à l'interface web. Trente minutes minimum si tout se passe bien. Deux heures si votre driver NVIDIA a décidé de faire des siennes.
 
 C'est précisément pour ça qu'on a lancé ClearRecap Cloud — un service en ligne à 3 EUR par transcription, sans installation. Le traitement est effectué sur nos serveurs européens (France, OVH), avec suppression automatique du fichier audio dans l'heure. C'est un compromis : moins de contrôle que le local, mais plus de simplicité. Et infiniment plus privé que d'envoyer vos données chez Google Cloud via un intermédiaire néerlandais.
-
-![Schéma comparant les architectures : HappyScribe cloud vs ClearRecap local vs ClearRecap Cloud](/blog/images/architecture-happyscribe-vs-clearrecap.webp "Trois architectures, trois niveaux de contrôle sur vos données — du moins au plus souverain")
 
 ## Les cas où HappyScribe est le meilleur choix
 

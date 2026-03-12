@@ -74,9 +74,6 @@ Quand nous avons développé le profil éducation de ClearRecap, j'ai personnell
 
 ## Le pipeline technique : audio → fiches
 
-![Pipeline de transformation : enregistrement → transcription → segmentation → fiches → quiz](https://clearrecap.com/blog/images/pipeline-fiches-revision-audio.png)
-*De l'enregistrement audio à la fiche de révision : les 5 étapes du pipeline*
-
 Le processus complet se déroule en cinq étapes, toutes exécutées localement sur votre machine.
 
 ### Étape 1 : l'enregistrement intelligent

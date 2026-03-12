@@ -86,9 +86,6 @@ Le cas d'usage le plus fréquent que nous observons : l'avocat enregistre ses pr
 
 ## L'architecture technique pour un cabinet d'avocats
 
-![Architecture réseau d'un cabinet d'avocats avec transcription locale : postes, serveur, stockage chiffré](https://clearrecap.com/blog/images/architecture-cabinet-avocat-transcription.png)
-*Infrastructure type d'un cabinet de 5 avocats avec transcription IA locale*
-
 Le secret professionnel impose une architecture air-gap partielle. Les données ne doivent pas simplement « rester en Europe » — elles ne doivent pas quitter le périmètre technique du cabinet.
 
 **Option 1 : traitement sur le poste de l'avocat.** Chaque avocat dispose d'un ordinateur avec un GPU suffisant (RTX 3060 minimum, 6 Go VRAM). La transcription et la structuration se font directement sur sa machine. Avantage : aucune donnée ne transite sur le réseau local. Inconvénient : coût matériel multiplié par le nombre d'avocats.

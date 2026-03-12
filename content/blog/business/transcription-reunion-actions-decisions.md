@@ -86,7 +86,6 @@ La solution : un LLM local qui comprend le contexte conversationnel. Pas de l'ex
 
 ## Comment fonctionne l'extraction par LLM local
 
-![Schéma du pipeline : audio → transcription → diarisation → extraction LLM → actions structurées](https://clearrecap.com/blog/images/pipeline-extraction-actions-decisions.png)
 *Pipeline complet : de l'enregistrement audio aux actions et décisions structurées*
 
 Le pipeline technique se décompose en quatre phases.

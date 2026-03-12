@@ -10,18 +10,19 @@ interface ArticleData {
   title: string;
   description: string;
   category: string;
-  published_at: string;
-  reading_time: number;
+  publishDate: string;
+  date: string;
+  readingTime: string;
   author: string;
   content: string;
   tags?: string[];
-  og_image?: string;
-  og_title?: string;
-  og_description?: string;
+  ogImage?: string;
+  ogTitle?: string;
+  ogDescription?: string;
   canonical?: string;
-  last_modified?: string;
-  target_keyword?: string;
-  secondary_keywords?: string[];
+  lastModified?: string;
+  targetKeyword?: string;
+  secondaryKeywords?: string[];
 }
 
 interface RelatedArticle {
@@ -29,7 +30,7 @@ interface RelatedArticle {
   title: string;
   description: string;
   category: string;
-  reading_time: number;
+  readingTime: string;
 }
 
 interface TocEntry {
@@ -128,9 +129,48 @@ function parseMarkdown(md: string): string {
   // Horizontal rules
   html = html.replace(/^---$/gm, '<hr class="border-slate-200 my-8" />');
 
+  // Tables
+  html = html.replace(/((?:^\|.+\|$\n?)+)/gm, (tableBlock) => {
+    const rows = tableBlock.trim().split('\n').filter(r => r.trim());
+    if (rows.length < 2) return tableBlock;
+    // Check if second row is separator (|---|---|)
+    const isSep = (r: string) => /^\|[\s\-:|]+\|$/.test(r);
+    const hasSep = rows.length >= 2 && isSep(rows[1]);
+    const headerRow = rows[0];
+    const dataRows = hasSep ? rows.slice(2) : rows.slice(1);
+    const parseCells = (row: string) => row.split('|').slice(1, -1).map(c => c.trim());
+    const headerCells = parseCells(headerRow);
+    let table = '<div class="overflow-x-auto my-6"><table class="w-full text-sm border-collapse border border-slate-200 rounded-lg">';
+    table += '<thead><tr class="bg-slate-50">';
+    headerCells.forEach(cell => {
+      table += `<th class="px-4 py-2.5 text-left font-semibold text-slate-700 border border-slate-200">${cell}</th>`;
+    });
+    table += '</tr></thead><tbody>';
+    dataRows.forEach((row, i) => {
+      const cells = parseCells(row);
+      const bg = i % 2 === 0 ? '' : ' class="bg-slate-50/50"';
+      table += `<tr${bg}>`;
+      cells.forEach(cell => {
+        table += `<td class="px-4 py-2 text-slate-600 border border-slate-200">${cell}</td>`;
+      });
+      table += '</tr>';
+    });
+    table += '</tbody></table></div>';
+    return table;
+  });
+
+  // Ordered lists
+  html = html.replace(/^(\d+)\. (.+)$/gm, '<li class="ml-4 list-decimal text-slate-600" value="$1">$2</li>');
+
   // Unordered lists
   html = html.replace(/^- (.+)$/gm, '<li class="ml-4 list-disc text-slate-600">$1</li>');
-  html = html.replace(/(<li[^>]*>.*<\/li>\n?)+/g, (match) => `<ul class="my-4 space-y-1">${match}</ul>`);
+  html = html.replace(/(<li[^>]*>.*<\/li>\n?)+/g, (match) => {
+    const tag = match.includes('list-decimal') ? 'ol' : 'ul';
+    return `<${tag} class="my-4 space-y-1">${match}</${tag}>`;
+  });
+
+  // Blockquotes
+  html = html.replace(/^> (.+)$/gm, '<blockquote class="border-l-4 border-indigo-300 pl-4 py-1 my-4 text-slate-500 italic">$1</blockquote>');
 
   // Paragraphs (lines that aren't already wrapped in HTML tags)
   html = html
@@ -282,7 +322,7 @@ function RelatedArticles({ category, currentSlug }: { category: string; currentS
             </h4>
             <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              {a.reading_time} min
+              {a.readingTime}
             </p>
           </Link>
         ))}
@@ -346,17 +386,17 @@ function BlogArticle() {
   const articleSchema = {
     '@context': 'https://schema.org',
     '@type': 'Article',
-    headline: article.og_title || article.title,
-    description: article.og_description || article.description,
-    image: article.og_image || 'https://clearrecap.com/og-image.png',
+    headline: article.ogTitle || article.title,
+    description: article.ogDescription || article.description,
+    image: article.ogImage || 'https://clearrecap.com/og-image.png',
     author: { '@type': 'Person', name: article.author || 'ClearRecap' },
     publisher: {
       '@type': 'Organization',
       name: 'ClearRecap',
       logo: { '@type': 'ImageObject', url: 'https://clearrecap.com/logo.png' },
     },
-    datePublished: article.published_at,
-    dateModified: article.last_modified || article.published_at,
+    datePublished: article.publishDate || article.date,
+    dateModified: article.lastModified || article.publishDate || article.date,
     mainEntityOfPage: article.canonical || getCanonical(`/blog/${article.slug}`),
     articleSection: CATEGORY_LABELS[article.category] || article.category,
     keywords: article.tags?.join(', '),
@@ -381,15 +421,15 @@ function BlogArticle() {
     >
       {/* SEO */}
       <MetaTags
-        title={article.og_title || article.title}
-        description={article.og_description || article.description}
+        title={article.ogTitle || article.title}
+        description={article.ogDescription || article.description}
         canonical={article.canonical || getCanonical(`/blog/${article.slug}`)}
         ogType="article"
-        ogImage={article.og_image}
+        ogImage={article.ogImage}
         hreflangAlternates={getHreflangAlternates(`/blog/${article.slug}`)}
         article={{
-          publishedTime: article.published_at,
-          modifiedTime: article.last_modified || article.published_at,
+          publishedTime: article.publishDate || article.date,
+          modifiedTime: article.lastModified || article.publishDate || article.date,
           author: article.author || 'ClearRecap',
           section: article.category,
         }}
@@ -422,11 +462,11 @@ function BlogArticle() {
               )}
               <span className="flex items-center gap-1.5">
                 <Calendar className="w-4 h-4" />
-                {formatDate(article.published_at)}
+                {formatDate(article.publishDate || article.date)}
               </span>
               <span className="flex items-center gap-1.5">
                 <Clock className="w-4 h-4" />
-                {article.reading_time} min de lecture
+                {article.readingTime}
               </span>
             </div>
             {/* Tags */}

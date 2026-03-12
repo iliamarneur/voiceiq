@@ -2940,7 +2940,11 @@ async def get_blog_article(slug: str):
             continue
         if article.get("slug") != slug:
             continue
-        if article.get("status") != "published":
+        from datetime import datetime
+        is_published = article.get("status") == "published"
+        publish_date = article.get("publishDate", "")
+        is_scheduled_past = publish_date and publish_date <= datetime.now().isoformat()
+        if not (is_published or is_scheduled_past):
             raise HTTPException(status_code=404, detail="Article not found")
         content = article.pop("_content", "")
         article.pop("_filepath", None)

@@ -83,7 +83,6 @@ Ce format a un avantage majeur : il sépare les faits rapportés par le patient,
 
 Le problème ? Rédiger une note SOAP correcte prend du temps. Beaucoup de praticiens se rabattent sur des notes libres ("patient vu ce jour, céphalées, prescrit ibuprofène") qui perdent toute la richesse de la consultation.
 
-![Structure d'une note SOAP avec les quatre sections et leurs contenus types](https://clearrecap.com/blog/images/structure-note-soap.png)
 *Les quatre composantes d'une note SOAP et ce qu'elles contiennent*
 
 ## Le pipeline technique : de l'audio brut à la note structurée
@@ -126,7 +125,6 @@ La note SOAP générée n'est pas directement injectée dans le dossier patient.
 
 ClearRecap génère la note dans un format compatible HL7 FHIR R4, exportable en JSON ou en texte structuré pour copier-coller dans le logiciel métier. L'intégration directe avec les principaux logiciels de gestion de cabinet (Doctolib Pro, Weda, Crossway) est sur notre feuille de route — elle nécessite des partenariats que nous sommes en train de construire.
 
-![Pipeline complet : audio brut > transcription > correction médicale > structuration SOAP > validation](https://clearrecap.com/blog/images/pipeline-transcription-medicale-soap.png)
 *Le pipeline ClearRecap de l'audio brut à la note SOAP validée*
 
 ## La dictée médicale IA en local : contraintes matérielles réelles
@@ -209,7 +207,6 @@ Le AI Act européen classe les dispositifs médicaux logiciels (SaMD) utilisant 
 
 Mon point de vue personnel : dans cinq ans, la dictée médicale IA sera aussi banale que le stéthoscope numérique. La question n'est pas si les médecins adopteront ces outils, mais quels outils respecteront le secret médical. Les solutions locales ont un avantage structurel sur ce terrain.
 
-![Chronologie : Ségur numérique, AI Act, évolution des obligations pour la transcription médicale](https://clearrecap.com/blog/images/chronologie-reglementaire-medical.png)
 *L'environnement réglementaire de la transcription médicale en 2026-2027*
 
 ## Pour les médecins qui veulent tester

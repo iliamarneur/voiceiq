@@ -66,7 +66,6 @@ Cinq minutes d'audio. Trois services. Zéro transparence complète.
 
 Quand vous appuyez sur "Transcrire" dans un service cloud, voici ce qui se passe réellement. Le fichier quitte votre navigateur, chiffré en TLS 1.3 si le service est sérieux. Il arrive sur un load balancer. De là, il est routé vers un worker de traitement — souvent dans une autre région que celle affichée. Le worker décode l'audio, le découpe en segments de 30 secondes, et envoie chaque segment au modèle d'inférence. Parfois ce modèle tourne sur le même serveur. Souvent non.
 
-![Schéma du parcours d'un fichier audio dans une architecture cloud de transcription](https://clearrecap.com/blog/images/parcours-fichier-audio-cloud.png)
 *Le trajet réel d'un fichier audio dans une architecture cloud classique de transcription*
 
 Le résultat textuel revient par le chemin inverse. Mais le fichier audio, lui ? Il reste quelque part. Combien de temps ? Ça dépend. Des CGU que personne ne lit.
@@ -107,7 +106,6 @@ Le fichier est sélectionné depuis votre disque local. Il n'est pas copié — 
 
 Fin du parcours. Pas d'escale. Pas de copie. Pas de log chez un tiers.
 
-![Comparaison visuelle : parcours cloud (5 escales) vs parcours local (0 escale)](https://clearrecap.com/blog/images/comparaison-cloud-local-parcours.png)
 *Transcription cloud vs local : la différence de complexité du parcours des données*
 
 ### Le benchmark honnête : performance cloud vs local
@@ -182,7 +180,6 @@ Pour aller plus loin sur les aspects réglementaires, notre [guide RGPD complet 
 
 Si vous cherchez une solution de transcription pour un usage professionnel spécifique, consultez aussi nos guides sectoriels : [transcription juridique et secret professionnel](/blog/transcription-juridique-confidentielle) pour les avocats, ou [automatisation des comptes rendus de réunion](/blog/automatiser-comptes-rendus-reunion-ia) pour les équipes business.
 
-![Tableau comparatif résumé : cloud vs local sur 6 critères clés](https://clearrecap.com/blog/images/tableau-comparatif-cloud-local.png)
 *Résumé : transcription cloud vs locale sur les critères qui comptent*
 
 La prochaine fois que vous utiliserez un outil de transcription, posez-vous une question simple. Où est mon fichier audio en ce moment ? Si vous ne pouvez pas répondre avec certitude, vous avez un problème. Et ce problème a une solution.

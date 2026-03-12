@@ -5,7 +5,7 @@
       "name": "Basic (Solo)",
       "price_cents": 1900,
       "minutes_included": 500,
-      "stripe_price_id": "price_1T9EuMDTeuYAK0abBc54p8wN",
+      "stripe_price_id": "",
       "features": [
         "transcription",
         "summary",
@@ -28,7 +28,7 @@
       "name": "Pro (PME)",
       "price_cents": 4900,
       "minutes_included": 3000,
-      "stripe_price_id": "price_1T9EuNDTeuYAK0abF9UZofYk",
+      "stripe_price_id": "",
       "features": [
         "transcription",
         "summary",
@@ -59,7 +59,7 @@
       "name": "Équipe+ (Éducation)",
       "price_cents": 9900,
       "minutes_included": 10000,
-      "stripe_price_id": "price_1T9EuNDTeuYAK0abd1L2OgH0",
+      "stripe_price_id": "",
       "features": [
         "transcription",
         "summary",
@@ -93,24 +93,24 @@
     "S": {
       "minutes": 100,
       "price_cents": 300,
-      "stripe_price_id": "price_1T9EuRDTeuYAK0abGc7xHT6T"
+      "stripe_price_id": ""
     },
     "M": {
       "minutes": 500,
       "price_cents": 1200,
-      "stripe_price_id": "price_1T9EuSDTeuYAK0ab3j9bejwv"
+      "stripe_price_id": ""
     },
     "L": {
       "minutes": 2000,
       "price_cents": 4000,
-      "stripe_price_id": "price_1T9EuSDTeuYAK0abtspyGaS9"
+      "stripe_price_id": ""
     }
   },
   "oneshot_tiers": {
     "Court": {
       "max_duration_minutes": 30,
       "price_cents": 300,
-      "stripe_price_id": "price_1T9EuODTeuYAK0abHiPJ0G2G",
+      "stripe_price_id": "",
       "auto": ["transcription", "summary", "keypoints"],
       "includes": [
         "transcription",
@@ -128,7 +128,7 @@
     "Standard": {
       "max_duration_minutes": 60,
       "price_cents": 600,
-      "stripe_price_id": "price_1T9EuODTeuYAK0ab4sA9eNau",
+      "stripe_price_id": "",
       "auto": ["transcription", "summary", "keypoints"],
       "includes": [
         "transcription",
@@ -146,7 +146,7 @@
     "Long": {
       "max_duration_minutes": 90,
       "price_cents": 900,
-      "stripe_price_id": "price_1T9EuPDTeuYAK0abbYmKF1Tz",
+      "stripe_price_id": "",
       "auto": ["transcription", "summary", "keypoints"],
       "includes": [
         "transcription",
@@ -164,7 +164,7 @@
     "XLong": {
       "max_duration_minutes": 120,
       "price_cents": 1200,
-      "stripe_price_id": "price_1T9EuPDTeuYAK0abTC36PmkR",
+      "stripe_price_id": "",
       "auto": ["transcription", "summary", "keypoints"],
       "includes": [
         "transcription",
@@ -182,7 +182,7 @@
     "XXLong": {
       "max_duration_minutes": 150,
       "price_cents": 1500,
-      "stripe_price_id": "price_1T9EuQDTeuYAK0abZZ9yDb8e",
+      "stripe_price_id": "",
       "auto": ["transcription", "summary", "keypoints"],
       "includes": [
         "transcription",
@@ -200,7 +200,7 @@
     "XXXLong": {
       "max_duration_minutes": 180,
       "price_cents": 1800,
-      "stripe_price_id": "price_1T9EuQDTeuYAK0abFF5YQ6BC",
+      "stripe_price_id": "",
       "auto": ["transcription", "summary", "keypoints"],
       "includes": [
         "transcription",

@@ -133,7 +133,7 @@ Question légitime. Vous envoyez peut-être un enregistrement de consultation m�
 
 Avec ClearRecap, le fichier est traité puis supprimé. Automatiquement. Personne ne l'écoute. Personne ne le stocke. Le texte généré vous appartient — on n'en garde pas de copie.
 
-Pour ceux qui veulent aller encore plus loin, ClearRecap existe aussi en version locale : vous l'installez sur votre propre ordinateur, et le fichier ne quitte jamais votre machine. Zéro réseau, zéro cloud. Mais ça demande un ordinateur avec une carte graphique puissante et un peu de patience pour l'installation. Le [guide technique](/blog/deployer-clearrecap-docker-compose-guide) explique comment faire.
+Pour ceux qui veulent aller encore plus loin, ClearRecap existe aussi en version locale : vous l'installez sur votre propre ordinateur, et le fichier ne quitte jamais votre machine. Zéro réseau, zéro cloud. Mais ça demande un ordinateur avec une carte graphique puissante et un peu de patience pour l'installation.
 
 ## Combien ça coûte ?
 

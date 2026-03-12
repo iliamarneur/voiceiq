@@ -94,7 +94,7 @@ Le secret professionnel impose une architecture air-gap partielle. Les données 
 
 Chez ClearRecap, nous recommandons l'option 2 pour les cabinets de plus de 3 avocats. Le réseau local doit être segmenté (VLAN dédié pour la transcription), le trafic chiffré (TLS 1.3 entre les postes et le serveur), et l'accès au serveur restreint par authentification.
 
-Notre [guide de déploiement Docker Compose](/blog/deployer-clearrecap-docker-compose-guide) couvre la configuration réseau pour un cabinet. Un point technique important : le conteneur Docker ne doit exposer aucun port vers l'extérieur. L'écoute se fait uniquement sur l'interface réseau locale.
+La documentation de déploiement Docker Compose sur [clearrecap.com](https://clearrecap.com) couvre la configuration réseau pour un cabinet. Un point technique important : le conteneur Docker ne doit exposer aucun port vers l'extérieur. L'écoute se fait uniquement sur l'interface réseau locale.
 
 ## Le vocabulaire juridique : un défi spécifique
 
@@ -174,7 +174,7 @@ Dans tous les cas, le calcul économique est favorable face aux solutions cloud 
 
 Vous êtes avocat et vous voulez tester la transcription IA locale ce week-end ? Voici le parcours le plus direct.
 
-Dictez un mémo de 5 minutes sur votre téléphone — un résumé d'audience récente ou un compte rendu de rendez-vous client. Transférez le fichier audio sur votre ordinateur. Si vous avez un GPU NVIDIA, suivez notre [guide Docker Compose](/blog/deployer-clearrecap-docker-compose-guide) pour installer ClearRecap en 10 minutes. Sélectionnez le profil « juridique ». Soumettez votre fichier.
+Dictez un mémo de 5 minutes sur votre téléphone — un résumé d'audience récente ou un compte rendu de rendez-vous client. Transférez le fichier audio sur votre ordinateur. Si vous avez un GPU NVIDIA, installez [ClearRecap](https://clearrecap.com) via Docker Compose en 10 minutes. Sélectionnez le profil « juridique ». Soumettez votre fichier.
 
 Comparez le résultat avec ce que vous auriez rédigé manuellement. Vérifiez les termes juridiques, les références de jurisprudence si vous en avez mentionné, la structure du document.
 

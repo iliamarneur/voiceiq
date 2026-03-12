@@ -199,8 +199,6 @@ Si vous êtes DPO ou DSI et que vous évaluez des solutions de transcription, tr
 
 Notre [comparatif détaillé ClearRecap vs HappyScribe](/blog/clearrecap-vs-happyscribe-comparatif-2026) analyse les différences concrètes entre une architecture cloud et locale, avec les implications RGPD de chaque approche.
 
-Le guide technique [Déployer ClearRecap avec Docker Compose](/blog/deployer-clearrecap-docker-compose-guide) montre qu'un déploiement local ne signifie pas complexité — un `docker compose up` et vous transcrivez, sans que vos données ne quittent votre réseau.
-
 Notre [grille tarifaire](/pricing) reflète cette philosophie : pas d'abonnement par minute transcrite, pas de dépendance à un service externe. Vous achetez l'outil, il tourne chez vous.
 
 Et si votre contexte est médical, notre guide sur la [transcription médicale et les notes SOAP](/blog/transcription-medicale-note-soap-ia) traite spécifiquement des contraintes HDS et du secret médical appliqués à la transcription.

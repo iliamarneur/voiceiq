@@ -58,7 +58,7 @@ status: "draft"
 
 **Sept minutes.** C'est le temps moyen qu'un médecin généraliste français passe à rédiger le compte rendu d'une consultation de quinze minutes, selon une étude de la DREES publiée en 2024. Sept minutes de frappe, de correction, de reformulation — pour chaque patient. Sur une journée de 25 consultations, ça représente presque trois heures perdues à taper du texte.
 
-Quand un généraliste installé en Bretagne m'a décrit sa journée type lors d'un échange informel au salon HIT 2025, j'ai compris que la dictée vocale médecin local n'était pas un gadget. C'était une nécessité. Il dictait déjà ses comptes rendus sur son téléphone avec une application grand public. Les fichiers audio — contenant des noms de patients, des diagnostics, des traitements — partaient sur les serveurs de Google. Il le savait. Il n'avait juste pas d'alternative fonctionnelle.
+La dictée vocale médecin local n'est pas un gadget — c'est une nécessité. De nombreux médecins dictent déjà leurs comptes rendus sur leur téléphone avec des applications grand public. Les fichiers audio — contenant des noms de patients, des diagnostics, des traitements — partent sur les serveurs de Google ou Apple. Ils le savent. Ils n'ont juste pas d'alternative fonctionnelle.
 
 Ce guide explique comment mettre en place une dictée vocale médicale entièrement locale, du micro au dossier patient, sans qu'un seul octet de donnée de santé ne quitte votre cabinet ou votre établissement.
 
@@ -114,11 +114,11 @@ Budget total pour un serveur partagé 6 postes : entre 2 800 et 4 500 € selon 
 
 ### Pour un établissement de santé
 
-Les hôpitaux et cliniques disposent généralement d'une DSI et d'une infrastructure serveur. Le déploiement via Docker Compose s'intègre dans les workflows DevOps existants. Notre [guide de déploiement Docker](/blog/deployer-clearrecap-docker-compose-guide) couvre le cas d'un établissement multi-services avec gestion des droits par unité fonctionnelle.
+Les hôpitaux et cliniques disposent généralement d'une DSI et d'une infrastructure serveur. Le déploiement via Docker Compose s'intègre dans les workflows DevOps existants. La documentation de déploiement sur [clearrecap.com](https://clearrecap.com) couvre le cas d'un établissement multi-services avec gestion des droits par unité fonctionnelle.
 
 ## Le vocabulaire médical : le défi technique central
 
-J'ai passé quatre mois sur ce problème. Quatre mois à fine-tuner, tester, recommencer.
+Le vocabulaire médical est le défi technique central de la dictée vocale médicale.
 
 Le modèle Whisper large-v3 connaît le vocabulaire médical courant. Il transcrit correctement « hypertension artérielle », « diabète de type 2 », « paracétamol ». Mais dès qu'on sort du top 200 des pathologies et du top 100 des molécules, la qualité chute.
 
@@ -168,7 +168,7 @@ Avec un micro-cravate Rode Lavalier Go à 65 € placé à 20 cm de la bouche, l
 
 Le ratio signal/bruit est déterminant. Dans un cabinet médical, les sources de bruit sont nombreuses : climatisation, imprimante, bruits de couloir, voire le patient qui tousse. Un micro directionnel proche de la bouche élimine l'essentiel de ces parasites.
 
-Mon conseil concret : investissez 65 à 100 € dans un bon micro plutôt que 200 € dans un meilleur GPU. Le gain de qualité est supérieur.
+Conseil concret : investissez 65 à 100 € dans un bon micro plutôt que 200 € dans un meilleur GPU. Le gain de qualité est supérieur.
 
 Un stéthoscope électronique comme le Littmann CORE peut aussi servir de source audio pour la dictée d'auscultation — mais c'est un usage de niche que nous n'avons pas encore optimisé.
 
@@ -212,7 +212,7 @@ Pour un médecin qui veut tester la dictée vocale locale ce week-end, voici le 
 
 Vérifiez que votre ordinateur a un GPU NVIDIA avec au moins 6 Go de VRAM (tapez « nvidia-smi » dans un terminal pour vérifier). Installez Docker Desktop. Clonez le dépôt ClearRecap et lancez `docker compose up` avec le profil médical. Branchez un micro USB. Ouvrez votre navigateur sur localhost. Dictez votre premier compte rendu.
 
-Si tout se passe bien, vous aurez une note SOAP structurée en moins d'une minute. Si ça coince, notre [guide d'installation Docker](/blog/deployer-clearrecap-docker-compose-guide) couvre les erreurs courantes.
+Si tout se passe bien, vous aurez une note SOAP structurée en moins d'une minute. Si ça coince, la documentation sur [clearrecap.com](https://clearrecap.com) couvre les erreurs courantes.
 
 Le passage en production (utilisation quotidienne au cabinet) demande un peu plus de travail : configuration du dictionnaire médical personnalisé, choix du format d'export pour votre logiciel médical, mise en place des sauvegardes chiffrées. Comptez une demi-journée pour un praticien à l'aise avec l'informatique, une journée avec accompagnement pour les autres.
 
@@ -222,8 +222,8 @@ Le fine-tuning de Whisper sur du vocabulaire médical français est notre priori
 
 L'intégration avec les logiciels médicaux via leurs API natives (plutôt que le presse-papier) est en discussion avec plusieurs éditeurs. Le frein n'est pas technique — c'est contractuel et réglementaire. Chaque intégration nécessite une validation par l'éditeur du logiciel médical.
 
-La transcription ambiante — un micro dans la salle de consultation qui capte l'échange médecin-patient et produit automatiquement la note — est le Graal de la dictée médicale. Des acteurs américains comme Abridge et Nabla proposent déjà ce service. En local et en français, on n'y est pas encore. Mais les progrès en diarisation et en réduction de bruit nous rapprochent. Mon estimation : 12 à 18 mois avant une version locale fonctionnelle sur du français médical.
+La transcription ambiante — un micro dans la salle de consultation qui capte l'échange médecin-patient et produit automatiquement la note — est le Graal de la dictée médicale. Des acteurs américains comme Abridge et Nabla proposent déjà ce service. En local et en français, on n'y est pas encore. Mais les progrès en diarisation et en réduction de bruit nous rapprochent. Estimation : 12 à 18 mois avant une version locale fonctionnelle sur du français médical.
 
 ---
 
-*Pour approfondir la structuration SOAP automatique, consultez notre [guide des notes SOAP par IA](/blog/transcription-medicale-note-soap-ia). Les questions de conformité RGPD spécifiques aux données de santé sont couvertes dans notre [guide RGPD complet](/blog/transcription-audio-rgpd-guide-2026). Et pour les aspects techniques du déploiement, le [guide Docker Compose](/blog/deployer-clearrecap-docker-compose-guide) vous accompagne pas à pas.*
+*Pour approfondir la structuration SOAP automatique, consultez notre [guide des notes SOAP par IA](/blog/transcription-medicale-note-soap-ia). Les questions de conformité RGPD spécifiques aux données de santé sont couvertes dans notre [guide RGPD complet](/blog/transcription-audio-rgpd-guide-2026). Et pour les aspects techniques du déploiement, rendez-vous sur [clearrecap.com](https://clearrecap.com).*

@@ -104,7 +104,7 @@ Un fichier audio brut de consultation médicale entre dans la même catégorie. 
 
 Les modèles de transcription comme Whisper traitent l'audio de façon séquentielle. Le fichier audio complet doit être accessible au modèle pendant l'inférence. Si ce traitement s'effectue sur un serveur distant non certifié HDS, c'est une violation — même si la transcription résultante n'est jamais stockée.
 
-Quand j'ai commencé à travailler sur ClearRecap, cette nuance m'a frappé. Le traitement transitoire compte. Pas seulement le stockage. Un audio qui passe trois secondes sur un GPU cloud non certifié avant d'être effacé constitue quand même un hébergement de données de santé au sens du texte. L'ASIP Santé (devenue ANS — Agence du Numérique en Santé) l'a confirmé dans sa FAQ mise à jour en 2024.
+Cette nuance est souvent sous-estimée. Le traitement transitoire compte. Pas seulement le stockage. Un audio qui passe trois secondes sur un GPU cloud non certifié avant d'être effacé constitue quand même un hébergement de données de santé au sens du texte. L'ASIP Santé (devenue ANS — Agence du Numérique en Santé) l'a confirmé dans sa FAQ mise à jour en 2024.
 
 ## Le processus de certification HDS : anatomie d'un parcours
 
@@ -188,7 +188,7 @@ La bonne nouvelle : ce profil correspond à un PC de bureau standard vendu entre
 
 ### Le déploiement Docker simplifié
 
-Notre approche chez ClearRecap utilise Docker pour isoler le moteur de transcription du système hôte. Le [guide Docker Compose](/blog/deployer-clearrecap-docker-compose-guide) détaille la procédure, mais le principe tient en quelques lignes :
+Notre approche chez ClearRecap utilise Docker pour isoler le moteur de transcription du système hôte. La documentation sur [clearrecap.com](https://clearrecap.com) détaille la procédure, mais le principe tient en quelques lignes :
 
 ```yaml
 services:

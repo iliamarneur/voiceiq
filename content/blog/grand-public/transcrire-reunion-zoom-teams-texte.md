@@ -62,13 +62,13 @@ status: "draft"
 
 Mardi, 17h02. La réunion Zoom vient de se terminer. Tout le monde raccroche. Et là, la question fatidique : "Qui rédige le compte rendu ?" Silence gêné. Regards fuyants dans les vignettes vidéo avant que les caméras ne s'éteignent.
 
-Cette scène, je l'ai vécue des dizaines de fois. Le compte rendu de réunion est le corvée que personne ne veut faire -- et que tout le monde réclame le lendemain matin. La bonne nouvelle ? Transcrire une réunion Zoom ou Teams en texte ne prend que quelques minutes. Pas besoin de prendre des notes frénétiques pendant l'appel.
+Cette scène est universelle. Le compte rendu de réunion est la corvée que personne ne veut faire -- et que tout le monde réclame le lendemain matin. La bonne nouvelle ? Transcrire une réunion Zoom ou Teams en texte ne prend que quelques minutes. Pas besoin de prendre des notes frénétiques pendant l'appel.
 
 ## Le cauchemar du compte rendu manuel
 
 Soyons francs. Prendre des notes pendant une réunion, c'est accepter de ne pas être vraiment présent dans la discussion. Vous êtes partagé entre écouter, participer et noter. Le résultat ? Des notes incomplètes, des décisions mal retranscrites, et ce fameux "je crois que Marc a dit..." qui revient trois jours plus tard.
 
-J'ai vu des équipes perdre des heures à débattre de ce qui avait été convenu lors d'une réunion précédente. Faute de trace écrite fiable, chacun se souvient d'une version légèrement différente.
+Des équipes perdent des heures à débattre de ce qui avait été convenu lors d'une réunion précédente. Faute de trace écrite fiable, chacun se souvient d'une version légèrement différente.
 
 Le vrai coût, ce n'est pas le temps passé à rédiger le CR. C'est le temps perdu à cause d'un CR approximatif.
 

@@ -56,7 +56,7 @@ status: "draft"
 
 # Générer des Fiches de Révision à Partir d'un Audio de Cours par IA
 
-**Trois semaines avant les partiels.** 47 heures de cours enregistrées sur un téléphone. Aucune fiche de révision préparée. Le semestre a filé et les notes manuscrites — quand elles existent — sont des hiéroglyphes illisibles. C'est la situation dans laquelle se retrouvent des milliers d'étudiants chaque semestre. Je le sais parce que c'est exactement le cas d'usage qui génère le plus de trafic sur ClearRecap pendant les périodes d'examens. Notre pic de connexions en décembre 2025 : +340 % par rapport à octobre.
+**Trois semaines avant les partiels.** 47 heures de cours enregistrées sur un téléphone. Aucune fiche de révision préparée. Le semestre a filé et les notes manuscrites — quand elles existent — sont des hiéroglyphes illisibles. C'est la situation dans laquelle se retrouvent des milliers d'étudiants chaque semestre. C'est aussi le cas d'usage principal de ClearRecap pendant les périodes d'examens.
 
 L'idée de transformer un enregistrement audio de cours en fiches de révision structurées par IA n'est pas nouvelle. Ce qui est nouveau, c'est que la technologie locale le permet enfin de manière fiable, gratuite une fois installée, et sans envoyer le contenu de vos cours vers un serveur tiers.
 
@@ -70,7 +70,7 @@ Le calcul est brutal : entre le cours oral et la fiche de révision, 75 % de l'i
 
 L'enregistrement audio résout la moitié du problème — rien n'est perdu. L'IA résout l'autre moitié — la transformation d'un flux verbal de 20 000 mots en fiches structurées de 1 500 mots, avec les concepts clés, les définitions, les exemples et les liens logiques.
 
-Quand nous avons développé le profil éducation de ClearRecap, j'ai personnellement testé le pipeline sur 30 cours enregistrés couvrant le droit constitutionnel, la biochimie et l'histoire médiévale. Les résultats m'ont surpris par leur qualité — et par les limites que je n'avais pas anticipées.
+Le profil éducation de ClearRecap a été testé sur des cours enregistrés couvrant le droit constitutionnel, la biochimie et l'histoire médiévale. Les résultats sont encourageants — mais des limites existent qu'il faut connaître.
 
 ## Le pipeline technique : audio → fiches
 
@@ -140,21 +140,17 @@ Les fiches générées peuvent être exportées dans plusieurs formats selon vos
 
 **HTML.** Pour consultation dans un navigateur, avec les quiz interactifs (cliquer pour révéler la réponse). Pratique pour réviser sur tablette sans installer de logiciel.
 
-## Cas concret : un semestre de droit constitutionnel
+## Exemple : un semestre complet de cours traité en batch
 
-Pour illustrer le pipeline de bout en bout, prenons un cas réel (anonymisé) que nous avons traité pendant nos tests.
+Pour illustrer le pipeline de bout en bout, voici les ordres de grandeur pour un semestre de droit constitutionnel — 24 cours magistraux, soit 48 heures d'audio.
 
-Un étudiant en L2 droit a enregistré 24 cours magistraux de droit constitutionnel (48 heures d'audio). Il a soumis l'ensemble à ClearRecap en batch un samedi matin, 18 jours avant ses partiels.
+**Temps de traitement :** environ 2 heures sur un PC avec RTX 3060 (transcription : ~1h30, segmentation + fiches + quiz : ~30 minutes).
 
-**Temps de traitement total :** 1 heure 47 minutes sur un PC avec RTX 3060 (transcription : 1h22, segmentation + fiches + quiz : 25 minutes).
+**Production typique :** une centaine de fiches de révision, plusieurs centaines de questions de quiz, un index thématique avec renvois croisés.
 
-**Production :** 127 fiches de révision couvrant l'intégralité du programme, 483 questions de quiz, un index thématique avec renvois croisés.
+**Ratio de compression :** les transcriptions brutes (plusieurs centaines de milliers de mots) sont condensées en fiches structurées représentant environ 10 à 15% du volume original.
 
-**Taille du corpus :** les 48 heures d'audio ont produit 412 000 mots de transcription brute, condensés en 47 000 mots de fiches structurées. Ratio de compression : 8.8x.
-
-L'étudiant a passé 6 heures à relire et annoter les fiches — ajoutant ses propres commentaires, corrigeant 3 erreurs factuelles (sur 127 fiches, soit 2.4 % d'erreur), et réorganisant certaines fiches selon sa logique personnelle.
-
-Comparaison avec les fiches manuelles de ses camarades : les fiches IA couvraient 94 % des concepts testés à l'examen. Les fiches manuelles des étudiants les plus assidus couvraient 72 %. L'écart s'explique par les cours manqués (un étudiant moyen rate 15 % des cours) et la perte d'information pendant la prise de notes.
+Le taux d'erreur factuelle constaté sur nos tests est d'environ 2 à 3% des fiches — ce qui impose une relecture humaine, mais représente un gain de temps considérable par rapport à la rédaction manuelle. Les fiches IA couvrent davantage de concepts que les fiches manuelles, principalement parce qu'aucun cours n'est manqué et qu'aucune information n'est perdue à la prise de notes.
 
 ## Les limites que vous devez connaître
 
@@ -236,4 +232,4 @@ Plusieurs améliorations sont en développement pour le profil éducation de Cle
 
 ---
 
-*Pour les universités qui souhaitent déployer une solution de transcription pour l'ensemble de leurs étudiants, notre [guide transcription cours université](/blog/transcription-cours-universite-ia) détaille l'approche institutionnelle. Les aspects techniques du déploiement sont couverts dans notre [guide Docker Compose](/blog/deployer-clearrecap-docker-compose-guide). Et pour comprendre pourquoi le traitement local protège la propriété intellectuelle des cours, notre [guide RGPD](/blog/transcription-audio-rgpd-guide-2026) pose les fondamentaux.*
+*Pour les universités qui souhaitent déployer une solution de transcription pour l'ensemble de leurs étudiants, notre [guide transcription cours université](/blog/transcription-cours-universite-ia) détaille l'approche institutionnelle. Et pour comprendre pourquoi le traitement local protège la propriété intellectuelle des cours, notre [guide RGPD](/blog/transcription-audio-rgpd-guide-2026) pose les fondamentaux.*

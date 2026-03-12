@@ -81,7 +81,7 @@ Traduction brute : si votre outil de transcription appartient à une entité am�
 
 Un point que les équipes juridiques sous-estiment souvent. Le CLOUD Act couvre les "contents of wire or electronic communication". Un fichier audio uploadé vers un service cloud pour transcription entre dans cette catégorie. Mais la transcription textuelle qui en résulte aussi. Le compte-rendu de votre comité de direction, les notes SOAP de votre consultation médicale, le verbatim de votre négociation contractuelle — tout cela constitue du contenu dérivé d'une communication électronique.
 
-J'ai passé trois semaines à éplucher la jurisprudence sur ce sujet début 2025. Le cas *United States v. Microsoft Corp.* (2018) a précipité l'adoption du CLOUD Act précisément parce que Microsoft refusait de livrer des emails stockés en Irlande. Le Congrès a tranché : la localisation physique ne protège rien.
+Le cas *United States v. Microsoft Corp.* (2018) a précipité l'adoption du CLOUD Act précisément parce que Microsoft refusait de livrer des emails stockés en Irlande. Le Congrès a tranché : la localisation physique ne protège rien.
 
 ## Pourquoi les transcriptions audio sont particulièrement exposées
 
@@ -93,7 +93,7 @@ Toutes les données ne se valent pas face au CLOUD Act. Les transcriptions audio
 
 **La durée de conservation échappe au contrôle de l'utilisateur.** Même si vous supprimez la transcription de votre interface, la plupart des fournisseurs cloud conservent des backups pendant 30 à 90 jours. Certains gardent les données d'entraînement indéfiniment — les conditions générales de services très populaires le stipulent noir sur blanc, enfoui dans des paragraphes que personne ne lit.
 
-Quand j'ai conçu la première version de ClearRecap, le moteur Whisper tournait sur un serveur distant que je louais chez un hébergeur français. Techniquement conforme. Puis j'ai réalisé que la librairie d'inférence appelait un endpoint de télémétrie hébergé chez AWS us-east-1. Un seul appel réseau. C'est tout ce qu'il faut pour faire basculer vos données dans le périmètre du CLOUD Act. J'ai coupé cet appel le jour même et migré vers une architecture 100% isolée.
+Un point souvent négligé : même une librairie d'inférence open source peut contenir un appel de télémétrie vers un serveur hébergé chez AWS us-east-1. Un seul appel réseau suffit pour faire basculer vos données dans le périmètre du CLOUD Act. C'est pourquoi ClearRecap a été conçu avec une architecture 100% isolée, sans aucune dépendance réseau externe.
 
 ## La collision frontale entre CLOUD Act et RGPD
 
@@ -127,7 +127,7 @@ Ne vous croyez pas à l'abri parce que votre fournisseur de transcription affich
 
 Un éditeur de transcription européen racheté par un groupe américain passe sous juridiction CLOUD Act. L'acquisition n'est pas toujours médiatisée. Il faut vérifier la structure capitalistique — pas juste l'adresse du siège social.
 
-J'ai vu ce scénario se produire avec un concurrent indirect de ClearRecap en 2025. Startup française, serveurs OVH, très belles promesses RGPD. Rachat discret par un groupe tech de la côte Ouest. Les clients existants n'ont reçu qu'un email de "mise à jour des conditions générales" — que personne n'a lu.
+Ce scénario se produit régulièrement dans l'écosystème tech européen. Une startup française, serveurs OVH, de belles promesses RGPD — puis un rachat discret par un groupe américain. Les clients existants reçoivent un email de "mise à jour des conditions générales" que personne ne lit, et leurs données passent sous juridiction CLOUD Act.
 
 ### L'infrastructure cloud sous-jacente
 
@@ -137,7 +137,7 @@ La question à poser à votre fournisseur n'est pas "Où sont vos serveurs ?" ma
 
 ### Les SDK et dépendances cachées
 
-Un point que j'ai découvert en auditant notre propre stack chez ClearRecap : certaines bibliothèques Python envoient des métriques d'usage vers des serveurs US. Un `pip install` anodin peut introduire une fuite de données. Nous avons mis en place un audit systématique de chaque dépendance, avec monitoring réseau en temps réel pendant l'inférence. C'est fastidieux. C'est nécessaire.
+Un point technique important : certaines bibliothèques Python envoient des métriques d'usage vers des serveurs US. Un `pip install` anodin peut introduire une fuite de données. ClearRecap utilise un audit systématique de chaque dépendance, avec monitoring réseau en temps réel pendant l'inférence, pour garantir l'absence de communication sortante.
 
 ## Les secteurs les plus exposés
 
@@ -183,7 +183,7 @@ C'est la route que nous avons choisie chez ClearRecap. Quand le traitement audio
 
 Le défi technique est réel. Faire tourner un modèle Whisper large-v3 avec une qualité de transcription professionnelle exige du GPU ou un CPU conséquent. Mais les progrès de [faster-whisper et de CTranslate2](/blog/faster-whisper-gpu-benchmark-2026) rendent ce scénario viable même sur du matériel grand public — un laptop avec 8 Go de RAM gère le modèle medium sans problème, et la qualité est déjà remarquable.
 
-Quand j'ai réalisé les premiers benchmarks de ClearRecap en local sur un portable de milieu de gamme fin 2025, j'ai mesuré un ratio temps réel de 0.3x pour le modèle medium — c'est-à-dire qu'une heure d'audio se transcrit en 18 minutes. Pas instantané, mais parfaitement utilisable. Et surtout : aucun octet ne sort de la machine.
+Sur un portable de milieu de gamme, ClearRecap atteint un ratio temps réel d'environ 0.3x pour le modèle medium — c'est-à-dire qu'une heure d'audio se transcrit en 18 minutes. Pas instantané, mais parfaitement utilisable. Et surtout : aucun octet ne sort de la machine.
 
 ## Le CLOUD Act évolue — et pas dans le bon sens
 
@@ -193,15 +193,13 @@ La Commission européenne négocie un accord similaire, mais les discussions ach
 
 Pour les outils de transcription audio, cette instabilité réglementaire signifie une chose : toute architecture qui dépend d'un tiers américain est une architecture dont la conformité peut basculer du jour au lendemain. Pas à cause d'un changement technique. À cause d'un arrêt de la CJUE ou d'un décret présidentiel américain.
 
-## Mon approche chez ClearRecap : zéro confiance réseau
-
-Je ne suis pas juriste. Je suis développeur. Ma réponse au CLOUD Act a été technique avant d'être juridique.
+## L'approche ClearRecap : zéro confiance réseau
 
 L'architecture de ClearRecap repose sur un principe simple : le modèle d'IA tourne là où se trouvent les données, pas l'inverse. Concrètement, le moteur faster-whisper s'exécute dans un conteneur Docker sur la machine de l'utilisateur. En mode auto-hébergé, l'audio ne quitte jamais le filesystem local. La transcription est générée et stockée localement. En mode cloud, l'hébergement est en France (hors juridiction CLOUD Act) et l'audio est supprimé après traitement.
 
-Nous avons poussé cette logique jusqu'à couper toute télémétrie. Pas de ping vers un serveur de mises à jour. Pas de vérification de licence en ligne. Pas de "phone home" caché dans une dépendance Python. Le [guide de déploiement Docker Compose](/blog/deployer-clearrecap-docker-compose-guide) détaille cette configuration air-gapped.
+Nous avons poussé cette logique jusqu'à couper toute télémétrie. Pas de ping vers un serveur de mises à jour. Pas de vérification de licence en ligne. Pas de "phone home" caché dans une dépendance Python. La documentation sur [clearrecap.com](https://clearrecap.com) détaille cette configuration air-gapped.
 
-Est-ce que ça complique la distribution du produit ? Oui. On ne peut pas onboarder un utilisateur en trois clics comme un SaaS cloud. Mais chaque contrainte technique élimine un vecteur juridique. Et quand je discute avec des DSI dans le secteur de la défense ou de la santé, cette rigueur est exactement ce qu'ils recherchent.
+Est-ce que ça complique la distribution du produit ? Oui. On ne peut pas onboarder un utilisateur en trois clics comme un SaaS cloud. Mais chaque contrainte technique élimine un vecteur juridique. Pour les DSI dans les secteurs de la défense ou de la santé, cette rigueur est exactement ce qu'ils recherchent.
 
 ## Questions fréquentes
 

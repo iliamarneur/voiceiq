@@ -184,7 +184,7 @@ La CNIL a publié en 2025 des recommandations sur les systèmes d'IA. Voici comm
 
 Le serveur exécutant le modèle d'IA ne devrait avoir aucune connexion réseau sortante. Si le modèle Whisper tourne sur un serveur dédié, configurez le pare-feu pour bloquer tout trafic sortant. Le serveur reçoit les fichiers audio du réseau interne, produit les transcriptions, et c'est tout. Aucun "phoning home", aucune mise à jour automatique du modèle, aucun envoi de télémétrie.
 
-Quand on a conçu l'architecture de [ClearRecap en Docker Compose](/blog/deployer-clearrecap-docker-compose-guide), cette isolation était un principe fondateur. Le conteneur Docker n'a pas accès à Internet. Les modèles sont embarqués dans l'image. Les mises à jour se font par remplacement de l'image, de manière contrôlée.
+Quand on a conçu l'architecture de ClearRecap en Docker Compose, cette isolation était un principe fondateur. Le conteneur Docker n'a pas accès à Internet. Les modèles sont embarqués dans l'image. Les mises à jour se font par remplacement de l'image, de manière contrôlée.
 
 ### Chiffrement des données au repos
 
@@ -284,4 +284,4 @@ Justifier la base légale choisie.
 
 Le local n'est pas une baguette magique. Mais c'est la posture technique la plus défendable devant une autorité de contrôle. Quand la CNIL demande "où vont les données ?", répondre "nulle part, elles ne quittent pas notre serveur" simplifie considérablement l'échange.
 
-[ClearRecap](https://clearrecap.com) a été conçu pour rendre cette architecture accessible sans compétence DevOps. Déploiement en quelques minutes, traitement 100 % local, suppression automatique des fichiers source. Pour les DPO qui cherchent une solution prête à auditer, c'est un point de départ solide. Pour ceux qui préfèrent construire leur propre stack, notre guide [Docker Compose](/blog/deployer-clearrecap-docker-compose-guide) détaille l'architecture technique.
+[ClearRecap](https://clearrecap.com) a été conçu pour rendre cette architecture accessible sans compétence DevOps. Déploiement en quelques minutes, traitement 100 % local, suppression automatique des fichiers source. Pour les DPO qui cherchent une solution prête à auditer, c'est un point de départ solide.

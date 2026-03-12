@@ -62,9 +62,9 @@ status: "draft"
 
 # API de Transcription Locale avec FastAPI et Whisper
 
-J'ai construit ma première API de transcription locale un dimanche de novembre 2024. Cinquante-trois lignes de Python. Un endpoint `/transcribe`. Un modèle Whisper tiny. Le résultat était médiocre — mais l'audio n'avait pas quitté ma machine, et cette sensation a tout changé.
+Construire une API de transcription locale, ça commence avec quelques dizaines de lignes de Python. Un endpoint `/transcribe`. Un modèle Whisper tiny. Le résultat est médiocre — mais l'audio ne quitte jamais la machine. C'est le point de départ.
 
-Deux ans plus tard, le moteur de transcription qui propulse [ClearRecap](https://clearrecap.com) est passé de ce prototype bancal à une API de transcription locale FastAPI + faster-whisper capable de traiter des fichiers d'une heure en moins de quatre minutes sur GPU. Le code que je partage dans cet article reprend les fondations de cette architecture, dépouillées du spécifique métier, prêtes à être déployées.
+Le moteur de transcription de [ClearRecap](https://clearrecap.com) repose sur cette architecture FastAPI + faster-whisper, capable de traiter des fichiers d'une heure en moins de quatre minutes sur GPU. Le code partagé dans cet article reprend ces fondations, dépouillées du spécifique métier, prêtes à être déployées.
 
 Vous allez construire une API de transcription locale complète : upload audio, transcription via faster-whisper, réponse JSON structurée avec timestamps, le tout conteneurisé dans Docker avec support GPU. Pas de cloud. Pas de clé API externe. Pas de données qui s'échappent.
 
@@ -124,7 +124,7 @@ whisper-api/
 
 ### Configuration — `app/config.py`
 
-La configuration centralise les paramètres ajustables sans toucher au code. J'ai appris cette leçon à la dure : la première version de ClearRecap avait le nom du modèle Whisper codé en dur dans trois fichiers différents. Changer de modèle exigeait de modifier trois fichiers et de reconstruire l'image Docker. Plus jamais.
+La configuration centralise les paramètres ajustables sans toucher au code. Un piège classique : coder en dur le nom du modèle Whisper dans plusieurs fichiers. Changer de modèle exige alors de modifier chaque fichier et de reconstruire l'image Docker. La centralisation évite cette erreur.
 
 ```python
 from pydantic_settings import BaseSettings
@@ -191,7 +191,7 @@ class ErrorResponse(BaseModel):
     detail: Optional[str] = None
 ```
 
-Les champs `avg_logprob` et `no_speech_prob` ne sont pas décoratifs. Ils permettent au client de filtrer les segments de faible confiance. Chez ClearRecap, tout segment avec un `avg_logprob < -1.0` déclenche un marquage visuel "à vérifier" dans l'interface. Ce seuil, je l'ai calibré sur environ 500 heures de transcriptions françaises — il attrape les passages bruités ou les mots mal reconnus dans 85% des cas.
+Les champs `avg_logprob` et `no_speech_prob` ne sont pas décoratifs. Ils permettent au client de filtrer les segments de faible confiance. Chez ClearRecap, tout segment avec un `avg_logprob < -1.0` déclenche un marquage visuel "à vérifier" dans l'interface. Ce seuil attrape la majorité des passages bruités ou des mots mal reconnus.
 
 ### Le moteur de transcription — `app/transcriber.py`
 
@@ -310,7 +310,7 @@ Quelques choix qui méritent justification.
 
 **Le VAD filter.** `vad_filter=True` active le filtre Voice Activity Detection de Silero, intégré dans faster-whisper. Ce filtre découpe l'audio en segments de parole avant de les envoyer au modèle Whisper. Le gain est double : les silences et bruits de fond ne sont pas transcrits (moins d'hallucinations), et le traitement est plus rapide parce que seules les portions contenant de la parole sont traitées. Sur un enregistrement de réunion d'une heure avec 15 minutes de silence cumulé, le VAD filter réduit le temps de traitement de 20-25%.
 
-**Le `beam_size=5`.** C'est la valeur par défaut de Whisper. Monter à 10 améliore marginalement la précision sur les passages ambigus mais double le temps d'inférence. Descendre à 1 (greedy search) accélère le traitement de 40% mais introduit des erreurs sur les mots rares. J'ai testé les trois configurations sur un corpus de 100 heures de français et le beam_size=5 reste le sweet spot.
+**Le `beam_size=5`.** C'est la valeur par défaut de Whisper. Monter à 10 améliore marginalement la précision sur les passages ambigus mais double le temps d'inférence. Descendre à 1 (greedy search) accélère le traitement de 40% mais introduit des erreurs sur les mots rares. Sur des corpus de français varié, le beam_size=5 reste le sweet spot.
 
 **Le singleton.** Le modèle Whisper consomme entre 1 et 6 Go de VRAM selon la taille choisie. Le charger à chaque requête serait catastrophique. Le pattern singleton garantit un seul chargement au démarrage du serveur.
 
@@ -475,7 +475,7 @@ Plusieurs points méritent attention.
 
 **Le sémaphore.** Un GPU ne peut traiter qu'une inférence à la fois efficacement (la parallélisation de batch sur Whisper est limitée). Le sémaphore à 2 autorise au maximum deux transcriptions simultanées — une sur GPU, une en attente immédiate. Au-delà, les requêtes reçoivent un HTTP 503 plutôt que de s'empiler et de consommer de la mémoire.
 
-J'ai vécu le scénario sans sémaphore en production. Un client envoyait 15 fichiers en parallèle via un script bash. L'OOM killer de Linux a abattu le process. Plus d'API pour personne. Le sémaphore a été ajouté le lendemain.
+Sans sémaphore, un utilisateur qui envoie 15 fichiers en parallèle via un script peut provoquer un crash OOM — le système tente de charger toutes les inférences simultanément et le processus est tué. Le sémaphore empêche ce scénario.
 
 **Le `run_in_executor`.** L'inférence Whisper est une opération CPU/GPU-bound qui bloque le thread Python pendant toute sa durée. Sans `run_in_executor`, FastAPI ne pourrait pas répondre au endpoint `/health` pendant qu'une transcription tourne. Le thread pool délègue l'inférence à un thread secondaire et libère l'event loop asyncio.
 
@@ -591,7 +591,7 @@ Le volume `whisper-models` persiste le modèle téléchargé entre les redémarr
 
 ### Variante CPU-only
 
-Pour un [déploiement sans GPU](/blog/deployer-clearrecap-docker-compose-guide), remplacez l'image de base :
+Pour un déploiement sans GPU, remplacez l'image de base :
 
 ```dockerfile
 FROM python:3.11-slim
@@ -679,7 +679,7 @@ Le timeout de 600 secondes (10 minutes) n'est pas excessif. Un fichier d'une heu
 
 ## Optimisations pour la production
 
-Le code ci-dessus fonctionne. Mais entre "ça marche" et "ça tient la charge", il y a un fossé que j'ai comblé itération après itération chez ClearRecap.
+Le code ci-dessus fonctionne. Mais entre "ça marche" et "ça tient la charge", il y a un fossé. Voici les optimisations clés pour un usage en production.
 
 ### Gestion de la file d'attente avec Redis
 
@@ -742,7 +742,7 @@ Chez ClearRecap, le streaming a réduit le "temps perçu" de transcription de 60
 
 ### Monitoring mémoire GPU
 
-Le piège classique avec faster-whisper : la VRAM se fragmente après plusieurs heures d'utilisation intensive. Un monitoring basique mais salvateur :
+Le piège classique avec faster-whisper : la VRAM se fragmente après plusieurs heures d'utilisation intensive. Un monitoring basique permet de détecter ce problème :
 
 ```python
 @app.get("/gpu-stats")
@@ -761,7 +761,7 @@ async def gpu_stats():
     return {"gpu": "non disponible"}
 ```
 
-Quand `vram_cached_mb` dépasse 90% de `vram_total_mb`, un redémarrage du conteneur libère proprement la mémoire. J'ai automatisé cette vérification avec un cron qui appelle l'endpoint toutes les 5 minutes et relance le conteneur si le seuil est franchi.
+Quand `vram_cached_mb` dépasse 90% de `vram_total_mb`, un redémarrage du conteneur libère proprement la mémoire. Un cron qui appelle l'endpoint toutes les 5 minutes et relance le conteneur si le seuil est franchi automatise cette surveillance.
 
 ## Sécurisation pour un réseau local
 
@@ -805,7 +805,7 @@ Le `127.0.0.1` dans le mapping de port empêche tout accès depuis d'autres mach
 
 ## Performances réelles : mes mesures
 
-Voici les chiffres que j'ai mesurés sur la configuration de développement de ClearRecap (RTX 5090 Laptop 24 Go VRAM, mais les ratios sont transposables) :
+Voici les chiffres mesurés sur une configuration de développement ClearRecap (RTX 5090 Laptop 24 Go VRAM, mais les ratios sont transposables à d'autres GPU) :
 
 | Modèle | GPU float16 | GPU int8 | CPU int8 (12 threads) |
 |--------|-------------|----------|----------------------|
@@ -818,9 +818,9 @@ Le ratio représente le temps de traitement par rapport à la durée audio. 0.09
 
 Le modèle `medium` en français atteint un WER (Word Error Rate) de 8-12% sur des enregistrements de qualité correcte (micro-cravate, salle calme). Le `large-v3` descend à 5-8%. Pour des enregistrements bruités (réunion en open space, visioconférence avec connexion médiocre), le WER grimpe à 15-25% quel que soit le modèle.
 
-## Pièges que j'ai rencontrés
+## Pièges courants
 
-**Le format audio compte plus qu'on ne croit.** Un fichier WAV 16kHz mono produit les meilleurs résultats et le traitement le plus rapide. Un MP3 128kbps ajoute du bruit de compression que Whisper interprète parfois comme de la parole. faster-whisper utilise ffmpeg en interne pour décoder, mais la conversion ajoute 1-3 secondes par fichier. Préférez WAV ou FLAC en entrée.
+**Le format audio compte.** Un fichier WAV 16kHz mono produit les meilleurs résultats et le traitement le plus rapide. Un MP3 128kbps ajoute du bruit de compression que Whisper interprète parfois comme de la parole. faster-whisper utilise ffmpeg en interne pour décoder, mais la conversion ajoute 1-3 secondes par fichier. Préférez WAV ou FLAC en entrée.
 
 **Les hallucinations sur le silence.** Whisper a une tendance connue à "halluciner" du texte sur les passages silencieux — générer des phrases qui n'existent pas dans l'audio. Le VAD filter règle 90% du problème. Pour les 10% restants, le champ `no_speech_prob` dans la réponse permet de filtrer côté client (seuil recommandé : 0.6).
 
@@ -835,6 +835,6 @@ Cette API couvre le cas de base : upload, transcription, réponse structurée. P
 - Interface web frontend avec upload drag-and-drop et affichage temps réel des segments
 - Batch processing pour les dossiers de fichiers audio
 
-Le code de cet article est un point de départ fonctionnel. J'ai construit ClearRecap sur ces mêmes fondations — en ajoutant couche par couche les fonctionnalités spécifiques métier. La beauté d'une API locale, c'est que chaque ajout reste sous votre contrôle. Pas de limite de rate, pas de coût par minute, pas de données qui traversent un océan.
+Le code de cet article est un point de départ fonctionnel. ClearRecap est construit sur ces mêmes fondations, avec des fonctionnalités métier ajoutées par-dessus. La beauté d'une API locale : chaque ajout reste sous votre contrôle. Pas de limite de rate, pas de coût par minute, pas de données qui traversent un océan.
 
 Votre audio, votre machine, votre API. Le reste n'est que du code.

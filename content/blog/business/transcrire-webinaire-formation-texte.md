@@ -127,7 +127,7 @@ Pour un webinaire, vous aurez généralement deux à quatre locuteurs : le prés
 
 La diarisation, c'est l'étape qui transforme un flux de texte monolithique en conversation structurée. Sans elle, impossible de savoir qui a dit quoi. Avec, vous obtenez un verbatim exploitable.
 
-Un détail que j'ai découvert à l'usage : les passages où le formateur partage son écran et commente des slides sont souvent les plus mal transcrits, parce que la voix porte moins quand on regarde ailleurs que la caméra. Si vous produisez régulièrement des formations, investir dans un micro directionnel type Rode NT-USB Mini fait une différence mesurable — on passe de 94 % à 98 % de précision sur ces passages.
+Un point à connaître : les passages où le formateur partage son écran et commente des slides sont souvent les plus mal transcrits, parce que la voix porte moins quand on regarde ailleurs que la caméra. Si vous produisez régulièrement des formations, investir dans un micro directionnel type Rode NT-USB Mini fait une différence mesurable — on passe de 94 % à 98 % de précision sur ces passages.
 
 ### Étape 3 : Structurer le contenu
 
@@ -182,7 +182,7 @@ Les sous-titres automatiques de YouTube ou Zoom sont conçus pour la lecture en 
 
 ### Attention à la confidentialité des formations internes
 
-Une formation sur la stratégie commerciale 2027, transcrite via un service cloud, signifie que votre roadmap est passée par les serveurs d'un tiers. Je recommande systématiquement le [traitement local](/blog/deployer-clearrecap-docker-compose-guide) pour les formations internes. Ce n'est pas de la paranoïa — c'est de la gouvernance des données.
+Une formation sur la stratégie commerciale 2027, transcrite via un service cloud, signifie que votre roadmap est passée par les serveurs d'un tiers. Je recommande systématiquement le traitement local pour les formations internes. Ce n'est pas de la paranoïa — c'est de la gouvernance des données.
 
 ### Ne pas publier la transcription brute
 

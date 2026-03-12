@@ -56,9 +56,9 @@ status: "published"
 
 # Transcription de Cours : Quiz et Fiches de Révision par IA
 
-**72 heures de cours magistraux par semestre.** C'est la moyenne en L2 de droit à Paris-Saclay. J'ai un ami qui enseigne là-bas. En janvier dernier, il m'a envoyé un message à 23h : « Mes étudiants enregistrent tout avec leurs téléphones, mais personne ne réécoute jamais. C'est du stockage mort. »
+**72 heures de cours magistraux par semestre.** C'est la moyenne en L2 de droit dans une grande université française. Les étudiants enregistrent tout avec leurs téléphones, mais personne ne réécoute jamais. C'est du stockage mort.
 
-Ce message m'a hanté pendant des semaines — parce qu'il décrivait exactement le problème que je tentais de résoudre avec ClearRecap depuis le prototype de 2024.
+Ce paradoxe est exactement le problème que ClearRecap résout : transformer des heures d'enregistrements inutilisés en contenu exploitable.
 
 ## Le paradoxe de l'enregistrement : tout capturer, rien exploiter
 
@@ -68,9 +68,9 @@ Le souci n'a jamais été technique. Transcrire un cours université, n'importe 
 
 Envoyer tout ça sur un serveur américain ? Avec le [RGPD qui s'applique strictement aux établissements publics](/blog/transcription-audio-rgpd-guide-2026), c'est un risque que de plus en plus de DSI universitaires refusent de prendre.
 
-## Ce que j'ai appris en testant la transcription sur 14 cours réels
+## Ce que les tests révèlent sur la transcription de cours
 
-Quand on a commencé à développer le module éducation de ClearRecap, j'ai demandé à trois enseignants volontaires de me fournir des enregistrements. Quatorze cours au total, répartis entre droit constitutionnel, biochimie et histoire contemporaine.
+Lors du développement du module éducation de ClearRecap, des tests ont été conduits sur des enregistrements de cours universitaires variés — droit constitutionnel, biochimie, histoire contemporaine.
 
 Premier constat brutal : **la qualité audio en amphithéâtre est catastrophique.** Écho, brouhaha, micro-cravate qui frotte sur la chemise. Le modèle Whisper large-v3 gère ça correctement en mode standard, mais les résultats chutent dès que le professeur s'éloigne du micro. On a mesuré un WER (Word Error Rate) de 8,2% en conditions idéales contre 23,7% quand l'enseignant se promène dans la salle.
 
@@ -90,11 +90,11 @@ Prenons un cours de biochimie de 88 minutes. La transcription brute donne 11 400
 
 ## Générer des fiches de révision qui ne ressemblent pas à du copier-coller
 
-Un truc m'agace profondément dans les outils de résumé IA actuels. Ils produisent des fiches qui sont des versions raccourcies du cours. Condensé, certes, mais structurellement identique. Or une bonne fiche de révision ne résume pas — elle **réorganise**.
+Un problème récurrent dans les outils de résumé IA actuels. Ils produisent des fiches qui sont des versions raccourcies du cours. Condensé, certes, mais structurellement identique. Or une bonne fiche de révision ne résume pas — elle **réorganise**.
 
-Quand j'ai passé mon concours d'ingénieur, mes meilleures fiches suivaient toujours le même schéma : un concept central, trois liens avec d'autres concepts, un exemple concret, un piège courant. Jamais dans l'ordre du cours.
+Une bonne fiche de révision suit un schéma éprouvé : un concept central, trois liens avec d'autres concepts, un exemple concret, un piège courant. Jamais dans l'ordre du cours.
 
-C'est cette logique qu'on a câblée dans le générateur de fiches de ClearRecap :
+C'est cette logique qui est câblée dans le générateur de fiches de ClearRecap :
 
 ```
 Concept : [Titre]
@@ -121,15 +121,15 @@ Le LLM local reçoit la fiche et un prompt structuré. Pour chaque concept, il p
 - 1 question ouverte courte
 - 1 affirmation vrai/faux avec justification
 
-Le point technique délicat : les distracteurs dans les QCM. Un mauvais distracteur (trop évidemment faux) rend le quiz inutile. Un bon distracteur teste la compréhension fine. On a dû itérer sur le prompt pendant deux semaines pour obtenir des distracteurs crédibles. La version actuelle utilise une technique de « perturbation sémantique » — le LLM modifie un élément factuel du concept pour créer une option plausible mais incorrecte.
+Le point technique délicat : les distracteurs dans les QCM. Un mauvais distracteur (trop évidemment faux) rend le quiz inutile. Un bon distracteur teste la compréhension fine. L'obtention de distracteurs crédibles a nécessité de nombreuses itérations sur le prompt. La version actuelle utilise une technique de « perturbation sémantique » — le LLM modifie un élément factuel du concept pour créer une option plausible mais incorrecte.
 
 Résultat mesuré sur 200 QCM générés à partir de cours de L2 : **84% des questions ont été jugées « pertinentes » ou « très pertinentes »** par un panel de 8 enseignants. Les 16% restants souffraient principalement de formulations ambiguës — un problème qu'on continue d'adresser.
 
 ## Pourquoi le traitement local change la donne pour les universités
 
-Je discutais avec un DPO (Délégué à la Protection des Données) d'une université du Grand Est en février. Sa question était directe : « Est-ce que les enregistrements de cours quittent notre réseau ? »
+La question que posent les DPO (Délégués à la Protection des Données) universitaires est toujours la même : « Est-ce que les enregistrements de cours quittent notre réseau ? »
 
-Avec ClearRecap, la réponse est non. Et ce n'est pas juste un argument marketing — c'est une contrainte architecturale. Le modèle Whisper tourne sur le GPU du serveur de l'université. Le LLM de segmentation et de génération de fiches tourne sur le même serveur. Aucun appel API externe.
+Avec ClearRecap en mode auto-hébergé, la réponse est non. Ce n'est pas un argument marketing — c'est une contrainte architecturale. Le modèle Whisper tourne sur le GPU du serveur de l'université. Le LLM de segmentation et de génération de fiches tourne sur le même serveur. Aucun appel API externe.
 
 Pour un établissement public soumis au RGPD et aux recommandations de la CNIL sur l'IA dans l'éducation (avis du 8 janvier 2025), c'est la différence entre un projet qui passe en comité de sécurité et un projet qui reste bloqué 18 mois.
 
@@ -148,15 +148,13 @@ Coût total serveur : entre 3 500 et 5 000 EUR. Pour une université qui transcr
 
 Le calcul est vite fait. Et encore, on ne compte pas le coût immatériel d'une fuite de données étudiantes.
 
-## Retour terrain : le cas d'un département de langues
+## Un cas d'usage sous-estimé : les cours en langue étrangère
 
-Un département de langues étrangères d'une université francilienne (je ne citerai pas le nom, accord de confidentialité oblige) a testé notre pipeline sur un cas d'usage que je n'avais pas anticipé : **la transcription de cours donnés en langue étrangère pour aider les étudiants non-natifs**.
+Un usage particulièrement intéressant : **la transcription de cours donnés en langue étrangère pour aider les étudiants non-natifs**.
 
 Un cours de civilisation britannique donné intégralement en anglais. Les étudiants français de L1 perdent 30 à 40% du contenu à cause de la barrière linguistique. La transcription automatique leur donne accès au texte, qu'ils peuvent ensuite traduire ou annoter.
 
-Whisper est nativement multilingue — il gère l'anglais avec un WER de 4,2% en conditions correctes (micro-cravate, salle calme). Le quiz généré ensuite peut mélanger questions en anglais et en français, ce qui renforce l'apprentissage de la langue cible.
-
-Ce cas m'a ouvert les yeux sur un usage que je n'avais pas prévu lors de la conception. C'est souvent comme ça que les meilleurs produits évoluent — pas depuis la roadmap, mais depuis le terrain.
+Whisper est nativement multilingue — il gère l'anglais avec un WER de 4 à 5% en conditions correctes (micro-cravate, salle calme). Le quiz généré ensuite peut mélanger questions en anglais et en français, ce qui renforce l'apprentissage de la langue cible.
 
 ## Mise en place technique : de l'enregistrement au quiz en 4 étapes
 
@@ -164,7 +162,7 @@ Concrètement, voici le workflow qu'on recommande. Il ne demande aucune compéte
 
 **Étape 1 — Capturer l'audio.** Un smartphone avec l'application d'enregistrement native suffit. Format WAV ou M4A de préférence (meilleure qualité que le MP3 pour la transcription). Positionnement du téléphone : à moins de 2 mètres du locuteur, sur une surface dure (pas sur un coussin qui absorbe les vibrations).
 
-**Étape 2 — Transférer vers ClearRecap.** Upload via l'interface web locale (navigateur) ou dépôt dans un dossier partagé si l'instance est [déployée sur le réseau de l'université via Docker](/blog/deployer-clearrecap-docker-compose-guide).
+**Étape 2 — Transférer vers ClearRecap.** Upload via l'interface web locale (navigateur) ou dépôt dans un dossier partagé si l'instance est déployée sur le réseau de l'université via Docker.
 
 **Étape 3 — Transcription + segmentation.** ClearRecap traite l'audio, produit la transcription, segmente en concepts, génère les fiches. Temps moyen : 12 minutes pour 1 heure de cours sur un RTX 4090.
 
@@ -176,11 +174,11 @@ Les quiz exportent en format Moodle XML, compatible avec la quasi-totalité des 
 
 Une crainte revient systématiquement : « Si les étudiants ont accès à la transcription complète, ils ne viendront plus en cours. »
 
-J'ai un point de vue qui va peut-être froisser. Si un cours peut être intégralement remplacé par sa transcription, alors ce cours est une lecture à voix haute — pas un enseignement. Les meilleurs cours que j'ai suivis dans ma vie avaient une dimension interactive, des démonstrations au tableau, des échanges spontanés qu'aucune transcription ne capture vraiment.
+Un point de vue qui mérite d'être posé. Si un cours peut être intégralement remplacé par sa transcription, alors ce cours est une lecture à voix haute — pas un enseignement. Les meilleurs cours que j'ai suivis dans ma vie avaient une dimension interactive, des démonstrations au tableau, des échanges spontanés qu'aucune transcription ne capture vraiment.
 
 La transcription ne remplace pas la présence. Elle la **prolonge**. L'étudiant qui a compris le concept en amphi le consolide en relisant la fiche. Celui qui a décroché pendant 10 minutes récupère le fil. Celui qui prépare un examen a un matériau structuré plutôt qu'un fichier audio de 6 heures qu'il ne réécoutera jamais.
 
-D'ailleurs, les données préliminaires de notre test (60 étudiants sur un semestre) montrent une corrélation intéressante : les étudiants qui utilisent les fiches générées ont un taux de présence **supérieur** de 12% à ceux qui ne les utilisent pas. Mon hypothèse : quand tu vois la richesse de ce que tu as manqué, tu as davantage envie d'être là la prochaine fois.
+La littérature en sciences de l'éducation suggère que les outils de prise de notes structurée augmentent l'engagement des étudiants. Quand un étudiant voit la richesse du contenu qu'il a manqué, il est davantage motivé à assister au cours suivant.
 
 ## Les limites qu'on ne cache pas
 
@@ -210,7 +208,7 @@ On n'y est pas encore dans ClearRecap — je préfère être transparent. La tra
 
 Ce qui est réaliste aujourd'hui : un traitement post-cours avec un délai de 15 à 30 minutes. L'étudiant sort de l'amphi, prend un café, et quand il ouvre son ordinateur, les fiches et quiz sont prêts.
 
-Pour les établissements qui veulent expérimenter, [notre guide de déploiement Docker](/blog/deployer-clearrecap-docker-compose-guide) couvre l'installation complète avec configuration GPU. Et pour ceux qui s'inquiètent de la conformité RGPD, [notre guide dédié](/blog/transcription-audio-rgpd-guide-2026) détaille les obligations spécifiques au secteur éducatif.
+Pour ceux qui s'inquiètent de la conformité RGPD, [notre guide dédié](/blog/transcription-audio-rgpd-guide-2026) détaille les obligations spécifiques au secteur éducatif.
 
 ## Première étape concrète
 

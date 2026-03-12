@@ -193,7 +193,7 @@ encryption:
   algorithm: AES-256-GCM
 ```
 
-Le déploiement complet prend environ 15 minutes sur une machine neuve. Notre [guide Docker Compose](/blog/deployer-clearrecap-docker-compose-guide) détaille la procédure pas à pas, y compris pour les établissements qui veulent déployer sur un serveur local partagé entre plusieurs praticiens.
+Le déploiement complet prend environ 15 minutes sur une machine neuve, y compris pour les établissements qui veulent déployer sur un serveur local partagé entre plusieurs praticiens.
 
 ## L'avenir de la transcription consultation : ce qui change en 2026-2027
 

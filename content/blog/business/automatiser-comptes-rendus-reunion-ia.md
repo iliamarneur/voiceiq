@@ -186,7 +186,7 @@ Dans l'industrie pharmaceutique, l'aérospatiale, la finance, certaines décisio
 
 ## Le setup technique en 10 minutes
 
-L'installation de ClearRecap pour un usage "réunions" est identique à l'installation standard. Le [guide Docker Compose](/blog/deployer-clearrecap-docker-compose-guide) couvre la procédure complète. Voici les spécificités pour le profil réunion :
+L'installation de ClearRecap pour un usage "réunions" est identique à l'installation standard — consultez [clearrecap.com](https://clearrecap.com) pour la procédure complète. Voici les spécificités pour le profil réunion :
 
 ```yaml
 profile: business

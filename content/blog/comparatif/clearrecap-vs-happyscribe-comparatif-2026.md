@@ -139,7 +139,7 @@ Le point de bascule est clair. Au-delà de 20h/mois, l'investissement matériel 
 | Coût mensuel | sur devis (~500+ EUR) | ~40 EUR (électricité) |
 | Coût annuel | ~6 000+ EUR | ~480 EUR + serveur (~5 000 EUR amorti sur 4 ans) |
 
-À ce volume, le cloud n'est plus compétitif. Et l'université peut [déployer via Docker](/blog/deployer-clearrecap-docker-compose-guide) sur son infrastructure existante.
+À ce volume, le cloud n'est plus compétitif. Et l'université peut déployer via Docker sur son infrastructure existante.
 
 ## Fonctionnalités : qui fait quoi
 

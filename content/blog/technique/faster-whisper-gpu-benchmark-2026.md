@@ -64,9 +64,9 @@ status: "draft"
 
 "Un GPU, ça change quoi ?" La question revient chaque semaine dans les issues GitHub de faster-whisper. La réponse courte : tout. La réponse longue occupe cet article, avec des chiffres mesurés sur du matériel réel, pas extrapolés d'une fiche technique.
 
-J'ai passé trois jours complets à benchmarker faster-whisper sur cinq configurations matérielles différentes. L'objectif : donner aux développeurs et aux décideurs techniques les données concrètes pour choisir leur hardware de transcription. Pas de "ça dépend" sans métriques. Des tableaux, des graphiques mentaux, des conclusions opérationnelles.
+Cet article présente un benchmark complet de faster-whisper sur cinq configurations matérielles différentes. L'objectif : donner aux développeurs et aux décideurs techniques les données concrètes pour choisir leur hardware de transcription. Pas de "ça dépend" sans métriques. Des tableaux, des conclusions opérationnelles.
 
-Je suis Ilia Moui, fondateur de [ClearRecap](https://clearrecap.com). Notre plateforme de transcription locale tourne exclusivement sur faster-whisper. Le choix du hardware pour nos utilisateurs n'est pas académique — c'est la différence entre une transcription qui prend 3 minutes et une qui prend 45 minutes pour le même fichier d'une heure.
+[ClearRecap](https://clearrecap.com) tourne exclusivement sur faster-whisper. Le choix du hardware pour les utilisateurs n'est pas académique — c'est la différence entre une transcription qui prend 3 minutes et une qui prend 45 minutes pour le même fichier d'une heure.
 
 ## Le protocole de benchmark
 
@@ -96,7 +96,7 @@ Tous les fichiers sont en WAV 16kHz mono (format optimal pour Whisper). Les fich
 | G2 | Ryzen 9 5900X | RTX 3080 10 Go | 64 Go | 10 Go | GPU performant |
 | G3 | i9-13900K | RTX 4090 24 Go | 64 Go | 24 Go | Haut de gamme |
 
-J'ai aussi testé sur ma machine de développement principale (RTX 5090 Laptop 24 Go), mais les résultats de la 5090 ne sont pas représentatifs du marché actuel — peu de gens disposent de cette carte en mars 2026.
+Des tests sur RTX 5090 Laptop 24 Go ont aussi été réalisés, mais les résultats ne sont pas représentatifs du marché actuel — peu de gens disposent de cette carte en mars 2026.
 
 ### Paramètres faster-whisper
 
@@ -146,7 +146,7 @@ C'est le vrai test d'endurance. Les fichiers longs révèlent les problèmes de 
 
 *OOM : Out of Memory. Le i5-12400F avec 32 Go de RAM n'a pas réussi à charger le modèle large-v3 en float32. En int8, ça passe mais avec 2h+ de traitement.
 
-Un point qui m'a surpris lors de mes premiers benchmarks pour ClearRecap : le scaling n'est pas linéaire avec la durée du fichier. Le fichier de 60 minutes ne prend pas exactement 6x le temps du fichier de 10 minutes. C'est souvent un peu moins, grâce au VAD filter qui élimine proportionnellement plus de silence sur les fichiers longs (les pauses entre interventions, les questions du public).
+Un point notable : le scaling n'est pas linéaire avec la durée du fichier. Le fichier de 60 minutes ne prend pas exactement 6x le temps du fichier de 10 minutes. C'est souvent un peu moins, grâce au VAD filter qui élimine proportionnellement plus de silence sur les fichiers longs (les pauses entre interventions, les questions du public).
 
 ## Consommation VRAM : le goulot d'étranglement
 
@@ -170,11 +170,11 @@ Traduction pratique :
 - **GTX 1660 6 Go** : medium en float16 maximum. Large-v3 impossible sauf en int8 (3.1 Go + overhead = trop juste).
 - **RTX 4090 24 Go** : tout passe sans réfléchir, même en float32.
 
-### Mon erreur de débutant
+### Erreur classique : choisir le plus gros modèle par défaut
 
-Quand j'ai commencé à développer ClearRecap, j'ai choisi le modèle large-v3 par défaut — "le plus gros, le meilleur". Trois semaines plus tard, 40% de nos testeurs rapportaient des crashs. Le problème : beaucoup avaient des GPU avec 6 ou 8 Go de VRAM. Le modèle large-v3 en float16 ne passait pas.
+Le réflexe "le plus gros, le meilleur" est trompeur. Le modèle large-v3 en float16 ne passe pas sur les GPU avec 6 ou 8 Go de VRAM, ce qui provoque des crashs OOM. Mais réduire au modèle medium par défaut déçoit les utilisateurs qui ont le hardware suffisant.
 
-La solution n'était pas évidente. Réduire au modèle medium par défaut a provoqué une levée de boucliers : "la qualité a baissé !". Finalement, j'ai implémenté une détection automatique de la VRAM disponible au démarrage, avec un fallback intelligent :
+La solution : une détection automatique de la VRAM disponible au démarrage, avec un fallback intelligent :
 
 ```python
 import torch
@@ -241,13 +241,13 @@ Avant d'envoyer l'audio à Whisper, le filtre VAD analyse le signal et identifie
 
 Le gain avec le VAD par défaut est de 22%. En mode agressif, 35%. Mais attention : le mode agressif coupe parfois le début des phrases courtes qui suivent immédiatement un silence bref. J'ai mesuré une perte de 2-3% des segments courts (< 2 secondes) avec les paramètres agressifs.
 
-Pour ClearRecap, on utilise un juste milieu : `min_silence_duration_ms=500, speech_pad_ms=200`. C'est le sweet spot que j'ai trouvé après avoir testé sur plus de 300 fichiers audio de profils variés — réunions, dictées, cours magistraux, appels téléphoniques.
+Pour ClearRecap, on utilise un juste milieu : `min_silence_duration_ms=500, speech_pad_ms=200`. C'est le sweet spot identifié après des tests sur des profils variés — réunions, dictées, cours magistraux, appels téléphoniques.
 
 ### VAD vs pas de VAD : le cas des hallucinations
 
 Au-delà de la performance, le VAD règle un problème de qualité majeur. Whisper, sans VAD, a tendance à "halluciner" du texte sur les passages silencieux. J'ai documenté des cas où un silence de 30 secondes dans un enregistrement générait un paragraphe entier de texte inventé — souvent des phrases génériques du type "Merci de votre attention" ou "N'hésitez pas à poser vos questions".
 
-Avec le VAD activé, ce phénomène disparait presque totalement. Les segments de silence ne sont jamais envoyés à Whisper, donc aucune hallucination possible sur ces passages.
+Avec le VAD activé, ce phénomène disparaît presque totalement. Les segments de silence ne sont jamais envoyés à Whisper, donc aucune hallucination possible sur ces passages.
 
 ## Comparaison faster-whisper vs openai-whisper
 
@@ -298,7 +298,7 @@ Pour les déploiements à grande échelle, l'[API locale FastAPI + Whisper](/blo
 
 ## Les pièges du benchmark
 
-Quelques erreurs que j'ai commises et que je vois régulièrement dans les benchmarks publiés en ligne.
+Quelques erreurs fréquentes dans les benchmarks publiés en ligne.
 
 ### Piège 1 : mesurer le chargement du modèle
 
@@ -328,7 +328,7 @@ segments, info = model.transcribe(audio)
 all_segments = list(segments)  # <-- consume tout le générateur
 ```
 
-J'ai vu cette erreur dans au moins trois articles de blog "benchmark Whisper" publiés en 2025. Leurs chiffres de performance étaient 5x trop optimistes.
+Cette erreur se retrouve dans de nombreux articles de blog "benchmark Whisper". Leurs chiffres de performance étaient 5x trop optimistes.
 
 ## L'avenir : ce qui va changer les benchmarks
 
@@ -349,13 +349,13 @@ Le compromis est intéressant pour les cas où la vitesse prime sur la précisio
 
 Les versions récentes de CTranslate2 tirent parti des améliorations de CUDA 12 — notamment les Flash Attention kernels et les optimisations mémoire. Sur les GPU Ada Lovelace (série 40xx) et Blackwell (série 50xx), le gain par rapport à CUDA 11 est de 10-15% sur l'inférence Whisper.
 
-Si vous êtes encore sur CUDA 11, la mise à jour vers CUDA 12.1+ est un gain gratuit. L'[article sur le déploiement Docker](/blog/deployer-clearrecap-docker-compose-guide) utilise CUDA 12.1 comme base.
+Si vous êtes encore sur CUDA 11, la mise à jour vers CUDA 12.1+ est un gain gratuit.
 
 ### Les CPU avec NPU
 
 Les processeurs Intel Meteor Lake et AMD Ryzen AI intègrent un NPU (Neural Processing Unit) dédié à l'inférence IA. En théorie, ces NPU pourraient accélérer Whisper sans carte GPU dédiée. En pratique, en mars 2026, le support de CTranslate2 pour les NPU Intel/AMD n'existe pas encore. Le OpenVINO d'Intel offre une alternative, mais avec une implémentation différente de faster-whisper qui ne bénéficie pas de toutes les optimisations CTranslate2.
 
-Je surveille ce front de près chez ClearRecap. Le jour où faster-whisper supportera les NPU Intel, la transcription locale de qualité deviendra accessible sur n'importe quel laptop sans GPU dédié. Ce sera un tournant pour la [souveraineté des données audio](/blog/transcription-audio-rgpd-guide-2026).
+C'est un front à surveiller. Le jour où faster-whisper supportera les NPU Intel, la transcription locale de qualité deviendra accessible sur n'importe quel laptop sans GPU dédié. Ce sera un tournant pour la [souveraineté des données audio](/blog/transcription-audio-rgpd-guide-2026).
 
 ## Méthodologie de reproduction
 

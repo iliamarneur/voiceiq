@@ -61,7 +61,7 @@ status: "draft"
 
 # ClearRecap vs Otter.ai : Pourquoi le Local Change Tout
 
-J'utilise Otter.ai depuis 2022. Ou plutôt, je l'utilisais. L'outil m'a convaincu qu'il existait un marché massif pour la transcription automatique de réunions. Et il m'a convaincu qu'il fallait construire une alternative locale. Pas par idéologie. Par nécessité technique et juridique.
+Otter.ai est l'un des outils de transcription cloud les plus populaires au monde. Il a prouvé qu'il existait un marché massif pour la transcription automatique de réunions. Mais il a aussi révélé les limites du modèle cloud pour les professionnels européens : nécessité technique et juridique d'une alternative locale.
 
 Cet article compare ClearRecap et Otter.ai point par point. Je suis le fondateur de ClearRecap — ce biais est transparent et assumé. Mais les faits techniques, les tarifs et les conditions juridiques que je cite sont vérifiables. Mon objectif n'est pas de démonter Otter.ai, qui reste un produit solide pour l'anglais et le marché américain. C'est de montrer pourquoi une alternative Otter.ai locale répond mieux aux besoins des professionnels européens.
 
@@ -103,7 +103,7 @@ ClearRecap prend le contre-pied total. Le moteur de transcription (faster-whispe
 
 Le prix de cette architecture : une installation plus technique et un matériel local suffisant. Le gain : une confidentialité que le cloud ne peut structurellement pas offrir.
 
-J'ai conçu cette architecture après avoir utilisé Otter.ai pendant un an pour mes propres réunions. Un jour, en relisant les conditions d'utilisation, j'ai réalisé que toutes mes discussions stratégiques — plans produit, retours investisseurs, négociations partenaires — étaient stockées sur des serveurs que je ne contrôlais pas, dans un pays dont la législation me permettait d'en perdre le contrôle à tout moment. J'ai arrêté Otter.ai ce jour-là.
+Cette architecture répond à une réalité juridique : quand des discussions stratégiques — plans produit, négociations partenaires, données RH — sont stockées sur des serveurs étrangers, l'entreprise perd le contrôle sur qui peut y accéder. Le CLOUD Act et l'absence de cadre stable UE-USA rendent cette exposition inacceptable pour beaucoup d'organisations.
 
 ## Précision de transcription : le match langue par langue
 
@@ -119,7 +119,7 @@ Si votre usage est exclusivement anglophone et que la confidentialité n'est pas
 
 Le français est le point faible d'Otter.ai. La plateforme supporte le français depuis 2023, mais la qualité reste en retrait significatif par rapport à l'anglais.
 
-J'ai réalisé un test comparatif en janvier 2026 sur cinq fichiers audio en français (50 minutes totales, conditions variées). Voici les résultats bruts :
+Voici un comparatif sur cinq fichiers audio en français (50 minutes totales, conditions variées) :
 
 | Fichier | ClearRecap (large-v3) | Otter.ai (Pro) |
 |---------|----------------------|----------------|
@@ -226,7 +226,7 @@ L'honnêteté impose de mentionner le coût que les tableaux ne montrent pas. In
 
 Otter.ai se configure en 5 minutes. Créer un compte. Installer l'extension. Rejoindre une réunion. C'est fait.
 
-Ce différentiel d'onboarding est réel. Je ne le minimise pas. C'est la raison pour laquelle le [guide Docker Compose de ClearRecap](/blog/deployer-clearrecap-docker-compose-guide) existe — réduire cette friction autant que possible.
+Ce différentiel d'onboarding est réel. Je ne le minimise pas. C'est la raison pour laquelle [ClearRecap](https://clearrecap.com) fournit une documentation d'installation détaillée — réduire cette friction autant que possible.
 
 ## Cas d'usage : qui devrait choisir quoi
 
@@ -274,7 +274,7 @@ Pour ceux qui veulent faire la transition, voici les étapes pratiques.
 
 **Étape 1 : Exporter vos données Otter.ai.** Otter.ai permet l'export des transcriptions en TXT, SRT, et DOCX. Faites un export complet avant de résilier — une fois le compte supprimé, les données sont perdues (ou pas, justement, c'est tout le problème).
 
-**Étape 2 : Installer ClearRecap.** Suivez le [guide Docker Compose](/blog/deployer-clearrecap-docker-compose-guide). 30 minutes si Docker est déjà installé.
+**Étape 2 : Installer ClearRecap.** Suivez les instructions d'installation sur [clearrecap.com](https://clearrecap.com). 30 minutes si Docker est déjà installé.
 
 **Étape 3 : Configurer la capture audio.** Pour les visioconférences, utilisez la fonction d'enregistrement native de Zoom/Teams/Meet, puis soumettez le fichier audio à ClearRecap. Pour les réunions en présentiel, un dictaphone ou un micro USB suffit.
 

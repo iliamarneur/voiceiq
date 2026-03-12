@@ -63,7 +63,7 @@ status: "draft"
 
 La transcription, c'est la moitié du travail. Transformer un fichier audio en texte brut, Whisper le fait très bien. Mais 9 000 mots de verbatim d'une réunion d'une heure, personne ne les lit. Ce qu'on veut, c'est un résumé en dix lignes, les actions à mener, les décisions prises, les questions restées ouvertes.
 
-C'est là qu'Ollama et Mistral entrent en jeu. Un LLM local qui analyse la transcription, la structure, en extrait l'essentiel — le tout sans qu'un seul octet ne quitte votre machine. J'ai passé des semaines à peaufiner ce pipeline pour ClearRecap, et ce guide partage tout ce que j'ai appris : les prompts qui marchent, les paramètres qui comptent, le code complet, et les benchmarks de performance réels.
+C'est là qu'Ollama et Mistral entrent en jeu. Un LLM local qui analyse la transcription, la structure, en extrait l'essentiel — le tout sans qu'un seul octet ne quitte votre machine. Ce pipeline a été développé pour ClearRecap, et ce guide partage tout ce qui en ressort : les prompts qui marchent, les paramètres qui comptent, le code complet, et les benchmarks de performance réels.
 
 ## Pourquoi Ollama + Mistral plutôt que GPT-4 via API
 
@@ -105,7 +105,7 @@ Environment="OLLAMA_HOST=0.0.0.0:11434"
 # OLLAMA_HOST = 0.0.0.0:11434
 ```
 
-Ce point est critique si vous déployez via [Docker Compose](/blog/deployer-clearrecap-docker-compose-guide). Sans cette configuration, le conteneur Docker ne peut pas atteindre Ollama sur l'hôte.
+Ce point est critique si vous déployez via Docker Compose. Sans cette configuration, le conteneur Docker ne peut pas atteindre Ollama sur l'hôte.
 
 ### Télécharger Mistral
 
@@ -145,7 +145,7 @@ Puis créez le modèle :
 ollama create mistral-transcript -f Modelfile
 ```
 
-La température à 0.3 est intentionnelle. Pour de l'analyse factuelle de transcription, vous voulez de la fidélité, pas de la créativité. Monter à 0.7+ introduit des hallucinations — le modèle "invente" des points qui n'étaient pas dans la transcription. J'ai fait cette erreur au début du développement de ClearRecap. Un résumé mentionnait une "décision unanime d'augmenter le budget marketing de 15 %" alors que la transcription disait "on devrait peut-être revoir le budget". Le passage de 0.7 à 0.3 a éliminé ce type de dérive.
+La température à 0.3 est intentionnelle. Pour de l'analyse factuelle de transcription, vous voulez de la fidélité, pas de la créativité. Monter à 0.7+ introduit des hallucinations — le modèle "invente" des points qui n'étaient pas dans la transcription. À une température de 0.7, un résumé peut mentionner une "décision unanime d'augmenter le budget marketing de 15 %" alors que la transcription disait seulement "on devrait peut-être revoir le budget". Le passage à 0.3 élimine ce type de dérive.
 
 ## L'API Ollama : les bases
 
@@ -196,7 +196,7 @@ print(response['message']['content'])
 
 ## Les prompts qui marchent : résumé, actions, décisions
 
-Après des centaines d'itérations sur le prompt engineering pour ClearRecap, certaines structures de prompt se sont révélées nettement supérieures aux autres. Les voici, avec les raisons techniques de leur efficacité.
+Après de nombreuses itérations sur le prompt engineering, certaines structures de prompt se sont révélées nettement supérieures aux autres. Les voici, avec les raisons techniques de leur efficacité.
 
 ### Prompt de résumé structuré
 
@@ -292,7 +292,7 @@ Le chapitrage nécessite que la transcription contienne des timestamps. Whisper 
 
 ## Le pipeline complet en Python
 
-Voici le code de production que j'utilise. Pas un exemple simplifié — le vrai code, avec gestion des erreurs, découpage pour les textes longs, et agrégation des résultats.
+Voici un code de production complet. Pas un exemple simplifié — un vrai pipeline avec gestion des erreurs, découpage pour les textes longs, et agrégation des résultats.
 
 ```python
 import ollama
@@ -468,7 +468,7 @@ if __name__ == '__main__':
 
 ## Benchmarks : performances réelles
 
-J'ai mesuré les performances sur un corpus de 50 transcriptions de réunions réelles (durées de 15 minutes à 3 heures), sur trois configurations matérielles.
+Voici les performances mesurées sur un corpus de 50 transcriptions de réunions (durées de 15 minutes à 3 heures), sur trois configurations matérielles.
 
 ### Temps de traitement (résumé complet)
 
@@ -483,7 +483,7 @@ Le GPU fait une différence massive. Le passage CPU → GPU divise le temps de t
 
 ### Qualité des résumés
 
-J'ai fait évaluer les résumés par les participants des réunions originales (15 personnes, chacune évaluant 5 à 10 résumés). Critères : fidélité (le résumé reflète-t-il correctement la réunion ?), complétude (les points importants sont-ils tous présents ?), clarté (le résumé est-il lisible et bien structuré ?).
+Les résumés ont été évalués par des utilisateurs réels (évaluation de 5 à 10 résumés chacun). Critères : fidélité (le résumé reflète-t-il correctement la réunion ?), complétude (les points importants sont-ils tous présents ?), clarté (le résumé est-il lisible et bien structuré ?).
 
 | Modèle | Fidélité | Complétude | Clarté |
 |---|---|---|---|
@@ -568,7 +568,7 @@ Le flux technique :
 
 L'étape 4 tire parti du fait qu'Ollama peut traiter plusieurs requêtes en parallèle si la VRAM le permet. Sur une RTX 5090 avec 24 Go, trois instances de Mistral 7B tournent simultanément. Le temps total d'analyse passe de 3x à 1,2x le temps d'un seul appel.
 
-Pour les équipes qui veulent reproduire cette architecture, le [guide Docker Compose](/blog/deployer-clearrecap-docker-compose-guide) détaille la configuration réseau entre les conteneurs. Et pour les questions de conformité que pose l'analyse automatisée de transcriptions, le [guide DPO sur l'IA locale et le RGPD](/blog/rgpd-ia-locale-guide-dpo) couvre les aspects juridiques.
+Pour les questions de conformité que pose l'analyse automatisée de transcriptions, le [guide DPO sur l'IA locale et le RGPD](/blog/rgpd-ia-locale-guide-dpo) couvre les aspects juridiques.
 
 ## Ce que Mistral ne sait pas faire (et comment contourner)
 

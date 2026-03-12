@@ -66,7 +66,6 @@ Liens entrants par article (nombre de fois où un article est référencé depui
 | Article pilier | Liens entrants |
 |---------------|---------------|
 | transcription-audio-rgpd-guide-2026 | 34 |
-| deployer-clearrecap-docker-compose-guide | 30 |
 | transcription-medicale-note-soap-ia | 13 |
 | transcription-juridique-confidentielle | 11 |
 | automatiser-comptes-rendus-reunion-ia | 11 |

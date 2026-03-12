@@ -56,9 +56,7 @@ status: "draft"
 
 # Convertir un Enregistrement Vocal en Texte : 3 Méthodes
 
-Mon grand-père enregistrait tout. Anniversaires, repas de famille, histoires qu'il racontait le soir. Des dizaines de cassettes audio, puis des fichiers sur un dictaphone numérique Sony qu'il trimbalait partout. Quand il est parti, on s'est retrouvés avec 47 heures d'enregistrements. Et une question : comment transformer tout ça en quelque chose qu'on peut lire, chercher, partager ?
-
-C'est un cas extrême. Mais le besoin est universel. Vous avez un enregistrement vocal — sur votre téléphone, sur votre ordinateur, sur une clé USB — et vous voulez le transformer en texte. Trois méthodes existent. Chacune a ses forces et ses limites.
+Vous avez un enregistrement vocal — sur votre téléphone, sur votre ordinateur, sur une clé USB — et vous voulez le transformer en texte. Peut-être un cours universitaire, une réunion de travail, ou des heures d'archives familiales. Le besoin est universel. Trois méthodes existent. Chacune a ses forces et ses limites.
 
 ## Méthode 1 : tout taper soi-même
 
@@ -66,7 +64,7 @@ La méthode ancestrale. Vous appuyez sur « play », vous écoutez, vous tapez. 
 
 C'est gratuit. C'est précis (puisque c'est vous qui décidez de chaque mot). Et c'est atrocement long.
 
-Un transcripteur professionnel met environ 4 heures pour transcrire 1 heure d'audio. Un non-professionnel ? Comptez 6 à 8 heures. Pour un enregistrement de 20 minutes, c'est gérable. Pour une heure, c'est une demi-journée. Pour les 47 heures de mon grand-père ? Faites le calcul — on parle de 280 heures de travail. Six semaines et demie à temps plein.
+Un transcripteur professionnel met environ 4 heures pour transcrire 1 heure d'audio. Un non-professionnel ? Comptez 6 à 8 heures. Pour un enregistrement de 20 minutes, c'est gérable. Pour une heure, c'est une demi-journée. Pour 50 heures d'archives ? Faites le calcul — on parle de 300 heures de travail.
 
 Cela dit, il y a un avantage qu'on sous-estime. Quand vous tapez vous-même, vous **comprenez** le contenu en profondeur. Vous retenez les informations. Pour un étudiant qui transcrit un cours, le processus de frappe est en lui-même un acte d'apprentissage.
 
@@ -124,7 +122,7 @@ Plutôt qu'un long discours, voici comment trancher.
 
 ## Ce que la transcription automatique fait bien (et moins bien)
 
-Quelle que soit la méthode automatique choisie (en ligne ou locale), les résultats dépendent avant tout de la **qualité de votre enregistrement**. Voici ce que j'ai observé en développant ClearRecap et en testant des milliers de fichiers audio.
+Quelle que soit la méthode automatique choisie (en ligne ou locale), les résultats dépendent avant tout de la **qualité de votre enregistrement**. Voici les ordres de grandeur constatés dans le domaine.
 
 **Ça marche très bien quand :** une seule personne parle clairement, dans une pièce calme, avec un micro correct (même le micro du téléphone suffit s'il est proche). Taux de réussite : 95 à 98%.
 
@@ -134,11 +132,11 @@ Quelle que soit la méthode automatique choisie (en ligne ou locale), les résul
 
 **Ça marche mal quand :** enregistrement de très mauvaise qualité, vent fort, locuteur très loin du micro, fort accent combiné à un débit rapide. Taux de réussite : en dessous de 70%.
 
-Les chiffres que je donne viennent de nos tests internes. Ils varient selon les outils, les langues, et mille autres facteurs. Mais l'ordre de grandeur est fiable.
+Ces chiffres varient selon les outils, les langues, et mille autres facteurs. Mais l'ordre de grandeur est fiable.
 
 ### Le cas particulier du français
 
-Un détail que j'ai découvert en travaillant sur ClearRecap : les outils de transcription sont généralement meilleurs en anglais qu'en français. Normal — les modèles d'IA sont entraînés sur beaucoup plus de données anglophones.
+Un point à connaître : les outils de transcription sont généralement meilleurs en anglais qu'en français. Normal — les modèles d'IA sont entraînés sur beaucoup plus de données anglophones.
 
 La différence se réduit d'année en année. En 2024, l'écart était d'environ 3-4 points de pourcentage. En 2026, on est à moins de 1,5 point. Mais si vous transcrivez du français avec des termes techniques, des noms propres inhabituels, ou des expressions régionales, attendez-vous à quelques erreurs de plus qu'en anglais standard.
 
@@ -152,13 +150,11 @@ La différence se réduit d'année en année. En 2024, l'écart était d'environ
 
 Un truc que peu de gens savent : le format d'enregistrement compte. Si votre application vous laisse choisir, préférez WAV ou M4A plutôt que MP3 à faible débit. Un MP3 à 64 kbps perd des détails sonores qui facilitent la reconnaissance vocale. Un WAV garde tout. La différence de qualité de transcription peut atteindre 3 à 5 points.
 
-## Et les 47 heures de mon grand-père ?
+## Un cas d'usage souvent sous-estimé : les archives familiales
 
-On les a transcrites. Ça a pris un week-end de traitement sur mon ordinateur (pas le plus rapide du lot). Ma mère a pleuré en lisant certains passages — des histoires qu'elle avait oubliées, des voix de gens disparus transformées en mots sur une page.
+Des dizaines d'heures d'enregistrements familiaux — cassettes audio, fichiers de dictaphone, mémos vocaux — peuvent être transcrites en un week-end de traitement. Même avec un souffle de fond ou une qualité audio médiocre, les modèles modernes récupèrent 80 à 90% du texte de manière exploitable. Le reste peut être complété manuellement.
 
-La transcription n'était pas parfaite. Les cassettes des années 80 avaient un souffle constant, et le dictaphone numérique captait le bruit du moteur de la voiture quand mon grand-père enregistrait en conduisant (autre époque, autres habitudes). Mais 85% du texte était lisible sans correction. Le reste, ma mère l'a complété de mémoire.
-
-C'est peut-être le cas d'usage le plus personnel de la transcription audio. Pas le plus rentable, pas le plus technique. Mais celui qui m'a convaincu que cet outil méritait d'exister.
+C'est un cas d'usage personnel, pas le plus rentable. Mais c'est celui qui illustre le mieux pourquoi la transcription audio mérite d'exister : transformer des souvenirs audio en texte cherchable, partageable, préservé.
 
 ## Essayez maintenant
 

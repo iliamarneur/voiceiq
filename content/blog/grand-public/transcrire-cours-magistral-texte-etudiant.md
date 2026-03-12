@@ -62,7 +62,7 @@ status: "draft"
 
 L'amphi de droit constitutionnel, 8h30 du matin. Trois cents étudiants, un professeur qui parle vite, et vous qui essayez de noter en même temps que vous comprenez. Spoiler : les deux en même temps, ça ne marche pas vraiment.
 
-J'ai passé cinq ans à l'université. Cinq ans à griffonner des notes illisibles que je devais "remettre au propre le soir" -- ce que je ne faisais jamais. Si j'avais eu la possibilité de transcrire mes cours en texte automatiquement, mes résultats auraient probablement été très différents. Et mes nuits beaucoup plus longues.
+Cinq ans d'université à griffonner des notes illisibles, censées être "remises au propre le soir" — ce que personne ne fait jamais. La possibilité de transcrire automatiquement un cours en texte change profondément la donne pour les étudiants.
 
 Aujourd'hui, cette possibilité existe. Voici comment en profiter.
 
@@ -133,15 +133,13 @@ Ce travail de synthèse, fait à partir du texte complet, est infiniment plus ef
 
 **Vous constituez une bibliothèque de cours.** En fin de semestre, vous avez tous vos cours en texte, organisés, cherchables. Pas un tas de cahiers avec une écriture de plus en plus illisible au fil des semaines.
 
-## Cas concret : Léa en troisième année de médecine
+## Le scénario type : des heures d'enregistrements inexploités
 
-Léa m'a contacté en décembre dernier. Période de partiels. Elle avait dix-huit cours magistraux à réviser, certains de deux heures. "J'avais des notes pour les premiers cours du semestre. Pour les derniers, honnêtement, j'avais décroché."
+Période de partiels. Dix-huit cours magistraux à réviser, certains de deux heures. Des notes pour les premiers cours du semestre, mais pour les derniers, plus rien d'exploitable.
 
-Elle a retrouvé les enregistrements qu'elle faisait systématiquement sur son téléphone. En un week-end, elle a transcrit l'ensemble. "J'avais le texte mot pour mot de chaque cours. J'ai pu faire mes fiches pour les cours que j'avais mal suivis, exactement comme pour ceux où j'avais été attentive."
+C'est exactement le cas d'usage où la transcription automatique fait la différence. Retrouver les enregistrements sur son téléphone, les transcrire en un week-end, et disposer du texte mot pour mot de chaque cours — y compris ceux qu'on avait mal suivis.
 
-Son retour après les examens : "J'ai eu 14 en anatomie pathologique. C'est le cours où j'avais les pires notes. La transcription m'a sauvée."
-
-Je ne promets pas que ClearRecap vous fera gagner quatre points. Mais avoir le cours complet plutôt qu'une version tronquée, ça aide. Beaucoup.
+Avoir le cours complet plutôt qu'une version tronquée, ça change les révisions. Particulièrement pour les matières où l'on a décroché en cours de semestre.
 
 ## Questions fréquentes des étudiants
 

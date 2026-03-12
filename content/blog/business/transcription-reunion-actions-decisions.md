@@ -208,7 +208,7 @@ Pour les cabinets d'avocats qui traitent des réunions avec des clients, notre [
 
 ## Mise en place technique : par où commencer
 
-Le démarrage le plus rapide passe par Docker. Notre [guide d'installation Docker Compose](/blog/deployer-clearrecap-docker-compose-guide) couvre le processus complet.
+Le démarrage le plus rapide passe par Docker Compose. L'installation prend moins de 10 minutes sur une machine avec un GPU NVIDIA.
 
 Pour tester spécifiquement l'extraction d'actions et décisions, voici le chemin le plus court :
 

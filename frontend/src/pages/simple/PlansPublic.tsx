@@ -215,13 +215,13 @@ function PlansPublic() {
             ))}
           </div>
 
-          <a
-            href="mailto:contact@clearrecap.fr?subject=Demande de devis ClearRecap Entreprise"
+          <Link
+            to="/contact"
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-slate-900 rounded-xl text-sm font-semibold hover:bg-slate-100 transition-colors"
           >
             <Mail className="w-3.5 h-3.5" />
             Demander un devis
-          </a>
+          </Link>
         </div>
       </div>
     </motion.div>

@@ -37,7 +37,7 @@ const VARIANTS: Record<CTAVariant, {
     headline: '100% dans vos locaux — sur devis',
     subline: 'Installation on-premise, minutes illimitées, aucune donnée externe.',
     cta: 'Demander un devis',
-    link: 'mailto:contact@clearrecap.fr?subject=Demande de devis ClearRecap Entreprise',
+    link: '/contact',
     icon: ArrowRight,
     gradient: 'from-slate-800 to-slate-900',
   },

@@ -586,13 +586,13 @@ export default function AboutMarketing() {
                           <span>Toutes les fonctionnalités</span>
                         </div>
                       </div>
-                      <a
-                        href="mailto:contact@clearrecap.fr?subject=Demande de devis ClearRecap Entreprise"
-                        className="block py-3 rounded-xl font-semibold text-sm bg-white text-slate-900 hover:bg-slate-100 transition-colors"
+                      <Link
+                        to="/contact"
+                        className="block py-3 rounded-xl font-semibold text-sm bg-white text-slate-900 hover:bg-slate-100 transition-colors text-center"
                       >
                         <Mail className="w-4 h-4 inline mr-2 -mt-0.5" />
                         Demander un devis
-                      </a>
+                      </Link>
                       <Link
                         to="/calculateur-tco"
                         className="block py-3 mt-2 rounded-xl font-semibold text-sm text-center border border-white/20 text-white/80 hover:bg-white/10 transition-colors"
@@ -674,7 +674,7 @@ export default function AboutMarketing() {
                 <li><Link to="/conformite" className="hover:text-slate-600 transition-colors">Conformité</Link></li>
                 <li><Link to="/integrations" className="hover:text-slate-600 transition-colors">Intégrations</Link></li>
                 <li><Link to="/partenaires" className="hover:text-slate-600 transition-colors">Partenaires</Link></li>
-                <li><a href="mailto:contact@clearrecap.fr" className="hover:text-slate-600 transition-colors">Contact</a></li>
+                <li><Link to="/contact" className="hover:text-slate-600 transition-colors">Contact</Link></li>
               </ul>
             </div>
           </div>

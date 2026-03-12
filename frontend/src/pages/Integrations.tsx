@@ -212,9 +212,9 @@ export default function Integrations() {
             <Link to="/oneshot" className="px-6 py-3 rounded-xl bg-white text-indigo-700 font-semibold hover:bg-indigo-50 transition-colors">
               Essayer — 3 €
             </Link>
-            <a href="mailto:contact@clearrecap.fr" className="px-6 py-3 rounded-xl border-2 border-white/30 text-white font-semibold hover:bg-white/10 transition-colors">
+            <Link to="/contact" className="px-6 py-3 rounded-xl border-2 border-white/30 text-white font-semibold hover:bg-white/10 transition-colors">
               Nous contacter
-            </a>
+            </Link>
           </div>
         </div>
       </section>

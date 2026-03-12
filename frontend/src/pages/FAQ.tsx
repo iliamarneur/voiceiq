@@ -291,12 +291,12 @@ export default function FAQ() {
               <Zap className="w-4 h-4" />
               Essayer pour 3€
             </Link>
-            <a
-              href="mailto:contact@clearrecap.fr"
+            <Link
+              to="/contact"
               className="px-6 py-3 rounded-xl font-medium text-slate-600 border border-slate-300 hover:border-indigo-400 hover:text-indigo-600 transition-all"
             >
               Nous contacter
-            </a>
+            </Link>
           </div>
         </div>
       </section>

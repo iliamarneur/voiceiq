@@ -127,13 +127,13 @@ export default function GeoLanding(props: GeoLandingProps) {
               >
                 Essayer — 3 €
               </Link>
-              <a
-                href={`mailto:contact@clearrecap.fr?subject=Démonstration ${city}`}
+              <Link
+                to="/contact"
                 className="px-6 py-3 rounded-xl border-2 border-white/30 text-white font-semibold hover:bg-white/10 transition-colors inline-flex items-center gap-2"
               >
                 <Mail className="w-4 h-4" />
                 Demander une démo à {city}
-              </a>
+              </Link>
             </div>
           </motion.div>
         </div>

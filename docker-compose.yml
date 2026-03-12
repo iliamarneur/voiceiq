@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile.backend
     container_name: clearrecap-backend
     restart: unless-stopped
+    env_file:
+      - ./backend/.env
     environment:
       - OLLAMA_HOST=http://host.docker.internal:11434
       - OLLAMA_MODEL=llama3.2:latest

@@ -678,8 +678,13 @@ export default function AboutMarketing() {
               </ul>
             </div>
           </div>
-          <div className="border-t border-slate-100 pt-6 text-center text-xs text-slate-400">
-            ClearRecap — Transcription et analyse audio 100% locale. Aucune donnée envoyée à l'extérieur.
+          <div className="border-t border-slate-100 pt-6 flex flex-col items-center gap-2 text-xs text-slate-400">
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link to="/cgu" className="hover:text-slate-600 transition-colors">CGU</Link>
+              <Link to="/confidentialite" className="hover:text-slate-600 transition-colors">Politique de confidentialité</Link>
+              <Link to="/securite-donnees" className="hover:text-slate-600 transition-colors">Sécurité & Données</Link>
+            </div>
+            <p>ClearRecap — Transcription et analyse audio. Hébergement France. Audio supprimé après traitement.</p>
           </div>
         </div>
       </footer>

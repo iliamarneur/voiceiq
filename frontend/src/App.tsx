@@ -59,6 +59,10 @@ import GuideRGPDTranscription from './pages/GuideRGPDTranscription';
 import Integrations from './pages/Integrations';
 import Partners from './pages/Partners';
 import Compliance from './pages/Compliance';
+// Legal pages
+import CGU from './pages/CGU';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import SecurityData from './pages/SecurityData';
 // Geo landing pages
 import GeoParis from './pages/geo/Paris';
 import GeoLyon from './pages/geo/Lyon';
@@ -206,6 +210,11 @@ function App() {
           <Route path="integrations" element={<Integrations />} />
           <Route path="partenaires" element={<Partners />} />
           <Route path="conformite" element={<Compliance />} />
+
+          {/* Legal pages */}
+          <Route path="cgu" element={<CGU />} />
+          <Route path="confidentialite" element={<PrivacyPolicy />} />
+          <Route path="securite-donnees" element={<SecurityData />} />
 
           {/* Geo landing pages */}
           <Route path="transcription-paris-ile-de-france" element={<GeoParis />} />

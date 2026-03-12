@@ -100,7 +100,7 @@ On a écrit un [article détaillé sur la comparaison entre ClearRecap et HappyS
 
 Celle-ci est plus récente. Au lieu d'envoyer votre fichier sur internet, vous utilisez un logiciel installé sur votre ordinateur qui fait tout le travail en local. Le fichier ne quitte jamais votre machine.
 
-C'est la méthode que j'ai développée avec ClearRecap. Et je vais être transparent sur les avantages ET les inconvénients.
+C'est l'approche utilisée par ClearRecap en mode auto-hébergé. Voici les avantages et les inconvénients.
 
 **L'avantage principal** est la confidentialité totale. Votre enregistrement reste sur votre ordinateur. Pas de serveur, pas de cloud, pas de transfert de données. Pour les professions soumises au [secret professionnel ou au RGPD](/blog/transcription-audio-rgpd-guide-2026), c'est souvent la seule option acceptable.
 

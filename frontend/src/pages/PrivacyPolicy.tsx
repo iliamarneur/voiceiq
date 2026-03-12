@@ -98,7 +98,7 @@ export default function PrivacyPolicy() {
               <h3 className="text-lg font-medium text-slate-800 mt-6">2.5 Données techniques</h3>
               <ul className="list-disc list-inside text-slate-600 space-y-1 ml-2">
                 <li>Logs serveur (requêtes, erreurs)</li>
-                <li>Adresse IP (anonymisée après 30 jours)</li>
+                <li>Aucune adresse IP n'est stockée de manière persistante en base de données. Les logs serveur temporaires sont automatiquement recyclés.</li>
                 <li>Type de navigateur et système d'exploitation</li>
               </ul>
             </section>
@@ -192,7 +192,7 @@ export default function PrivacyPolicy() {
                     </tr>
                     <tr>
                       <td className="px-4 py-3 font-medium">ElevenLabs</td>
-                      <td className="px-4 py-3">Services vocaux (si applicable)</td>
+                      <td className="px-4 py-3">Transcription audio (fichier audio transmis pour traitement STT, selon la configuration du moteur) et services vocaux</td>
                       <td className="px-4 py-3">US</td>
                       <td className="px-4 py-3">DPA + SCC</td>
                     </tr>
@@ -217,9 +217,9 @@ export default function PrivacyPolicy() {
               </p>
               <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-4 mt-4">
                 <p className="text-sm text-indigo-800 font-medium">
-                  Point important : seul le texte des transcriptions peut être transmis à ces
-                  sous-traitants pour analyse. Les fichiers audio ne sont jamais envoyés hors de France
-                  et sont supprimés immédiatement après traitement local.
+                  Point important : selon le moteur de transcription configuré, l'audio peut être transmis
+                  à ElevenLabs pour la transcription (traitement STT). Le texte résultant peut être transmis
+                  à OpenAI pour analyse. L'audio est supprimé immédiatement après traitement.
                 </p>
               </div>
             </section>
@@ -251,7 +251,7 @@ export default function PrivacyPolicy() {
                     </tr>
                     <tr className="border-b border-slate-100">
                       <td className="px-4 py-3">Après suppression du compte</td>
-                      <td className="px-4 py-3">Effacement complet sous 30 jours</td>
+                      <td className="px-4 py-3">Effacement complet immédiat</td>
                     </tr>
                     <tr>
                       <td className="px-4 py-3">Logs techniques</td>

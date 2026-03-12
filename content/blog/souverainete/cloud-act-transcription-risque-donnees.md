@@ -65,7 +65,7 @@ Vos réunions stratégiques passent par un outil de transcription cloud. Le comp
 
 Le CLOUD Act (Clarifying Lawful Overseas Use of Data Act), adopté le 23 mars 2018 par le Congrès américain, autorise les autorités fédérales US à exiger l'accès aux données stockées par toute entreprise soumise à la juridiction américaine — y compris quand ces données se trouvent physiquement sur un serveur à Dublin, Francfort ou Paris. Quand votre outil de transcription audio dépend d'une infrastructure américaine, chaque mot prononcé lors de vos réunions tombe potentiellement sous cette juridiction extraterritoriale.
 
-Je m'appelle Ilia Moui, je développe [ClearRecap](https://clearrecap.com), une plateforme de transcription audio qui fonctionne exclusivement en local. Le sujet du CLOUD Act, je l'ai découvert non pas dans un cours de droit, mais quand un prospect dans le secteur défense m'a demandé : "Pouvez-vous garantir qu'aucun octet ne quitte notre réseau ?" La question a remodelé toute notre architecture.
+ClearRecap propose deux modes : un mode cloud hébergé en France (hors juridiction américaine) et un mode auto-hébergé où aucune donnée ne quitte l'infrastructure du client. Cette double approche répond directement aux enjeux soulevés par le CLOUD Act.
 
 ## Ce que dit vraiment le CLOUD Act sur vos données audio
 

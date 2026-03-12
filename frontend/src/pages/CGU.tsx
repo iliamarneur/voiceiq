@@ -76,7 +76,7 @@ export default function CGU() {
           <ul>
             <li><strong>Traitement audio one-shot</strong> : les fichiers audio sont traités en temps réel puis <strong>supprimés automatiquement et immédiatement</strong> après la transcription. Aucun fichier audio n'est conservé sur les serveurs de ClearRecap.</li>
             <li><strong>Hébergement des résultats textuels</strong> : les transcriptions et les résultats d'analyse IA sont stockés sur les serveurs de ClearRecap, hébergés en France (datacenter Hostinger, Paris).</li>
-            <li><strong>Recours à des prestataires IA externes</strong> : le texte issu de la transcription peut être envoyé à des prestataires tiers d'intelligence artificielle (notamment OpenAI et ElevenLabs) pour des traitements complémentaires (analyse, synthèse vocale). Seul le texte est transmis — jamais les fichiers audio bruts.</li>
+            <li><strong>Recours à des prestataires IA externes</strong> : selon le moteur de transcription configuré, l'audio peut être transmis à des prestataires tiers (ElevenLabs) pour la transcription. Le texte résultant peut être transmis à d'autres prestataires (OpenAI) pour analyse. L'audio est supprimé de nos serveurs immédiatement après traitement.</li>
           </ul>
           <h3>3.2 Mode auto-hébergé (on-premise)</h3>
           <p>En Mode auto-hébergé :</p>
@@ -106,7 +106,7 @@ export default function CGU() {
             <li>Les fichiers audio sont traités exclusivement pour les besoins de la transcription demandée par l'Utilisateur.</li>
             <li>Les fichiers audio sont <strong>supprimés automatiquement et intégralement</strong> dès la fin du traitement. Aucune copie, sauvegarde ou réplique n'est conservée.</li>
             <li>Les fichiers audio ne sont <strong>jamais utilisés pour l'entraînement, le fine-tuning ou l'amélioration</strong> de modèles d'intelligence artificielle, qu'ils soient propriétaires ou tiers.</li>
-            <li>Les fichiers audio ne sont <strong>jamais transmis</strong> à des prestataires tiers. Seul le texte résultant de la transcription peut être transmis (cf. article 7).</li>
+            <li>Selon le moteur de transcription configuré, les fichiers audio peuvent être transmis à des prestataires tiers (ElevenLabs) pour la transcription (cf. article 7). Le texte résultant peut également être transmis à d'autres prestataires (OpenAI) pour analyse. L'audio est supprimé immédiatement après traitement.</li>
           </ul>
 
           {/* ──────────────────────────────────────────── Article 6 */}
@@ -119,7 +119,7 @@ export default function CGU() {
           <p>Les données textuelles sont conservées :</p>
           <ul>
             <li><strong>Pendant toute la durée de vie du compte</strong> de l'Utilisateur ;</li>
-            <li>Pendant une période de <strong>30 jours calendaires</strong> suivant la suppression du compte, afin de permettre une éventuelle récupération. Au-delà de ce délai, les données sont supprimées définitivement.</li>
+            <li>En cas de suppression du compte, les données textuelles sont supprimées immédiatement et de manière irréversible.</li>
           </ul>
           <h3>6.3 Droit de suppression</h3>
           <p>
@@ -131,15 +131,16 @@ export default function CGU() {
           <h2>Article 7 — Prestataires tiers d'intelligence artificielle</h2>
           <h3>7.1 Nature des transferts</h3>
           <p>
-            Dans le cadre du Mode en ligne, le texte issu des transcriptions peut être transmis à des prestataires tiers d'IA
-            pour des traitements complémentaires (analyse sémantique, résumé, synthèse vocale, etc.).
-            Seul le <strong>texte</strong> est transmis — jamais les fichiers audio bruts.
+            Dans le cadre du Mode en ligne, selon le moteur de transcription configuré, l'audio peut être transmis à des
+            prestataires tiers (ElevenLabs) pour la transcription. Le texte résultant peut être transmis à d'autres
+            prestataires (OpenAI) pour des traitements complémentaires (analyse sémantique, résumé, etc.).
+            L'audio est supprimé de nos serveurs immédiatement après traitement.
           </p>
           <h3>7.2 Liste des prestataires</h3>
           <p>À la date des présentes, les prestataires tiers utilisés sont :</p>
           <ul>
             <li><strong>OpenAI</strong> (OpenAI, L.P., San Francisco, États-Unis) — analyse et traitement textuel par IA</li>
-            <li><strong>ElevenLabs</strong> (ElevenLabs, Inc., États-Unis) — synthèse vocale</li>
+            <li><strong>ElevenLabs</strong> (ElevenLabs, Inc., États-Unis) — transcription audio (fichier audio transmis pour traitement STT, selon la configuration du moteur) et synthèse vocale</li>
           </ul>
           <h3>7.3 Transferts hors Union européenne</h3>
           <p>
@@ -223,8 +224,7 @@ export default function CGU() {
           </p>
           <ul>
             <li>La désactivation immédiate de l'accès au Service ;</li>
-            <li>La conservation des données textuelles pendant 30 jours (période de grâce) ;</li>
-            <li>La suppression définitive et irréversible de l'ensemble des données à l'expiration de ce délai.</li>
+            <li>La suppression du compte et de toutes les données associées est effective immédiatement.</li>
           </ul>
           <h3>10.4 Portabilité</h3>
           <p>

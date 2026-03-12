@@ -84,7 +84,7 @@ const faqSchema = {
       name: 'Quels prestataires tiers reçoivent mes données ?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: "En mode Cloud, le texte uniquement peut être transmis à OpenAI pour l'analyse IA, et Stripe pour le paiement. L'audio brut n'est jamais partagé avec un tiers. En mode auto-hébergé, aucun prestataire tiers n'intervient.",
+        text: "En mode Cloud, ElevenLabs peut recevoir l'audio pour la transcription (selon la configuration du moteur STT). OpenAI peut recevoir le texte pour l'analyse IA. Stripe traite les paiements. L'audio est supprimé immédiatement après traitement. En mode auto-hébergé, aucun prestataire tiers n'intervient.",
       },
     },
     {
@@ -92,7 +92,7 @@ const faqSchema = {
       name: 'Comment supprimer mes données ?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: "Depuis votre compte, vous pouvez supprimer vos transcriptions immédiatement. L'audio est déjà supprimé automatiquement après traitement. La suppression du compte entraîne l'effacement total sous 30 jours.",
+        text: "Depuis votre compte, vous pouvez supprimer vos transcriptions immédiatement. L'audio est déjà supprimé automatiquement après traitement. La suppression du compte entraîne l'effacement total immédiat de toutes vos données.",
       },
     },
     {
@@ -112,7 +112,7 @@ const COMPARISON_ROWS = [
   { label: 'Hébergement audio', cloud: 'France (supprimé après traitement)', onprem: 'Chez le client' },
   { label: 'Hébergement texte', cloud: 'France (Hostinger, Paris)', onprem: 'Chez le client' },
   { label: 'Accès ClearRecap aux données', cloud: 'Sous-traitant (DPA)', onprem: 'Aucun accès' },
-  { label: 'Transfert hors UE', cloud: 'Texte uniquement (IA externes, SCC)', onprem: 'Aucun' },
+  { label: 'Transfert hors UE', cloud: 'Audio (STT selon config) + texte (IA externes, SCC)', onprem: 'Aucun' },
   { label: 'Conformité RGPD', cloud: 'Assistée', onprem: 'Totale maîtrise client' },
   { label: 'Conformité HDS', cloud: 'Compatible', onprem: 'Le client gère' },
   { label: 'Mise en place', cloud: 'Immédiate', onprem: 'Installation requise' },
@@ -147,8 +147,8 @@ const SECURITY_COMMITMENTS = [
   },
   {
     icon: FileText,
-    title: 'Suppression totale sous 30 jours',
-    description: 'La suppression de votre compte entraîne l\'effacement complet et irréversible de toutes vos données.',
+    title: 'Suppression totale immédiate',
+    description: 'La suppression de votre compte entraîne l\'effacement complet, immédiat et irréversible de toutes vos données.',
   },
 ];
 
@@ -249,7 +249,7 @@ export default function SecurityData() {
                     'Hébergement France (Hostinger, datacenter Paris)',
                     'Audio supprimé immédiatement après traitement (one-shot)',
                     'Texte hébergé en France, supprimable à tout moment',
-                    'Possibilité d\'enrichissement IA via prestataires tiers (texte uniquement)',
+                    'Possibilité d\'enrichissement IA via prestataires tiers (audio pour transcription STT selon config, texte pour analyse)',
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
                       <Check className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
@@ -431,15 +431,15 @@ export default function SecurityData() {
 
             <AccordionItem question="Quels prestataires tiers reçoivent mes données ?">
               <p>
-                En mode Cloud, le <strong>texte uniquement</strong> peut être transmis à :
+                En mode Cloud, vos données peuvent être transmises aux prestataires suivants :
               </p>
               <ul className="list-disc list-inside mt-2 space-y-1 ml-2">
-                <li><strong>OpenAI</strong> — pour l'analyse et le résumé IA (texte uniquement, jamais l'audio brut)</li>
+                <li><strong>ElevenLabs</strong> — peut recevoir l'audio pour la transcription (selon la configuration du moteur STT). L'audio est supprimé immédiatement après traitement.</li>
+                <li><strong>OpenAI</strong> — peut recevoir le texte pour l'analyse et le résumé IA</li>
                 <li><strong>Stripe</strong> — pour le traitement des paiements</li>
               </ul>
               <p className="mt-2">
-                L'audio brut n'est jamais partagé avec un prestataire tiers. En mode auto-hébergé, aucun prestataire
-                tiers n'intervient.
+                En mode auto-hébergé, aucun prestataire tiers n'intervient.
               </p>
             </AccordionItem>
 
@@ -447,7 +447,7 @@ export default function SecurityData() {
               <p>
                 Depuis votre compte, vous pouvez supprimer vos transcriptions immédiatement — la suppression est
                 instantanée et définitive. L'audio, quant à lui, est déjà supprimé automatiquement après traitement.
-                La suppression de votre compte entraîne l'effacement total de toutes vos données sous 30 jours maximum.
+                La suppression de votre compte entraîne l'effacement total et immédiat de toutes vos données.
               </p>
             </AccordionItem>
 

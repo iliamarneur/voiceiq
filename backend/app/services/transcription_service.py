@@ -371,11 +371,15 @@ async def transcribe_audio(
                     logger.warning(f"One-shot auto-analysis failed: {analysis_err}")
             asyncio.create_task(_bg_oneshot_analyses())
 
-        # Mark job as completed
+        # Mark job as completed and clean up audio file
         result = await db.execute(select(Job).where(Job.id == job_id))
         job = result.scalar_one_or_none()
         if job:
             job.status = "completed"
+            # Delete audio file after successful transcription
+            if job.file_path and os.path.exists(job.file_path):
+                _safe_remove(job.file_path)
+                logger.info(f"Audio file deleted after transcription: {job.file_path}")
             await db.commit()
         logger.info(f"Transcription complete for {transcription.id}, job {job_id} → completed")
 
@@ -387,6 +391,10 @@ async def transcribe_audio(
             if job:
                 job.status = "failed"
                 job.error_message = str(e)[:500]
+                # Delete audio file even on failure
+                if job.file_path and os.path.exists(job.file_path):
+                    _safe_remove(job.file_path)
+                    logger.info(f"Audio file deleted after failed transcription: {job.file_path}")
                 await db.commit()
         except Exception as e2:
             logger.error(f"Failed to mark job {job_id} as failed: {e2}")
